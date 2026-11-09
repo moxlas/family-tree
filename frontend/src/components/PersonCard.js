@@ -34,7 +34,7 @@ export default function PersonCard({
   }
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [menuStyle, setMenuStyle] = useState(null);
+  const [menuStyle, setMenuStyle] = useState({});
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
 
@@ -136,25 +136,22 @@ export default function PersonCard({
             ref={buttonRef}
             onClick={(event) => {
               event.stopPropagation();
-              setMenuOpen((value) => {
-                const next = !value;
-                if (next && buttonRef.current) {
-                  const rect = buttonRef.current.getBoundingClientRect();
-                  setMenuStyle({
-                    position: 'fixed',
-                    top: rect.bottom + 6,
-                    left: Math.max(8, rect.right - 168),
-                  });
-                }
-                return next;
-              });
+              if (!menuOpen && buttonRef.current) {
+                const rect = buttonRef.current.getBoundingClientRect();
+                setMenuStyle({
+                  position: 'fixed',
+                  top: rect.bottom + 6,
+                  left: Math.max(8, rect.right - 168),
+                });
+              }
+              setMenuOpen((value) => !value);
             }}
             title={t('person.addRelativeTitle')}
             type="button"
           >
             +
           </button>
-          {menuOpen && menuStyle
+          {menuOpen
             ? createPortal(
                 <div
                   className="person-add-options"
