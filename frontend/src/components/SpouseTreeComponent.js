@@ -133,6 +133,7 @@ export default function SpouseTreeComponent({
   onView,
   people,
   suppressClickRef,
+  zoom = 1,
 }) {
   const { t } = useI18n();
   const scene = useMemo(() => buildScene(people), [people]);
@@ -168,6 +169,7 @@ export default function SpouseTreeComponent({
     const container = containerRef.current;
     if (!container) return;
 
+    const scale = zoom || 1;
     const containerRect = container.getBoundingClientRect();
     const nextEdges = [];
 
@@ -181,10 +183,11 @@ export default function SpouseTreeComponent({
       const parentRect = parentNode.getBoundingClientRect();
       const childRect = childNode.getBoundingClientRect();
       const startX =
-        parentRect.left - containerRect.left + parentRect.width / 2;
-      const startY = parentRect.bottom - containerRect.top;
-      const endX = childRect.left - containerRect.left + childRect.width / 2;
-      const endY = childRect.top - containerRect.top;
+        (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
+      const startY = (parentRect.bottom - containerRect.top) / scale;
+      const endX =
+        (childRect.left - containerRect.left + childRect.width / 2) / scale;
+      const endY = (childRect.top - containerRect.top) / scale;
       const middleY = startY + Math.max(16, (endY - startY) / 2);
 
       nextEdges.push({
@@ -198,7 +201,7 @@ export default function SpouseTreeComponent({
       width: container.scrollWidth,
       height: container.scrollHeight,
     });
-  }, [people]);
+  }, [people, zoom]);
 
   useLayoutEffect(() => {
     measure();

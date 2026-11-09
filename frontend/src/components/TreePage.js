@@ -762,6 +762,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onView={(person) => setDetailsPerson(person)}
                   people={people}
                   suppressClickRef={suppressClickRef}
+                  zoom={zoom}
                 />
               )}
             </div>
