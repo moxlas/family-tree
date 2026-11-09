@@ -320,6 +320,13 @@ const translations = {
     'settings.privateTree': 'Your tree is private to this account.',
     'settings.unknownDate': 'Unknown',
 
+    'branch.hideChildren': 'Hide children',
+    'branch.showChildren': 'Show {{count}} children',
+    'branch.focus': 'Show only this branch',
+    'branch.focusAria': 'Show only the branch of {{name}}',
+    'branch.focusBanner': 'Showing the branch of {{name}}',
+    'branch.backToFull': 'Back to full tree',
+
     'api.authRequired': 'Authentication required.',
     'api.accountGone': 'This account no longer exists.',
     'api.invalidSession': 'Your session expired. Please sign in again.',
@@ -671,6 +678,13 @@ const translations = {
     'settings.privacy': 'Privatumas',
     'settings.privateTree': 'Jūsų medis matomas tik šiai paskyrai.',
     'settings.unknownDate': 'Nežinoma',
+
+    'branch.hideChildren': 'Slėpti vaikus',
+    'branch.showChildren': 'Rodyti vaikus ({{count}})',
+    'branch.focus': 'Rodyti tik šią šaką',
+    'branch.focusAria': 'Rodyti tik {{name}} šaką',
+    'branch.focusBanner': 'Rodoma {{name}} šaka',
+    'branch.backToFull': 'Grįžti prie viso medžio',
 
     'api.authRequired': 'Reikia prisijungti.',
     'api.accountGone': 'Ši paskyra nebėra.',

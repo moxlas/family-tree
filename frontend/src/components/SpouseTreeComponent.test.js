@@ -85,7 +85,9 @@ describe('buildScene generation placement', () => {
       unit.members.some((m) => m.id === '5')
     );
     expect(formerChildUnit.x).toBeCloseTo(johnUnits[0].x - 134, 0);
-    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 134, 0);
+    // The former link is wider, so the unit is asymmetric: the current heart
+    // sits 152px right of the unit centre, the former heart 134px left.
+    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 152, 0);
   });
 
   it('keeps only one current marriage per person', () => {
@@ -111,6 +113,31 @@ describe('buildScene generation placement', () => {
       (relationship) => relationship.status === 'current'
     );
     expect([current.firstId, current.secondId].sort()).toEqual(['1', '3']);
+  });
+
+  it('places former partners left and the current partner right, with wider former links', () => {
+    const people = [
+      person('1', { firstName: 'Adam', gender: 'male' }),
+      person('2', { firstName: 'Emma', gender: 'female' }),
+      person('3', { firstName: 'Nina', gender: 'female' }),
+      person('4', { firstName: 'Olga', gender: 'female' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '1', wife: '2', status: 'former', children: [] },
+      { id: 'f2', husband: '1', wife: '4', status: 'former', children: [] },
+      { id: 'f3', husband: '1', wife: '3', status: 'current', children: [] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '1')
+    );
+    const order = unit.members.map((member) => member.id);
+
+    expect(order[order.length - 1]).toBe('3');
+    expect(order.indexOf('1')).toBeGreaterThan(0);
+    expect(order.indexOf('1')).toBeLessThan(order.length - 1);
+    expect(unit.memberCenters).toHaveLength(order.length);
+    expect(unit.linkWidths.filter((width) => width === 72).length).toBeGreaterThan(0);
   });
 
   it('keeps each family subtree beneath its own ancestors', () => {

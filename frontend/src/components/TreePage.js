@@ -16,8 +16,19 @@ import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
+import { viewPeople } from '../treeView';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
+const COLLAPSED_KEY = 'familyTreeCollapsedMarriages';
+
+function readCollapsed() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_error) {
+    return {};
+  }
+}
 
 function initials(name) {
   const parts = String(name || '')
@@ -55,6 +66,10 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [zoom, setZoom] = useState(1);
   const [treesOpen, setTreesOpen] = useState(false);
   const [gedcomOpen, setGedcomOpen] = useState(false);
+  const [focusId, setFocusId] = useState('');
+  const [collapsedByTree, setCollapsedByTree] = useState(readCollapsed);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef(null);
   const translateErrorRef = useRef(translateApiError);
   const bloodlineOnly = Boolean(user.settings?.bloodlineOnly);
   const showFormerSpouses = user.settings?.showFormerSpouses !== false;
@@ -224,6 +239,71 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   }, [people]);
 
   const displayPeople = bloodlineOnly ? bloodlinePeople : people;
+
+  const collapsedFamilyIds = useMemo(
+    () => (activeTreeId && collapsedByTree[activeTreeId]) || [],
+    [activeTreeId, collapsedByTree]
+  );
+
+  const view = useMemo(
+    () =>
+      viewPeople(people, families, {
+        focusId,
+        collapsedFamilyIds,
+      }),
+    [people, families, focusId, collapsedFamilyIds]
+  );
+
+  const childCounts = useMemo(() => {
+    const counts = {};
+    families.forEach((family) => {
+      counts[String(family.id)] = (family.children || []).length;
+    });
+    return counts;
+  }, [families]);
+
+  const focusedPerson = focusId
+    ? people.find((entry) => String(entry.id) === String(focusId)) || null
+    : null;
+
+  const toggleFamilies = (familyIds) => {
+    const ids = (familyIds || []).map(String);
+    if (!ids.length || !activeTreeId) return;
+
+    setCollapsedByTree((current) => {
+      const existing = new Set((current[activeTreeId] || []).map(String));
+      const collapsing = ids.some((id) => !existing.has(id));
+      ids.forEach((id) => {
+        if (collapsing) existing.add(id);
+        else existing.delete(id);
+      });
+      const next = { ...current, [activeTreeId]: [...existing] };
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch (_error) {
+        // Collapsing still works for this session when storage is blocked.
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (!accountMenuOpen) return undefined;
+    const handlePointerDown = (event) => {
+      if (!accountMenuRef.current?.contains(event.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setAccountMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [accountMenuOpen]);
 
   const stats = useMemo(() => {
     const ids = new Set(displayPeople.map((person) => person.id));
@@ -594,11 +674,13 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             </button>
           </div>
 
-          <div className="account-menu">
+          <div className="account-menu" ref={accountMenuRef}>
             <LanguageSwitcher />
             <button
-              className="account-button"
-              onClick={() => setSettingsOpen(true)}
+              aria-expanded={accountMenuOpen}
+              aria-haspopup="menu"
+              className="account-chip"
+              onClick={() => setAccountMenuOpen((value) => !value)}
               type="button"
             >
               <span className="account-avatar" aria-hidden="true">
@@ -608,14 +690,32 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 <span className="account-label">{t('tree.signedInAs')}</span>
                 <strong>{user.name}</strong>
               </span>
-              <span className="account-cog" aria-hidden="true">
-                ⚙
+              <span className="select-chevron" aria-hidden="true">
+                ▾
               </span>
-              <span className="sr-only">{t('settings.openSettings')}</span>
             </button>
-            <button className="button ghost small" onClick={onLogout} type="button">
-              {t('common.logout')}
-            </button>
+            {accountMenuOpen && (
+              <div className="account-dropdown" role="menu">
+                <button
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    setSettingsOpen(true);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('settings.title')}
+                </button>
+                <button
+                  className="danger"
+                  onClick={onLogout}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('common.logout')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -762,6 +862,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 </button>
               </div>
             </div>
+            {focusedPerson && (
+              <div className="focus-banner" role="status">
+                <span>
+                  {t('branch.focusBanner', {
+                    name: `${focusedPerson.firstName} ${focusedPerson.lastName}`.trim(),
+                  })}
+                </span>
+                <button
+                  className="button ghost small"
+                  onClick={() => setFocusId('')}
+                  type="button"
+                >
+                  {t('branch.backToFull')}
+                </button>
+              </div>
+            )}
             <div className="tree-zoom-toolbar" aria-label={t('tree.zoom')}>
               <button
                 className="button ghost small"
@@ -810,7 +926,9 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 />
               ) : (
                 <SpouseTreeComponent
-                  families={families}
+                  childCounts={childCounts}
+                  collapsedFamilyIds={collapsedFamilyIds}
+                  families={view.families}
                   showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
@@ -818,8 +936,10 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onAddSpouse={openAddSpouse}
                   onDelete={deletePerson}
                   onEdit={openEdit}
+                  onFocus={(person) => setFocusId(String(person.id))}
+                  onToggleFamily={toggleFamilies}
                   onView={(person) => setDetailsPerson(person)}
-                  people={people}
+                  people={view.people}
                   suppressClickRef={suppressClickRef}
                   zoom={zoom}
                 />

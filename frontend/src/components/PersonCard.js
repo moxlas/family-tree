@@ -16,7 +16,9 @@ export default function PersonCard({
   onAddSpouse,
   onDelete,
   onEdit,
+  onFocus,
   onView,
+  muted = false,
   person,
   showSpouseName = true,
   spouseStatus,
@@ -124,7 +126,7 @@ export default function PersonCard({
     <article
       className={`person-card gender-${person.gender}${
         onView ? ' is-clickable' : ''
-      }`}
+      }${muted ? ' is-former' : ''}`}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       ref={cardRef}
@@ -153,6 +155,20 @@ export default function PersonCard({
       </div>
 
       <div className="person-actions">
+        {onFocus && (
+          <button
+            aria-label={t('branch.focusAria', { name: fullName })}
+            className="icon-button focus"
+            onClick={(event) => {
+              event.stopPropagation();
+              onFocus(person);
+            }}
+            title={t('branch.focus')}
+            type="button"
+          >
+            ◎
+          </button>
+        )}
         <div className="person-add-menu" ref={menuRef}>
           <button
             aria-expanded={menuOpen}

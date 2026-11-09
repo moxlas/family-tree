@@ -400,23 +400,54 @@ textarea {
 
 .topbar-inner {
   align-items: center;
-  display: flex;
-  gap: 16px;
-  justify-content: space-between;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  height: 60px;
   margin: 0 auto;
   max-width: 1440px;
-  min-height: 72px;
   padding: 0 28px;
 }
 
 .account-menu {
   align-items: center;
   display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-left: auto;
+  gap: 10px;
+  justify-self: end;
+  position: relative;
+}
+
+.language-switch {
+  background: #f4f8f8;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+}
+
+.language-switch button {
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 750;
+  height: 30px;
+  letter-spacing: 0.04em;
+  min-width: 40px;
+  padding: 0 8px;
+}
+
+.language-switch button:hover {
+  color: var(--ink);
+}
+
+.language-switch button.is-active {
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  color: var(--brand-deep);
 }
 
 .signed-in {
@@ -428,23 +459,29 @@ textarea {
   color: var(--ink);
 }
 
-.account-button {
+.account-chip {
   align-items: center;
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
   display: inline-flex;
-  gap: 9px;
-  min-height: 44px;
-  padding: 5px 12px 5px 6px;
-  transition: border-color 150ms ease, box-shadow 150ms ease,
-    transform 150ms ease;
+  gap: 10px;
+  height: 42px;
+  padding: 0 12px 0 5px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.account-button:hover {
+.account-chip:hover,
+.account-chip[aria-expanded="true"] {
   border-color: #b8cccd;
   box-shadow: var(--shadow-sm);
-  transform: translateY(-1px);
+}
+
+.account-chip .select-chevron {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .account-avatar {
@@ -479,9 +516,64 @@ textarea {
   font-size: 13px;
 }
 
-.account-cog {
-  color: var(--muted);
-  font-size: 14px;
+.account-dropdown {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+}
+
+.account-dropdown button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 10px;
+  text-align: left;
+}
+
+.account-dropdown button:hover {
+  background: var(--surface-soft);
+}
+
+.account-dropdown button.danger {
+  color: #b91c1c;
+}
+
+@media (max-width: 900px) {
+  .topbar-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    height: auto;
+    padding: 12px 18px;
+  }
+
+  .tree-switcher {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-name,
+  .tree-switcher-label {
+    display: none;
+  }
+
+  .account-chip {
+    padding: 0 8px 0 4px;
+  }
 }
 
 .workspace {
@@ -819,11 +911,17 @@ textarea {
 .spouse-link {
   align-items: center;
   display: flex;
-  flex: 0 0 36px;
+  flex: 0 0 auto;
   height: 32px;
   justify-content: center;
   position: relative;
   width: 36px;
+}
+
+.spouse-link.is-former::before {
+  background: none;
+  border-top: 2px dashed #c4a7b3;
+  height: 0;
 }
 
 .spouse-link::before {
@@ -850,11 +948,84 @@ textarea {
   width: 24px;
 }
 
+.heart-icon {
+  display: block;
+}
+
 .spouse-heart-float {
   display: flex;
   position: absolute;
-  transform: translateX(-50%);
+  top: calc(100% + 14px);
+  transform: translate(-50%, -50%);
   z-index: 3;
+}
+
+.spouse-rail {
+  border-top: 2px solid var(--line);
+  height: 0;
+  position: absolute;
+  top: calc(100% + 14px);
+  z-index: 2;
+}
+
+.spouse-rail.is-former {
+  border-top: 2px dashed #c4a7b3;
+}
+
+.family-toggle {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  left: 0;
+  padding: 3px 9px;
+  position: absolute;
+  top: -30px;
+  white-space: nowrap;
+  z-index: 4;
+}
+
+.family-toggle:hover {
+  border-color: #b8cccd;
+  color: var(--ink);
+}
+
+.family-toggle.is-collapsed {
+  background: var(--brand-soft);
+  border-color: transparent;
+  color: var(--brand-deep);
+}
+
+.focus-banner {
+  align-items: center;
+  background: var(--brand-soft);
+  border-radius: 12px;
+  color: var(--brand-deep);
+  display: flex;
+  font-size: 13.5px;
+  font-weight: 650;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 12px 24px 0;
+  padding: 8px 12px 8px 16px;
+}
+
+.person-card.is-former {
+  background: #fbfcfc;
+  border-bottom-style: dashed;
+  border-left-style: dashed;
+  border-right-style: dashed;
+  border-color: #cbd5e1;
+  opacity: 0.8;
+}
+
+.icon-button.focus {
+  color: var(--brand-deep);
+  font-size: 14px;
 }
 
 .family-tree {
@@ -1462,46 +1633,42 @@ textarea {
 /* Trees */
 .tree-switcher {
   align-items: center;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 12px;
   display: flex;
-  flex: 1 1 520px;
-  gap: 12px;
-  justify-content: flex-start;
-  margin: 0 auto;
-  max-width: 680px;
-  min-width: 280px;
-  padding: 6px 12px;
-}
-
-.tree-switcher .button {
-  white-space: normal;
+  gap: 10px;
+  justify-self: center;
+  max-width: 620px;
+  min-width: 0;
+  width: 100%;
 }
 
 .tree-switcher-label {
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   white-space: nowrap;
 }
 
 .tree-switcher-select {
-  display: inline-flex;
-  flex: 1 1 140px;
+  flex: 1 1 auto;
+  min-width: 0;
   position: relative;
 }
 
 .tree-switcher-select select {
   appearance: none;
-  background: transparent;
-  border: 0;
+  background: #f4f8f8;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   box-shadow: none;
   color: var(--ink);
   cursor: pointer;
+  font-size: 14px;
   font-weight: 650;
+  height: 40px;
   margin: 0;
-  padding: 6px 26px 6px 8px;
+  padding: 0 32px 0 12px;
   width: 100%;
 }
 
@@ -1510,9 +1677,14 @@ textarea {
   font-size: 11px;
   pointer-events: none;
   position: absolute;
-  right: 8px;
+  right: 12px;
   top: 50%;
   transform: translateY(-50%);
+}
+
+.tree-switcher .button.small {
+  height: 40px;
+  white-space: nowrap;
 }
 
 .trees-card {
@@ -1725,18 +1897,6 @@ textarea {
 }
 
 /* Dropdown polish */
-.language-switcher,
-.tree-switcher {
-  padding: 6px 10px;
-}
-
-.language-switcher select,
-.tree-switcher-select select {
-  font-size: 14px;
-  line-height: 1.2;
-  padding: 8px 28px 8px 10px;
-}
-
 .person-form select,
 .settings-card select,
 .modal-card select {

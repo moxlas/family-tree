@@ -7,12 +7,45 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useI18n } from '../i18n';
 import PersonCard from './PersonCard';
 
 function pairKeyOf(firstId, secondId) {
   const first = String(firstId);
   const second = String(secondId);
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
+}
+
+// One icon for both marriage states so solid and broken hearts share the
+// same size, outline and weight. Broken hearts get a crack and a white fill.
+export function HeartIcon({ broken = false }) {
+  return (
+    <svg
+      className={`heart-icon${broken ? ' is-broken' : ''}`}
+      height="13"
+      viewBox="0 0 24 24"
+      width="13"
+      aria-hidden="true"
+    >
+      <path
+        d="M12 20.5s-7.8-4.7-9.6-9.4C1.2 7.9 3.2 4.8 6.4 4.8c2.1 0 3.7 1.2 4.6 2.8.9-1.6 2.5-2.8 4.6-2.8 3.2 0 5.2 3.1 4 6.3-1.8 4.7-9.6 9.4-9.6 9.4z"
+        fill={broken ? '#fff' : 'currentColor'}
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      {broken && (
+        <path
+          d="M12.6 7.4 10.6 11.6 13.4 12.8 11.2 17.4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.6"
+        />
+      )}
+    </svg>
+  );
 }
 
 function yearFromDate(value) {
@@ -263,12 +296,27 @@ export function buildScene(people, families, showFormerSpouses = true) {
     const otherPersonIds = personIds.filter(
       (personId) => personId !== anchorPersonId && !anchorSpouseIds.includes(personId)
     );
+    const statusWithAnchor = (partnerId) => {
+      const relationship = relationships.find(
+        (entry) =>
+          (entry.firstId === anchorPersonId && entry.secondId === partnerId) ||
+          (entry.secondId === anchorPersonId && entry.firstId === partnerId)
+      );
+      return relationship ? relationship.status : 'current';
+    };
+    const formerAnchorIds = anchorSpouseIds.filter(
+      (partnerId) => statusWithAnchor(partnerId) === 'former'
+    );
+    const currentAnchorIds = anchorSpouseIds.filter(
+      (partnerId) => statusWithAnchor(partnerId) !== 'former'
+    );
+    // Former partners sit on the left, the current partner on the right.
     const orderedPersonIds =
       personIds.length > 2
         ? [
-            ...anchorSpouseIds.slice(0, 1),
+            ...formerAnchorIds,
             anchorPersonId,
-            ...anchorSpouseIds.slice(1),
+            ...currentAnchorIds,
             ...otherPersonIds,
           ]
         : personIds;
@@ -609,10 +657,24 @@ export function buildScene(people, families, showFormerSpouses = true) {
   const CARD_WIDTH = 232;
   const SPOUSE_LINK_WIDTH = 36;
   const UNIT_GAP = 44;
+  // Links to a former partner are wider so ex-spouses never look adjacent
+  // to the current spouse.
+  const FORMER_LINK_WIDTH = 72;
+  units.forEach((unit) => {
+    unit.linkWidths = unit.members.slice(1).map((member, index) => {
+      const previous = unit.members[index];
+      const relationship = unit.relationshipByPair?.get(
+        pairKeyOf(previous.id, member.id)
+      );
+      return relationship?.status === 'former'
+        ? FORMER_LINK_WIDTH
+        : SPOUSE_LINK_WIDTH;
+    });
+  });
   const unitWidths = units.map(
     (unit) =>
       unit.members.length * CARD_WIDTH +
-      Math.max(0, unit.members.length - 1) * SPOUSE_LINK_WIDTH
+      unit.linkWidths.reduce((sum, width) => sum + width, 0)
   );
   const primaryParentOf = new Map();
 
@@ -727,7 +789,12 @@ export function buildScene(people, families, showFormerSpouses = true) {
 
   function memberCenterOffset(unitIndex, memberIndex) {
     const width = unitWidths[unitIndex];
-    return memberIndex * (CARD_WIDTH + SPOUSE_LINK_WIDTH) + CARD_WIDTH / 2 - width / 2;
+    const linkWidths = units[unitIndex].linkWidths;
+    let left = 0;
+    for (let index = 0; index < memberIndex; index += 1) {
+      left += CARD_WIDTH + (linkWidths[index] || 0);
+    }
+    return left + CARD_WIDTH / 2 - width / 2;
   }
 
   function relationshipHeartOffset(parentIndex, childIndex) {
@@ -870,6 +937,10 @@ export function buildScene(people, families, showFormerSpouses = true) {
     unit.x = layoutX.get(unitIndex) || 0;
     unit.width = unitWidths[unitIndex];
     unit.layoutCenter = unit.x;
+    unit.memberCenters = unit.members.map(
+      (_member, memberIndex) =>
+        memberCenterOffset(unitIndex, memberIndex) + unit.width / 2
+    );
   });
 
   rows.forEach((row) => {
@@ -885,6 +956,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
 }
 
 export default function SpouseTreeComponent({
+  childCounts = {},
+  collapsedFamilyIds = [],
   families = [],
   onAddChild,
   onAddParent,
@@ -892,12 +965,15 @@ export default function SpouseTreeComponent({
   onAddSpouse,
   onDelete,
   onEdit,
+  onFocus,
+  onToggleFamily,
   onView,
   people,
   showFormerSpouses = true,
   suppressClickRef,
   zoom = 1,
 }) {
+  const { t } = useI18n();
   const scene = useMemo(
     () => buildScene(people, families, showFormerSpouses),
     [people, families, showFormerSpouses]
@@ -1189,6 +1265,45 @@ export default function SpouseTreeComponent({
         >
           {row.map((unitIndex) => {
             const unit = scene.units[unitIndex];
+            const unitRelationships = unit.relationships || [];
+            const formerMemberIds = new Set(
+              unit.members
+                .filter((member) => {
+                  const links = unitRelationships.filter(
+                    (relationship) =>
+                      String(relationship.firstId) === String(member.id) ||
+                      String(relationship.secondId) === String(member.id)
+                  );
+                  return (
+                    links.length > 0 &&
+                    links.every((relationship) => relationship.status === 'former')
+                  );
+                })
+                .map((member) => String(member.id))
+            );
+            const familyIds = unit.familyIds || [];
+            const childCount = familyIds.reduce(
+              (sum, familyId) => sum + (childCounts[String(familyId)] || 0),
+              0
+            );
+            const collapsedSet = new Set(collapsedFamilyIds.map(String));
+            const isCollapsed =
+              familyIds.length > 0 &&
+              familyIds.some((familyId) => collapsedSet.has(String(familyId)));
+
+            // Partners who are not beside each other are joined by a dashed
+            // rail under the cards, with the broken heart on the ex-spouse.
+            const railRelationships = unitRelationships.filter((relationship) => {
+              const firstIndex = unit.members.findIndex(
+                (member) => String(member.id) === String(relationship.firstId)
+              );
+              const secondIndex = unit.members.findIndex(
+                (member) => String(member.id) === String(relationship.secondId)
+              );
+              if (firstIndex < 0 || secondIndex < 0) return false;
+              return Math.abs(firstIndex - secondIndex) > 1;
+            });
+
             return (
               <div
                 className={`spouse-unit${unit.members.length > 1 ? ' is-couple' : ''}`}
@@ -1196,6 +1311,21 @@ export default function SpouseTreeComponent({
                 role="listitem"
                 style={{ left: `${unit.x || 0}px` }}
               >
+                {childCount > 0 && onToggleFamily && (
+                  <button
+                    aria-expanded={!isCollapsed}
+                    className={`family-toggle${isCollapsed ? ' is-collapsed' : ''}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onToggleFamily(familyIds);
+                    }}
+                    type="button"
+                  >
+                    {isCollapsed
+                      ? t('branch.showChildren', { count: childCount })
+                      : t('branch.hideChildren')}
+                  </button>
+                )}
                 {unit.members.map((member, memberIndex) => {
                   const previousMember = memberIndex > 0 ? unit.members[memberIndex - 1] : null;
                   const relationship = previousMember
@@ -1203,6 +1333,7 @@ export default function SpouseTreeComponent({
                         pairKeyOf(previousMember.id, member.id)
                       )
                     : null;
+                  const isFormerLink = relationship?.status === 'former';
                   const heartKey = previousMember
                     ? `heart-${unit.id}-${previousMember.id}-${String(member.id)}`
                     : null;
@@ -1210,25 +1341,31 @@ export default function SpouseTreeComponent({
                   return (
                     <Fragment key={String(member.id)}>
                       {previousMember && (
-                        <span className="spouse-link" aria-hidden="true">
+                        <span
+                          aria-hidden="true"
+                          className={`spouse-link${isFormerLink ? ' is-former' : ''}`}
+                          style={{ width: `${unit.linkWidths[memberIndex - 1]}px` }}
+                        >
                           {relationship && (
                             <span
                               className="spouse-link-heart"
                               ref={(node) => setHeartRef(heartKey, node)}
                             >
-                              {relationship.status === 'former' ? '💔' : '♥'}
+                              <HeartIcon broken={isFormerLink} />
                             </span>
                           )}
                         </span>
                       )}
                       <PersonCard
                         cardRef={getCardRef(member.id)}
+                        muted={formerMemberIds.has(String(member.id))}
                         onAddChild={onAddChild}
                         onAddParent={onAddParent}
                         onAddSibling={onAddSibling}
                         onAddSpouse={onAddSpouse}
                         onDelete={onDelete}
                         onEdit={onEdit}
+                        onFocus={onFocus}
                         onView={onView}
                         person={member}
                         showSpouseName={false}
@@ -1238,53 +1375,50 @@ export default function SpouseTreeComponent({
                     </Fragment>
                   );
                 })}
-                {unit.relationships
-                  ?.filter((relationship) => {
-                    const firstIndex = unit.members.findIndex(
-                      (member) => String(member.id) === String(relationship.firstId)
-                    );
-                    const secondIndex = unit.members.findIndex(
-                      (member) => String(member.id) === String(relationship.secondId)
-                    );
-                    if (firstIndex < 0 || secondIndex < 0) return false;
-                    return Math.abs(firstIndex - secondIndex) > 1;
-                  })
-                  .map((relationship, floatingIndex) => {
-                    const firstIndex = unit.members.findIndex(
-                      (member) => String(member.id) === String(relationship.firstId)
-                    );
-                    const secondIndex = unit.members.findIndex(
-                      (member) => String(member.id) === String(relationship.secondId)
-                    );
-                    const leftMember = unit.members[Math.min(firstIndex, secondIndex)];
-                    const rightMember = unit.members[Math.max(firstIndex, secondIndex)];
-                    const middleX =
-                      ((firstIndex + secondIndex) / 2) * 268 + 116;
+                {railRelationships.map((relationship) => {
+                  const firstIndex = unit.members.findIndex(
+                    (member) => String(member.id) === String(relationship.firstId)
+                  );
+                  const secondIndex = unit.members.findIndex(
+                    (member) => String(member.id) === String(relationship.secondId)
+                  );
+                  const leftIndex = Math.min(firstIndex, secondIndex);
+                  const rightIndex = Math.max(firstIndex, secondIndex);
+                  const exIndex = formerMemberIds.has(
+                    String(unit.members[firstIndex].id)
+                  )
+                    ? firstIndex
+                    : secondIndex;
+                  const leftX = unit.memberCenters[leftIndex];
+                  const rightX = unit.memberCenters[rightIndex];
+                  const exX = unit.memberCenters[exIndex];
+                  const former = relationship.status === 'former';
 
-                    return (
+                  return (
+                    <Fragment key={`rail-${relationship.firstId}-${relationship.secondId}`}>
                       <span
-                        className="spouse-heart-float"
-                        key={`float-${relationship.firstId}-${relationship.secondId}`}
-                        style={{
-                          left: `${middleX + floatingIndex * 30}px`,
-                          top: '-26px',
-                        }}
                         aria-hidden="true"
+                        className={`spouse-rail${former ? ' is-former' : ''}`}
+                        style={{ left: `${leftX}px`, width: `${rightX - leftX}px` }}
+                      />
+                      <span
+                        aria-hidden="true"
+                        className="spouse-heart-float"
+                        ref={(node) =>
+                          setHeartRef(
+                            `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
+                            node
+                          )
+                        }
+                        style={{ left: `${exX}px` }}
                       >
-                        <span
-                          className="spouse-link-heart"
-                          ref={(node) =>
-                            setHeartRef(
-                              `heart-${unit.id}-${leftMember.id}-${rightMember.id}`,
-                              node
-                            )
-                          }
-                        >
-                          {relationship.status === 'former' ? '💔' : '♥'}
+                        <span className="spouse-link-heart">
+                          <HeartIcon broken={former} />
                         </span>
                       </span>
-                    );
-                  })}
+                    </Fragment>
+                  );
+                })}
               </div>
             );
           })}
