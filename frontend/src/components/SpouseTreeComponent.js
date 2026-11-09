@@ -125,6 +125,8 @@ function buildScene(people) {
 
 export default function SpouseTreeComponent({
   onAddChild,
+  onAddParent,
+  onAddSibling,
   onAddSpouse,
   onDelete,
   onEdit,
@@ -264,6 +266,8 @@ export default function SpouseTreeComponent({
                     <PersonCard
                       cardRef={getCardRef(member.id)}
                       onAddChild={onAddChild}
+                      onAddParent={onAddParent}
+                      onAddSibling={onAddSibling}
                       onAddSpouse={onAddSpouse}
                       onDelete={onDelete}
                       onEdit={onEdit}

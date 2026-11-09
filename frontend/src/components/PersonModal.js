@@ -20,13 +20,15 @@ function initialState(person, initialParentId, initialSpouseId) {
 }
 
 export default function PersonModal({
-  mode,
-  person,
-  people,
+  anchorName,
   initialParentId,
   initialSpouseId,
-  onSubmit,
+  mode,
   onClose,
+  onSubmit,
+  people,
+  person,
+  relationship,
 }) {
   const { t, translateApiError } = useI18n();
   const [form, setForm] = useState(() =>
@@ -104,11 +106,19 @@ export default function PersonModal({
   const title =
     mode === 'edit'
       ? t('modal.editTitle', { name: person?.firstName || '' })
-      : initialSpouseId
+      : relationship === 'spouse'
         ? t('modal.addSpouseTitle')
-        : form.parentId
-          ? t('modal.addChild')
-          : t('modal.addPerson');
+        : relationship === 'parent'
+          ? t('modal.addParentTitle')
+          : relationship === 'sibling'
+            ? t('modal.addSiblingTitle')
+            : relationship === 'child'
+              ? t('modal.addChild')
+              : initialSpouseId
+                ? t('modal.addSpouseTitle')
+                : form.parentId
+                  ? t('modal.addChild')
+                  : t('modal.addPerson');
 
   return (
     <div

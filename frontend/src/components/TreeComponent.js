@@ -3,18 +3,30 @@ import PersonCard from './PersonCard';
 
 function TreeNode({
   childrenByParent,
+  onAddChild,
+  onAddParent,
+  onAddSibling,
+  onAddSpouse,
+  onDelete,
+  onEdit,
+  onView,
   person,
   suppressClickRef,
-  ...actions
 }) {
   const children = childrenByParent.get(person.id) || [];
 
   return (
     <li className="tree-item">
       <PersonCard
+        onAddChild={onAddChild}
+        onAddParent={onAddParent}
+        onAddSibling={onAddSibling}
+        onAddSpouse={onAddSpouse}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onView={onView}
         person={person}
         suppressClickRef={suppressClickRef}
-        {...actions}
       />
       {children.length > 0 && (
         <ul className="tree-children">
@@ -22,9 +34,15 @@ function TreeNode({
             <TreeNode
               childrenByParent={childrenByParent}
               key={child.id}
+              onAddChild={onAddChild}
+              onAddParent={onAddParent}
+              onAddSibling={onAddSibling}
+              onAddSpouse={onAddSpouse}
+              onDelete={onDelete}
+              onEdit={onEdit}
+              onView={onView}
               person={child}
               suppressClickRef={suppressClickRef}
-              {...actions}
             />
           ))}
         </ul>
@@ -35,6 +53,9 @@ function TreeNode({
 
 export default function TreeComponent({
   onAddChild,
+  onAddParent,
+  onAddSibling,
+  onAddSpouse,
   onDelete,
   onEdit,
   onView,
@@ -78,6 +99,9 @@ export default function TreeComponent({
             childrenByParent={childrenByParent}
             key={person.id}
             onAddChild={onAddChild}
+            onAddParent={onAddParent}
+            onAddSibling={onAddSibling}
+            onAddSpouse={onAddSpouse}
             onDelete={onDelete}
             onEdit={onEdit}
             onView={onView}

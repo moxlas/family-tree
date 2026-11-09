@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
 
 function initials(person) {
@@ -9,12 +9,14 @@ function initials(person) {
 
 export default function PersonCard({
   cardRef,
-  person,
   onAddChild,
+  onAddParent,
+  onAddSibling,
   onAddSpouse,
   onDelete,
   onEdit,
   onView,
+  person,
   showSpouseName = true,
   suppressClickRef,
 }) {
@@ -30,9 +32,40 @@ export default function PersonCard({
     life = t('person.died', { date: person.deathDate });
   }
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
   const handleCardClick = () => {
     if (suppressClickRef?.current) return;
     if (onView) onView(person);
+  };
+
+  const closeMenu = () => setMenuOpen(false);
+
+  const runMenuAction = (action) => {
+    if (action) action(person);
+    closeMenu();
   };
 
   const handleKeyDown = (event) => {
@@ -87,18 +120,74 @@ export default function PersonCard({
             ♥
           </button>
         )}
-        <button
-          aria-label={t('person.addChild', { name: fullName })}
-          className="icon-button add"
-          onClick={(event) => {
+        <div className="person-add-menu" ref={menuRef}>
+          <button
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            aria-label={t('person.addRelative', { name: fullName })}
+            className="icon-button add"
+            onClick={(event) => {
               event.stopPropagation();
-              onAddChild(person);
+              setMenuOpen((value) => !value);
             }}
-          title={t('person.addChildTitle')}
-          type="button"
-        >
-          +
-        </button>
+            title={t('person.addRelativeTitle')}
+            type="button"
+          >
+            +
+          </button>
+          {menuOpen && (
+            <div className="person-add-options" role="menu">
+              {onAddChild && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    runMenuAction(onAddChild);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('person.addChildTitle')}
+                </button>
+              )}
+              {onAddParent && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    runMenuAction(onAddParent);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('person.addParentTitle')}
+                </button>
+              )}
+              {onAddSibling && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    runMenuAction(onAddSibling);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('person.addSiblingTitle')}
+                </button>
+              )}
+              {onAddSpouse && (
+                <button
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    runMenuAction(onAddSpouse);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  {t('person.addSpouseTitle')}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
         <button
           aria-label={t('person.edit', { name: fullName })}
           className="icon-button"

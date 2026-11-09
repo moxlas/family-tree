@@ -253,7 +253,47 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   };
 
   const openCreate = (parentId = '') => {
-    setModal({ mode: 'create', person: null, parentId, spouseId: '' });
+    setModal({
+      mode: 'create',
+      person: null,
+      parentId,
+      spouseId: '',
+      anchorPerson: null,
+      relationship: null,
+    });
+  };
+
+  const openAddChild = (person) => {
+    setModal({
+      mode: 'create',
+      person: null,
+      parentId: person.id,
+      spouseId: '',
+      anchorPerson: person,
+      relationship: 'child',
+    });
+  };
+
+  const openAddParent = (person) => {
+    setModal({
+      mode: 'create',
+      person: null,
+      parentId: '',
+      spouseId: '',
+      anchorPerson: person,
+      relationship: 'parent',
+    });
+  };
+
+  const openAddSibling = (person) => {
+    setModal({
+      mode: 'create',
+      person: null,
+      parentId: person.parentId ? String(person.parentId) : '',
+      spouseId: '',
+      anchorPerson: person,
+      relationship: 'sibling',
+    });
   };
 
   const openAddSpouse = (person) => {
@@ -262,6 +302,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       person: null,
       parentId: '',
       spouseId: person.id,
+      anchorPerson: person,
+      relationship: 'spouse',
     });
   };
 
@@ -271,14 +313,33 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       person,
       parentId: person.parentId ? String(person.parentId) : '',
       spouseId: '',
+      anchorPerson: null,
+      relationship: null,
     });
   };
 
   const savePerson = async (values) => {
+    let created = null;
+
     if (modal.mode === 'edit') {
       await api.put(`/people/${modal.person.id}`, values);
     } else {
-      await api.post('/people', { ...values, treeId: activeTreeId });
+      const response = await api.post('/people', {
+        ...values,
+        treeId: activeTreeId,
+      });
+      created = response.data;
+
+      if (
+        modal.relationship === 'parent' &&
+        modal.anchorPerson &&
+        created?.id
+      ) {
+        await api.put(`/people/${modal.anchorPerson.id}`, {
+          parentId: created.id,
+          treeId: activeTreeId,
+        });
+      }
     }
 
     setModal(null);
@@ -678,7 +739,10 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             >
               {bloodlineOnly ? (
                 <TreeComponent
-                  onAddChild={(person) => openCreate(person.id)}
+                  onAddChild={(person) => openAddChild(person)}
+                  onAddParent={(person) => openAddParent(person)}
+                  onAddSibling={(person) => openAddSibling(person)}
+                  onAddSpouse={(person) => openAddSpouse(person)}
                   onDelete={deletePerson}
                   onEdit={openEdit}
                   onView={(person) => setDetailsPerson(person)}
@@ -687,7 +751,9 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 />
               ) : (
                 <SpouseTreeComponent
-                  onAddChild={(person) => openCreate(person.id)}
+                  onAddChild={(person) => openAddChild(person)}
+                  onAddParent={(person) => openAddParent(person)}
+                  onAddSibling={(person) => openAddSibling(person)}
                   onAddSpouse={openAddSpouse}
                   onDelete={deletePerson}
                   onEdit={openEdit}
@@ -712,6 +778,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
       {modal && (
         <PersonModal
+          anchorName={
+            modal.anchorPerson
+              ? `${modal.anchorPerson.firstName} ${modal.anchorPerson.lastName}`.trim()
+              : ''
+          }
           initialParentId={modal.parentId}
           initialSpouseId={modal.spouseId}
           mode={modal.mode}
@@ -719,6 +790,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           onSubmit={savePerson}
           people={people}
           person={modal.person}
+          relationship={modal.relationship}
         />
       )}
 

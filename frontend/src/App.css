@@ -1586,6 +1586,42 @@ textarea {
   outline: none;
 }
 
+/* Add-relative menu */
+.person-add-menu {
+  position: relative;
+}
+
+.person-add-options {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 6px;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+}
+
+.person-add-options button {
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.person-add-options button:hover {
+  background: var(--surface-soft);
+}
+
 /* Zoom toolbar */
 .tree-zoom-toolbar {
   align-items: center;
