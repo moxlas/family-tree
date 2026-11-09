@@ -797,7 +797,8 @@ textarea {
   align-items: flex-start;
   display: flex;
   gap: 44px;
-  justify-content: center;
+  height: 126px;
+  justify-content: flex-start;
   position: relative;
   z-index: 1;
 }
@@ -805,6 +806,10 @@ textarea {
 .spouse-unit {
   align-items: center;
   display: flex;
+  left: 0;
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
 }
 
 .spouse-link {

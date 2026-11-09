@@ -70,4 +70,44 @@ describe('buildScene generation placement', () => {
     expect(johnUnits[0].members.map((m) => m.id)).toEqual(['2', '1', '3']);
     expect(johnUnits[0].relationships).toHaveLength(2);
   });
+
+  it('keeps each family subtree beneath its own ancestors', () => {
+    const people = [
+      person('1', { firstName: 'ARoot', lastName: 'Doe' }),
+      person('2', { firstName: 'AWife', lastName: 'Doe', spouseId: '1' }),
+      person('3', { firstName: 'AChild1', lastName: 'Doe', parentId: '1' }),
+      person('4', { firstName: 'AChild1Spouse', lastName: 'Doe', spouseId: '3' }),
+      person('5', { firstName: 'AChild2', lastName: 'Doe', parentId: '1' }),
+      person('6', { firstName: 'BRoot', lastName: 'Doe' }),
+      person('7', { firstName: 'BWife', lastName: 'Doe', spouseId: '6' }),
+      person('8', { firstName: 'BChild', lastName: 'Doe', parentId: '6' }),
+      person('9', { firstName: 'BChildSpouse', lastName: 'Doe', spouseId: '8' }),
+      person('10', { firstName: 'AGrand', lastName: 'Doe', parentId: '3' }),
+      person('11', { firstName: 'AGrandSpouse', lastName: 'Doe', spouseId: '10' }),
+      person('12', { firstName: 'BGrand', lastName: 'Doe', parentId: '8' }),
+      person('13', { firstName: 'BGrandSpouse', lastName: 'Doe', spouseId: '12' }),
+    ];
+    const families = [
+      { id: 'fb', husband: '6', wife: '7', status: 'current', marriageDate: '', divorceDate: '', children: ['8'] },
+      { id: 'fa', husband: '1', wife: '2', status: 'current', marriageDate: '', divorceDate: '', children: ['3', '5'] },
+      { id: 'fac', husband: '3', wife: '4', status: 'current', marriageDate: '', divorceDate: '', children: ['10'] },
+      { id: 'fbc', husband: '8', wife: '9', status: 'current', marriageDate: '', divorceDate: '', children: ['12'] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unitFor = (id) => scene.units.find((unit) => unit.members.some((member) => member.id === id));
+
+    const aRoot = unitFor('1');
+    const aChild = unitFor('3');
+    const aGrandchild = unitFor('10');
+    const bRoot = unitFor('6');
+    const bChild = unitFor('8');
+    const bGrandchild = unitFor('12');
+
+    expect(aRoot.x).toBeLessThan(bRoot.x);
+    expect(Math.max(aRoot.x, aChild.x, unitFor('5').x, aGrandchild.x)).toBeLessThan(
+      Math.min(bRoot.x, bChild.x, bGrandchild.x)
+    );
+    expect(aGrandchild.x).toBeLessThan(bChild.x);
+    expect(scene.treeWidth).toBeGreaterThan(bGrandchild.x + bGrandchild.width / 2);
+  });
 });

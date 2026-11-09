@@ -429,7 +429,138 @@ export function buildScene(people, families, showFormerSpouses = true) {
     row.forEach((ui, order) => orderInRow.set(ui, order));
   });
 
-  return { units, rows, depths };
+  // Layout: assign each unit a horizontal center. A contiguous subtree
+  // block is allocated for every parent, so descendants stay underneath
+  // their ancestors and unrelated branches do not overlap. Roots and
+  // sibling subtrees are laid out left-to-right as one block each.
+  const CARD_WIDTH = 232;
+  const SPOUSE_LINK_WIDTH = 36;
+  const UNIT_GAP = 44;
+  const unitWidths = units.map(
+    (unit) =>
+      unit.members.length * CARD_WIDTH +
+      Math.max(0, unit.members.length - 1) * SPOUSE_LINK_WIDTH
+  );
+  const primaryParentOf = new Map();
+
+  units.forEach((unit, unitIndex) => {
+    const parents = [...(unit.parentUnits || [])].sort(
+      (first, second) =>
+        depths[first] - depths[second] || orderInRow.get(first) - orderInRow.get(second) || first - second
+    );
+    if (parents.length) primaryParentOf.set(unitIndex, parents[0]);
+  });
+
+  const primaryChildrenByParent = new Map();
+  primaryParentOf.forEach((parentIndex, childIndex) => {
+    if (depths[childIndex] <= depths[parentIndex]) return;
+    if (!primaryChildrenByParent.has(parentIndex)) primaryChildrenByParent.set(parentIndex, []);
+    primaryChildrenByParent.get(parentIndex).push(childIndex);
+  });
+  primaryChildrenByParent.forEach((children) => {
+    children.sort(
+      (first, second) =>
+        depths[first] - depths[second] ||
+        orderInRow.get(first) - orderInRow.get(second) ||
+        labelOf(first).localeCompare(labelOf(second))
+    );
+  });
+
+  const layoutX = new Map();
+  let layoutCursor = 0;
+
+  function collectDescendants(unitIndex, seen = new Set()) {
+    if (seen.has(unitIndex)) return [];
+    seen.add(unitIndex);
+    const result = [unitIndex];
+    (primaryChildrenByParent.get(unitIndex) || []).forEach((childIndex) => {
+      result.push(...collectDescendants(childIndex, seen));
+    });
+    return result;
+  }
+
+  function layoutUnit(unitIndex, seen = new Set()) {
+    if (layoutX.has(unitIndex)) return layoutX.get(unitIndex);
+    if (seen.has(unitIndex)) return null;
+    seen.add(unitIndex);
+
+    const width = unitWidths[unitIndex];
+    const children = primaryChildrenByParent.get(unitIndex) || [];
+
+    if (!children.length) {
+      const center = layoutCursor + width / 2;
+      layoutX.set(unitIndex, center);
+      layoutCursor += width + UNIT_GAP;
+      return center;
+    }
+
+    const subtreeStart = layoutCursor;
+    const childCenters = [];
+    children.forEach((childIndex) => {
+      const childCenter = layoutUnit(childIndex, new Set(seen));
+      if (childCenter != null) childCenters.push(childCenter);
+    });
+
+    if (!childCenters.length) {
+      const center = layoutCursor + width / 2;
+      layoutX.set(unitIndex, center);
+      layoutCursor += width + UNIT_GAP;
+      return center;
+    }
+
+    let desiredCenter =
+      (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
+    let desiredLeft = desiredCenter - width / 2;
+
+    if (desiredLeft < subtreeStart) {
+      const shift = subtreeStart - desiredLeft;
+      collectDescendants(unitIndex).forEach((descendantIndex) => {
+        if (descendantIndex !== unitIndex) {
+          layoutX.set(descendantIndex, layoutX.get(descendantIndex) + shift);
+        }
+      });
+      layoutCursor += shift;
+      desiredCenter += shift;
+      desiredLeft += shift;
+    }
+
+    const subtreeEnd = layoutCursor - UNIT_GAP;
+    const parentRight = desiredCenter + width / 2;
+    if (parentRight > subtreeEnd) layoutCursor = parentRight + UNIT_GAP;
+
+    layoutX.set(unitIndex, desiredCenter);
+    return desiredCenter;
+  }
+
+  const layoutRootOrder = units
+    .map((_unit, unitIndex) => unitIndex)
+    .sort(
+      (first, second) =>
+        depths[first] - depths[second] ||
+        orderInRow.get(first) - orderInRow.get(second) ||
+        labelOf(first).localeCompare(labelOf(second))
+    );
+
+  layoutRootOrder.forEach((unitIndex) => {
+    if (!layoutX.has(unitIndex)) layoutUnit(unitIndex);
+  });
+
+  units.forEach((unit, unitIndex) => {
+    unit.x = layoutX.get(unitIndex) || 0;
+    unit.width = unitWidths[unitIndex];
+    unit.layoutCenter = unit.x;
+  });
+
+  rows.forEach((row) => {
+    row.sort((first, second) => units[first].x - units[second].x);
+  });
+
+  const layoutWidth = Math.max(
+    68,
+    ...units.map((unit) => unit.x + unit.width / 2)
+  ) + 68;
+
+  return { units, rows, depths, treeWidth: layoutWidth };
 }
 
 export default function SpouseTreeComponent({
@@ -607,7 +738,12 @@ export default function SpouseTreeComponent({
   }, [measure]);
 
   return (
-    <div className="spouse-tree" ref={containerRef} role="list">
+    <div
+      className="spouse-tree"
+      ref={containerRef}
+      role="list"
+      style={scene.treeWidth ? { width: `${scene.treeWidth}px` } : undefined}
+    >
       <svg
         aria-hidden="true"
         className="spouse-edges"
@@ -628,6 +764,7 @@ export default function SpouseTreeComponent({
                 className={`spouse-unit${unit.members.length > 1 ? ' is-couple' : ''}`}
                 key={unit.id}
                 role="listitem"
+                style={{ left: `${unit.x || 0}px` }}
               >
                 {unit.members.map((member, memberIndex) => {
                   const previousMember = memberIndex > 0 ? unit.members[memberIndex - 1] : null;
