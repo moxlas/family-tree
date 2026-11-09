@@ -45,16 +45,14 @@ function pathOrderFor(ids, relationships) {
       : endpoints[0];
 
   const walk = [start];
-  let previous = null;
-  let current = start;
   while (walk.length < ids.length) {
-    const next = adjacent
-      .get(current)
-      .find((candidate) => candidate !== previous && !walk.includes(candidate));
-    if (!next) return null;
+    const current = walk[walk.length - 1];
+    const before = walk[walk.length - 2];
+    const next = (adjacent.get(current) || []).find(
+      (candidate) => candidate !== before
+    );
+    if (!next || walk.includes(next)) return null;
     walk.push(next);
-    previous = current;
-    current = next;
   }
   return walk;
 }
