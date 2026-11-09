@@ -167,6 +167,15 @@ describe('buildScene generation placement', () => {
     expect(unit.linkWidths.filter((width) => width === 72)).toHaveLength(2);
   });
 
+  it('renders marriages where only one partner is in view', () => {
+    const people = [person('1', { firstName: 'Solo', gender: 'male' })];
+    const families = [
+      { id: 'f1', husband: '1', wife: null, status: 'former', children: [] },
+    ];
+    expect(() => buildScene(people, families, true)).not.toThrow();
+    expect(buildScene(people, families, true).units).toHaveLength(1);
+  });
+
   it('keeps each family subtree beneath its own ancestors', () => {
     const people = [
       person('1', { firstName: 'ARoot', lastName: 'Doe' }),

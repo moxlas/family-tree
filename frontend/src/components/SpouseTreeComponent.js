@@ -304,7 +304,10 @@ export function buildScene(people, families, showFormerSpouses = true) {
     const relatedFamilyRecords = familyRecords.filter((record) =>
       record.members.some((member) => personIds.includes(String(member.id)))
     );
-    const relationships = relatedFamilyRecords.map((record) => {
+    // A marriage with only one partner in view has no relationship to draw.
+    const relationships = relatedFamilyRecords
+      .filter((record) => record.members.length > 1)
+      .map((record) => {
       const firstId = String(record.members[0].id);
       const secondId = String(record.members[1].id);
       return {
