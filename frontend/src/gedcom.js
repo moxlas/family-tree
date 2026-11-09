@@ -163,7 +163,7 @@ export function parseGedcom(input) {
   );
   const ownExport = /family[- ]?tree/i.test(sourceText);
 
-  if (version && !/^5\.5(\.1)?$/i.test(version)) {
+  if (version && !/^5\.5(\.\d+)?$/i.test(version)) {
     addWarning('unsupportedVersion', { version });
   }
 
@@ -267,44 +267,6 @@ export function parseGedcom(input) {
     });
   }
 
-  const childFamilies = new Map();
-  const spouseFamilies = new Map();
-  let twoParentFamilies = 0;
-
-  for (const family of families) {
-    const parents = [family.husband, family.wife].filter(Boolean);
-    if (parents.length >= 2 && family.children.length) {
-      twoParentFamilies += 1;
-    }
-
-    for (const parent of parents) {
-      spouseFamilies.set(parent, (spouseFamilies.get(parent) || 0) + 1);
-    }
-
-    for (const child of family.children) {
-      childFamilies.set(child, (childFamilies.get(child) || 0) + 1);
-    }
-  }
-
-  const multipleParentCount = [...childFamilies.values()].filter(
-    (count) => count > 1
-  ).length;
-  const multipleSpouseCount = [...spouseFamilies.values()].filter(
-    (count) => count > 1
-  ).length;
-
-  if (twoParentFamilies && !ownExport) {
-    addWarning('twoParentFamily', { count: twoParentFamilies });
-  }
-
-  if (multipleParentCount) {
-    addWarning('multipleParentFamilies', { count: multipleParentCount });
-  }
-
-  if (multipleSpouseCount) {
-    addWarning('multipleSpouseFamilies', { count: multipleSpouseCount });
-  }
-
   for (const reference of unknownReferences) {
     addWarning('unknownReference', { ref: reference });
   }
@@ -371,7 +333,7 @@ function monthName(month) {
   ][month];
 }
 
-export function buildGedcom(people, treeName) {
+export function buildGedcom(people, treeName, families = []) {
   const peopleList = Array.isArray(people) ? people : [];
   const byId = new Map(
     peopleList.map((person) => [String(person.id), person])
@@ -408,57 +370,103 @@ export function buildGedcom(people, treeName) {
     couples.push({ husband, wife });
   }
 
-  const families = couples.map(({ husband, wife }) => ({
-    husband,
-    wife,
-    children: [],
-  }));
+  let exportFamilies = [];
 
-  const coupleByMember = new Map();
-  couples.forEach((couple, index) => {
-    coupleByMember.set(String(couple.husband.id), families[index]);
-    coupleByMember.set(String(couple.wife.id), families[index]);
-  });
+  if (Array.isArray(families) && families.length) {
+    const covered = new Set();
 
-  const childrenByParent = new Map();
+    families.forEach((family) => {
+      const husband = family.husband
+        ? byId.get(String(family.husband))
+        : null;
+      const wife = family.wife ? byId.get(String(family.wife)) : null;
+      const children = (family.children || [])
+        .map((id) => byId.get(String(id)))
+        .filter(Boolean);
 
-  for (const person of peopleList) {
-    if (!person.parentId) continue;
+      children.forEach((child) => covered.add(String(child.id)));
+      if (husband) covered.add(String(husband.id));
+      if (wife) covered.add(String(wife.id));
 
-    const parent = byId.get(String(person.parentId));
-    if (!parent) continue;
-
-    const parentKey = String(parent.id);
-    if (!childrenByParent.has(parentKey)) {
-      childrenByParent.set(parentKey, []);
-    }
-    childrenByParent.get(parentKey).push(person);
-  }
-
-  const childSetByFamily = new Map(families.map((family) => [family, new Set()]));
-
-  for (const [parentKey, children] of childrenByParent) {
-    const parent = byId.get(parentKey);
-    if (!parent) continue;
-
-    const coupleFamily = coupleByMember.get(parentKey);
-    if (coupleFamily) {
-      const seen = childSetByFamily.get(coupleFamily);
-      children.forEach((child) => {
-        if (!seen.has(String(child.id))) {
-          seen.add(String(child.id));
-          coupleFamily.children.push(child);
-        }
-      });
-      continue;
-    }
-
-    const parentIsFemale = parent.gender === 'female';
-    families.push({
-      husband: parentIsFemale ? null : parent,
-      wife: parentIsFemale ? parent : null,
-      children,
+      exportFamilies.push({ husband, wife, children });
     });
+
+    // Preserve people who are not part of any stored family.
+    const childrenByParent = new Map();
+    for (const person of peopleList) {
+      if (covered.has(String(person.id))) continue;
+      if (!person.parentId) continue;
+      const parent = byId.get(String(person.parentId));
+      if (!parent) continue;
+      const parentKey = String(parent.id);
+      if (!childrenByParent.has(parentKey)) {
+        childrenByParent.set(parentKey, []);
+      }
+      childrenByParent.get(parentKey).push(person);
+    }
+
+    for (const [parentKey, children] of childrenByParent) {
+      const parent = byId.get(parentKey);
+      if (!parent) continue;
+      const parentIsFemale = parent.gender === 'female';
+      exportFamilies.push({
+        husband: parentIsFemale ? null : parent,
+        wife: parentIsFemale ? parent : null,
+        children,
+      });
+    }
+  } else {
+    exportFamilies = couples.map(({ husband, wife }) => ({
+      husband,
+      wife,
+      children: [],
+    }));
+
+    const coupleByMember = new Map();
+    couples.forEach((couple, index) => {
+      coupleByMember.set(String(couple.husband.id), exportFamilies[index]);
+      coupleByMember.set(String(couple.wife.id), exportFamilies[index]);
+    });
+
+    const childrenByParent = new Map();
+    for (const person of peopleList) {
+      if (!person.parentId) continue;
+      const parent = byId.get(String(person.parentId));
+      if (!parent) continue;
+      const parentKey = String(parent.id);
+      if (!childrenByParent.has(parentKey)) {
+        childrenByParent.set(parentKey, []);
+      }
+      childrenByParent.get(parentKey).push(person);
+    }
+
+    const childSetByFamily = new Map(
+      exportFamilies.map((family) => [family, new Set()])
+    );
+
+    for (const [parentKey, children] of childrenByParent) {
+      const parent = byId.get(parentKey);
+      if (!parent) continue;
+
+      const coupleFamily = coupleByMember.get(parentKey);
+      if (coupleFamily) {
+        const seen = childSetByFamily.get(coupleFamily);
+        children.forEach((child) => {
+          if (!seen.has(String(child.id))) {
+            seen.add(String(child.id));
+            coupleFamily.children.push(child);
+          }
+        });
+        continue;
+      }
+
+      const parentIsFemale = parent.gender === 'female';
+      exportFamilies.push({
+        husband: parentIsFemale ? null : parent,
+        wife: parentIsFemale ? parent : null,
+        children,
+      });
+    }
   }
 
   const name = cleanLine(treeName, 120) || 'Family Tree';
@@ -513,7 +521,7 @@ export function buildGedcom(people, treeName) {
     }
   }
 
-  families.forEach((family, index) => {
+  exportFamilies.forEach((family, index) => {
     lines.push(`0 @F${index + 1}@ FAM`);
 
     if (family.husband) {

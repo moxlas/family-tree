@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Family = require('../models/Family');
 const Person = require('../models/Person');
 const { httpError } = require('../utils/http');
 
@@ -282,6 +283,24 @@ async function importGedcom({ ownerId, tree, body }) {
   const unresolvedReferences = new Set();
 
   for (const family of families) {
+    const husbandPerson = family.husband
+      ? keyMap.get(family.husband)
+      : null;
+    const wifePerson = family.wife ? keyMap.get(family.wife) : null;
+    const childIds = family.children
+      .map((key) => keyMap.get(key)?._id)
+      .filter(Boolean);
+
+    if (husbandPerson || wifePerson || childIds.length) {
+      await Family.create({
+        owner: ownerId,
+        tree: tree._id,
+        husband: husbandPerson?._id || null,
+        wife: wifePerson?._id || null,
+        children: childIds,
+      });
+    }
+
     const parentKeys = [family.husband, family.wife].filter(Boolean);
     const parents = [];
 

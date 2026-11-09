@@ -384,10 +384,20 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     }
   };
 
-  const exportGedcom = () => {
+  const exportGedcom = async () => {
     if (!activeTree || !people.length) return;
 
-    const text = buildGedcom(people, activeTree.name);
+    let families = [];
+    try {
+      const familyResponse = await api.get('/families', {
+        params: { treeId: activeTree.id },
+      });
+      families = familyResponse.data || [];
+    } catch (_error) {
+      families = [];
+    }
+
+    const text = buildGedcom(people, activeTree.name, families);
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./database/config');
 const authRoutes = require('./routes/auth');
+const familiesRoutes = require('./routes/families');
 const peopleRoutes = require('./routes/people');
 const treeRoutes = require('./routes/trees');
 
@@ -47,6 +48,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/families', familiesRoutes);
 app.use('/api/people', peopleRoutes);
 app.use('/api/trees', treeRoutes);
 
