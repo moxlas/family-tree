@@ -56,6 +56,16 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const translateErrorRef = useRef(translateApiError);
   const bloodlineOnly = Boolean(user.settings?.bloodlineOnly);
+  const scrollRef = useRef(null);
+  const dragState = useRef({
+    active: false,
+    moved: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+  });
+  const suppressClickRef = useRef(false);
 
   useEffect(() => {
     translateErrorRef.current = translateApiError;
@@ -339,6 +349,70 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     refreshCounts();
   };
 
+  const handleTreeScrollMouseDown = (event) => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    dragState.current = {
+      active: true,
+      moved: false,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+    };
+    container.style.cursor = 'grabbing';
+  };
+
+  const handleTreeScrollMouseMove = (event) => {
+    const container = scrollRef.current;
+    if (!container || !dragState.current.active) return;
+
+    const deltaX = event.clientX - dragState.current.startX;
+    const deltaY = event.clientY - dragState.current.startY;
+
+    if (
+      !dragState.current.moved &&
+      (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4)
+    ) {
+      dragState.current.moved = true;
+    }
+
+    if (dragState.current.moved) {
+      event.preventDefault();
+      container.scrollLeft = dragState.current.scrollLeft - deltaX;
+      container.scrollTop = dragState.current.scrollTop - deltaY;
+    }
+  };
+
+  const finishTreeScrollDrag = () => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    if (dragState.current.moved) {
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 80);
+    }
+
+    dragState.current.active = false;
+    dragState.current.moved = false;
+    container.style.cursor = '';
+  };
+
+  const handleTreeScrollWheel = (event) => {
+    const container = scrollRef.current;
+    if (!container) return;
+
+    if (event.shiftKey) {
+      container.scrollLeft += event.deltaY;
+    } else {
+      container.scrollTop += event.deltaY;
+    }
+    event.preventDefault();
+  };
+
   const busy = treesLoading || loading;
 
   return (
@@ -592,7 +666,16 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 {t('tree.zoomReset')}
               </button>
             </div>
-            <div className="tree-scroll" style={{ zoom }}>
+            <div
+              className="tree-scroll"
+              onMouseDown={handleTreeScrollMouseDown}
+              onMouseLeave={finishTreeScrollDrag}
+              onMouseMove={handleTreeScrollMouseMove}
+              onMouseUp={finishTreeScrollDrag}
+              onWheel={handleTreeScrollWheel}
+              ref={scrollRef}
+              style={{ cursor: 'grab', zoom }}
+            >
               {bloodlineOnly ? (
                 <TreeComponent
                   onAddChild={(person) => openCreate(person.id)}
@@ -600,6 +683,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onEdit={openEdit}
                   onView={(person) => setDetailsPerson(person)}
                   people={bloodlinePeople}
+                  suppressClickRef={suppressClickRef}
                 />
               ) : (
                 <SpouseTreeComponent
@@ -609,6 +693,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onEdit={openEdit}
                   onView={(person) => setDetailsPerson(person)}
                   people={people}
+                  suppressClickRef={suppressClickRef}
                 />
               )}
             </div>

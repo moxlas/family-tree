@@ -130,6 +130,7 @@ export default function SpouseTreeComponent({
   onEdit,
   onView,
   people,
+  suppressClickRef,
 }) {
   const { t } = useI18n();
   const scene = useMemo(() => buildScene(people), [people]);
@@ -269,6 +270,7 @@ export default function SpouseTreeComponent({
                       onView={onView}
                       person={member}
                       showSpouseName={false}
+                      suppressClickRef={suppressClickRef}
                     />
                   </Fragment>
                 ))}

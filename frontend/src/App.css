@@ -401,6 +401,7 @@ textarea {
 .topbar-inner {
   align-items: center;
   display: flex;
+  gap: 16px;
   justify-content: space-between;
   margin: 0 auto;
   max-width: 1440px;
@@ -411,9 +412,11 @@ textarea {
 .account-menu {
   align-items: center;
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: 12px;
   justify-content: flex-end;
+  margin-left: auto;
 }
 
 .signed-in {
@@ -1447,11 +1450,13 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 12px;
   display: flex;
-  flex: 1 1 320px;
-  gap: 10px;
-  justify-content: center;
-  min-width: 240px;
-  padding: 6px 8px;
+  flex: 0 1 420px;
+  gap: 12px;
+  justify-content: flex-start;
+  margin: 0 auto;
+  max-width: 100%;
+  min-width: 260px;
+  padding: 6px 12px;
 }
 
 .tree-switcher-label {

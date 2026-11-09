@@ -8,6 +8,7 @@ function initials(person) {
 }
 
 export default function PersonCard({
+  cardRef,
   person,
   onAddChild,
   onAddSpouse,
@@ -15,7 +16,7 @@ export default function PersonCard({
   onEdit,
   onView,
   showSpouseName = true,
-  cardRef,
+  suppressClickRef,
 }) {
   const { t } = useI18n();
   const fullName = `${person.firstName} ${person.lastName}`.trim();
@@ -30,6 +31,7 @@ export default function PersonCard({
   }
 
   const handleCardClick = () => {
+    if (suppressClickRef?.current) return;
     if (onView) onView(person);
   };
 

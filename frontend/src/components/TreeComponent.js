@@ -1,12 +1,21 @@
 import React, { useMemo } from 'react';
 import PersonCard from './PersonCard';
 
-function TreeNode({ person, childrenByParent, ...actions }) {
+function TreeNode({
+  childrenByParent,
+  person,
+  suppressClickRef,
+  ...actions
+}) {
   const children = childrenByParent.get(person.id) || [];
 
   return (
     <li className="tree-item">
-      <PersonCard person={person} {...actions} />
+      <PersonCard
+        person={person}
+        suppressClickRef={suppressClickRef}
+        {...actions}
+      />
       {children.length > 0 && (
         <ul className="tree-children">
           {children.map((child) => (
@@ -14,6 +23,7 @@ function TreeNode({ person, childrenByParent, ...actions }) {
               childrenByParent={childrenByParent}
               key={child.id}
               person={child}
+              suppressClickRef={suppressClickRef}
               {...actions}
             />
           ))}
@@ -24,11 +34,12 @@ function TreeNode({ person, childrenByParent, ...actions }) {
 }
 
 export default function TreeComponent({
-  people,
   onAddChild,
   onDelete,
   onEdit,
   onView,
+  people,
+  suppressClickRef,
 }) {
   const { roots, childrenByParent } = useMemo(() => {
     const ids = new Set(people.map((person) => person.id));
@@ -71,6 +82,7 @@ export default function TreeComponent({
             onEdit={onEdit}
             onView={onView}
             person={person}
+            suppressClickRef={suppressClickRef}
           />
         ))}
       </ul>
