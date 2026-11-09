@@ -65,10 +65,21 @@ describe('buildScene generation placement', () => {
     ];
     const scene = buildScene(people, families, true);
     const johnUnits = scene.units.filter((u) => u.members.some((m) => m.id === '1'));
+    const johnUnitIndex = scene.units.findIndex((u) =>
+      u.members.some((m) => m.id === '1')
+    );
+    const formerChildUnit = scene.units.find((u) =>
+      u.members.some((m) => m.id === '4')
+    );
+    const formerChildLink = formerChildUnit.parentLinks?.get(johnUnitIndex);
     expect(johnUnits).toHaveLength(1);
     expect(scene.units).toHaveLength(3);
     expect(johnUnits[0].members.map((m) => m.id)).toEqual(['2', '1', '3']);
     expect(johnUnits[0].relationships).toHaveLength(2);
+    expect(formerChildLink?.relationshipStatus).toBe('former');
+    expect(formerChildLink?.relationshipContext).toEqual(
+      expect.objectContaining({ firstId: '1', secondId: '2', status: 'former' })
+    );
   });
 
   it('keeps each family subtree beneath its own ancestors', () => {

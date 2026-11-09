@@ -28,7 +28,28 @@ export function buildScene(people, families, showFormerSpouses = true) {
     }
   }
 
-  function linkChildToUnit(parentUnitIndex, childPersonId, linkedParentId) {
+  function relationshipInfoForLinkedParent(parentUnitIndex, linkedParentId) {
+    const parentUnit = units[parentUnitIndex];
+    const relationship = parentUnit?.relationships?.find(
+      (entry) =>
+        String(entry.firstId) === String(linkedParentId) ||
+        String(entry.secondId) === String(linkedParentId)
+    );
+    if (relationship) return relationship;
+    return {
+      relationshipStatus: byId.get(String(linkedParentId))?.spouseStatus === 'former'
+        ? 'former'
+        : 'current',
+    };
+  }
+
+  function linkChildToUnit(
+    parentUnitIndex,
+    childPersonId,
+    linkedParentId,
+    relationshipStatus = 'current',
+    relationshipContext = null
+  ) {
     const childUnitIndexes = personUnits.get(String(childPersonId));
     if (!childUnitIndexes) return;
 
@@ -41,6 +62,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
         units[childUnitIndex].parentLinks.set(parentUnitIndex, {
           childId: String(childPersonId),
           parentId: linkedParentId ? String(linkedParentId) : null,
+          relationshipStatus,
+          relationshipContext,
         });
       }
     });
@@ -332,11 +355,26 @@ export function buildScene(people, families, showFormerSpouses = true) {
           parentCandidates.find(
             (parentId) => byId.get(parentId)?.gender === childPerson?.gender
           ) || parentCandidates[0] || null;
+        const familyRelationship =
+          family.husband && family.wife
+            ? relationshipByPair.get(pairKeyOf(family.husband, family.wife))
+            : null;
+        const relationshipStatus =
+          familyRelationship?.status ||
+          (family.status === 'former' || parentCandidates.some((parentId) => byId.get(parentId)?.spouseStatus === 'former')
+            ? 'former'
+            : 'current');
 
         childUnits.forEach((cu) => {
           if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
           units[cu].parentUnits.add(parentUnitIndex);
-          linkChildToUnit(parentUnitIndex, childId, linkedParentId);
+          linkChildToUnit(
+            parentUnitIndex,
+            childId,
+            linkedParentId,
+            relationshipStatus,
+            familyRelationship
+          );
         });
       });
     });
@@ -356,7 +394,17 @@ export function buildScene(people, families, showFormerSpouses = true) {
         if (pu === cu) return;
         if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
         units[cu].parentUnits.add(pu);
-        linkChildToUnit(pu, person.id, person.parentId);
+        const relationshipInfo = relationshipInfoForLinkedParent(
+          pu,
+          person.parentId
+        );
+        linkChildToUnit(
+          pu,
+          person.id,
+          person.parentId,
+          relationshipInfo.relationshipStatus,
+          relationshipInfo
+        );
       });
     });
   });
@@ -373,7 +421,17 @@ export function buildScene(people, families, showFormerSpouses = true) {
         if (pu === cu) return;
         if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
         units[cu].parentUnits.add(pu);
-        linkChildToUnit(pu, person.id, person.secondParentId);
+        const relationshipInfo = relationshipInfoForLinkedParent(
+          pu,
+          person.secondParentId
+        );
+        linkChildToUnit(
+          pu,
+          person.id,
+          person.secondParentId,
+          relationshipInfo.relationshipStatus,
+          relationshipInfo
+        );
       });
     });
   });
@@ -695,6 +753,16 @@ export default function SpouseTreeComponent({
           .filter(Boolean);
 
         const parentLink = childUnit.parentLinks?.get(parentIndex);
+        const edgeRelationshipStatus = parentLink?.relationshipStatus ||
+          parentUnit.relationships?.find(
+            (relationship) =>
+              String(relationship.firstId) === String(parentLink?.parentId) ||
+              String(relationship.secondId) === String(parentLink?.parentId)
+          )?.status ||
+          parentUnit.status ||
+          'current';
+        const isFormerSpouseEdge = edgeRelationshipStatus === 'former';
+
         const linkedChildMember = parentLink
           ? childUnit.members.find((member) => String(member.id) === parentLink.childId)
           : childUnit.members.find((member) =>
@@ -730,10 +798,34 @@ export default function SpouseTreeComponent({
         let junctionX = startX;
         let junctionY = startY;
         if (parentUnit.members.length > 1) {
-          const heartEntry = [...heartRefs.current.entries()].find(([key]) =>
-            key.startsWith(`heart-${parentUnit.id}-`)
-          );
-          const heartNode = heartEntry ? heartEntry[1] : null;
+          const relationshipContext = parentLink?.relationshipContext;
+          const firstIndex = relationshipContext?.firstId
+            ? parentUnit.members.findIndex(
+                (member) => String(member.id) === String(relationshipContext.firstId)
+              )
+            : -1;
+          const secondIndex = relationshipContext?.secondId
+            ? parentUnit.members.findIndex(
+                (member) => String(member.id) === String(relationshipContext.secondId)
+              )
+            : -1;
+
+          let heartNode = null;
+          if (firstIndex >= 0 && Math.abs(firstIndex - secondIndex) === 1) {
+            const leftMember = parentUnit.members[Math.min(firstIndex, secondIndex)];
+            const rightMember = parentUnit.members[Math.max(firstIndex, secondIndex)];
+            heartNode = heartRefs.current.get(
+              `heart-${parentUnit.id}-${leftMember.id}-${rightMember.id}`
+            );
+          }
+
+          if (!heartNode) {
+            const heartEntry = [...heartRefs.current.entries()].find(([key]) =>
+              key.startsWith(`heart-${parentUnit.id}-`)
+            );
+            heartNode = heartEntry ? heartEntry[1] : null;
+          }
+
           if (heartNode) {
             const heartRect = heartNode.getBoundingClientRect();
             junctionX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
@@ -751,6 +843,7 @@ export default function SpouseTreeComponent({
           junctionY,
           endX,
           endY,
+          isFormerSpouseEdge,
         };
         descriptorById.set(connector.id, connector);
       });
@@ -795,6 +888,7 @@ export default function SpouseTreeComponent({
     const nextEdges = [...descriptorById.values()].map((descriptor) => ({
       id: descriptor.id,
       path: descriptor.path,
+      isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
     }));
 
     setEdges(nextEdges);
@@ -831,7 +925,11 @@ export default function SpouseTreeComponent({
         width={size.width}
       >
         {edges.map((edge) => (
-          <path d={edge.path} key={edge.id} />
+          <path
+            className={edge.isFormerSpouseEdge ? 'is-former-spouse' : undefined}
+            d={edge.path}
+            key={edge.id}
+          />
         ))}
       </svg>
 

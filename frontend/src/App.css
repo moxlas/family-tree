@@ -793,6 +793,10 @@ textarea {
   stroke-width: 2;
 }
 
+.spouse-edges path.is-former-spouse {
+  stroke-dasharray: 7 6;
+}
+
 .spouse-generation {
   align-items: flex-start;
   display: flex;
