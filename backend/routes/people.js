@@ -16,6 +16,10 @@ function cleanText(value, maxLength) {
   return String(value == null ? '' : value).trim().slice(0, maxLength);
 }
 
+function fullName(person) {
+  return `${person.firstName || ''} ${person.lastName || ''}`.trim();
+}
+
 function readFields(body) {
   const fields = {};
 
@@ -67,6 +71,119 @@ async function resolveParent(parentId, ownerId, currentId = null) {
   return parentId;
 }
 
+async function resolveSpouse(spouseId, ownerId, currentId = null) {
+  if (spouseId == null || spouseId === '') {
+    return null;
+  }
+
+  if (!mongoose.isValidObjectId(spouseId)) {
+    throw httpError(400, 'Invalid spouse');
+  }
+
+  if (currentId && String(spouseId) === String(currentId)) {
+    throw httpError(400, 'A person cannot be their own spouse');
+  }
+
+  const spouse = await Person.findOne({ _id: spouseId, owner: ownerId });
+  if (!spouse) {
+    throw httpError(400, 'Spouse not found');
+  }
+
+  return spouse;
+}
+
+async function detachSpouse(person) {
+  if (!person.spouseId) return;
+
+  const partner = await Person.findOne({
+    _id: person.spouseId,
+    owner: person.owner,
+  });
+
+  if (partner && String(partner.spouseId) === String(person._id)) {
+    partner.spouseId = null;
+    partner.spouseName = '';
+    await partner.save();
+  }
+
+  person.spouseId = null;
+  person.spouseName = '';
+}
+
+async function attachSpouse(person, spouse) {
+  if (String(spouse.id) === String(person.id)) {
+    throw httpError(400, 'A person cannot be their own spouse');
+  }
+
+  if (person.spouseId && String(person.spouseId) !== String(spouse._id)) {
+    const previous = await Person.findOne({
+      _id: person.spouseId,
+      owner: person.owner,
+    });
+    if (previous && String(previous.spouseId) === String(person._id)) {
+      previous.spouseId = null;
+      previous.spouseName = '';
+      await previous.save();
+    }
+  }
+
+  if (spouse.spouseId && String(spouse.spouseId) !== String(person._id)) {
+    const previous = await Person.findOne({
+      _id: spouse.spouseId,
+      owner: person.owner,
+    });
+    if (previous && String(previous.spouseId) === String(spouse._id)) {
+      previous.spouseId = null;
+      previous.spouseName = '';
+      await previous.save();
+    }
+  }
+
+  person.spouseId = spouse._id;
+  person.spouseName = fullName(spouse);
+  spouse.spouseId = person._id;
+  spouse.spouseName = fullName(person);
+
+  await Promise.all([person.save(), spouse.save()]);
+}
+
+async function syncSpouseLabels(person) {
+  if (!person.spouseId) return;
+
+  const spouse = await Person.findOne({
+    _id: person.spouseId,
+    owner: person.owner,
+  });
+
+  if (!spouse) {
+    person.spouseId = null;
+    person.spouseName = '';
+    await person.save();
+    return;
+  }
+
+  const personLabel = fullName(person);
+  const spouseLabel = fullName(spouse);
+  let personChanged = false;
+  let spouseChanged = false;
+
+  if (String(spouse.spouseId || '') !== String(person._id)) {
+    spouse.spouseId = person._id;
+    spouseChanged = true;
+  }
+  if (person.spouseName !== spouseLabel) {
+    person.spouseName = spouseLabel;
+    personChanged = true;
+  }
+  if (spouse.spouseName !== personLabel) {
+    spouse.spouseName = personLabel;
+    spouseChanged = true;
+  }
+
+  if (personChanged) await person.save();
+  if (spouseChanged) await spouse.save();
+}
+
 async function listPeople(ownerId) {
   return Person.find({ owner: ownerId }).sort({ createdAt: 1 });
 }
@@ -83,12 +200,18 @@ router.post('/', async (req, res) => {
   }
 
   const parentId = await resolveParent(req.body.parentId, req.user.id);
+  const spouse = await resolveSpouse(req.body.spouseId, req.user.id);
 
   const person = await Person.create({
     ...fields,
     owner: req.user.id,
     parentId,
+    spouseId: null,
   });
+
+  if (spouse) {
+    await attachSpouse(person, spouse);
+  }
 
   return res.status(201).json(person);
 });
@@ -103,8 +226,14 @@ router.post('/demo', async (req, res) => {
       lastName: 'Doe',
       gender: 'male',
       birthDate: '1945',
-      spouseName: 'Jane Smith',
       notes: 'Started the family archive.',
+    },
+    {
+      key: 'jane',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      gender: 'female',
+      birthDate: '1947',
     },
     {
       key: 'michael',
@@ -113,7 +242,13 @@ router.post('/demo', async (req, res) => {
       lastName: 'Doe',
       gender: 'male',
       birthDate: '1970',
-      spouseName: 'Anna Brown',
+    },
+    {
+      key: 'anna',
+      firstName: 'Anna',
+      lastName: 'Brown',
+      gender: 'female',
+      birthDate: '1972',
     },
     {
       key: 'sarah',
@@ -122,7 +257,13 @@ router.post('/demo', async (req, res) => {
       lastName: 'Doe',
       gender: 'female',
       birthDate: '1973',
-      spouseName: 'David Miller',
+    },
+    {
+      key: 'david',
+      firstName: 'David',
+      lastName: 'Miller',
+      gender: 'male',
+      birthDate: '1971',
     },
     {
       key: 'emma',
@@ -158,11 +299,26 @@ router.post('/demo', async (req, res) => {
       lastName: entry.lastName,
       gender: entry.gender,
       birthDate: entry.birthDate,
-      spouseName: entry.spouseName || '',
       notes: entry.notes || '',
       parentId: entry.parent ? created[entry.parent]._id : null,
     });
     created[entry.key] = person;
+  }
+
+  const couples = [
+    ['john', 'jane'],
+    ['michael', 'anna'],
+    ['sarah', 'david'],
+  ];
+
+  for (const [firstKey, secondKey] of couples) {
+    const first = created[firstKey];
+    const second = created[secondKey];
+    first.spouseId = second._id;
+    first.spouseName = fullName(second);
+    second.spouseId = first._id;
+    second.spouseName = fullName(first);
+    await Promise.all([first.save(), second.save()]);
   }
 
   return res.status(201).json(await listPeople(req.user.id));
@@ -187,6 +343,18 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'First name is required' });
   }
 
+  const spouseProvided = Object.prototype.hasOwnProperty.call(
+    req.body,
+    'spouseId'
+  );
+  let spouse = null;
+
+  if (spouseProvided) {
+    spouse = await resolveSpouse(req.body.spouseId, req.user.id, person.id);
+    // The display name is derived from the linked person.
+    delete fields.spouseName;
+  }
+
   if ('parentId' in req.body) {
     person.parentId = await resolveParent(
       req.body.parentId,
@@ -196,7 +364,20 @@ router.put('/:id', async (req, res) => {
   }
 
   Object.assign(person, fields);
-  await person.save();
+
+  if (spouseProvided) {
+    if (spouse) {
+      await attachSpouse(person, spouse);
+    } else {
+      await detachSpouse(person);
+      person.spouseName = cleanText(req.body.spouseName, 160);
+      await person.save();
+    }
+    await syncSpouseLabels(person);
+  } else {
+    await person.save();
+    await syncSpouseLabels(person);
+  }
 
   return res.json(person);
 });
@@ -239,12 +420,25 @@ router.delete('/:id', async (req, res) => {
     }
   }
 
+  const deletedIds = [...toDelete];
+
   await Person.deleteMany({
-    _id: { $in: [...toDelete] },
+    _id: { $in: deletedIds },
     owner: req.user.id,
   });
 
-  return res.json({ deleted: toDelete.size });
+  // Surviving spouses of the deleted people become unlinked.
+  await Person.updateMany(
+    {
+      owner: req.user.id,
+      spouseId: { $in: deletedIds },
+    },
+    {
+      $set: { spouseId: null, spouseName: '' },
+    }
+  );
+
+  return res.json({ deleted: deletedIds.length });
 });
 
 module.exports = router;

@@ -72,7 +72,13 @@ function App() {
     return <Login onAuth={handleAuth} />;
   }
 
-  return <TreePage user={user} onLogout={handleLogout} />;
+  return (
+    <TreePage
+      onLogout={handleLogout}
+      onUserUpdate={setUser}
+      user={user}
+    />
+  );
 }
 
 export default App;

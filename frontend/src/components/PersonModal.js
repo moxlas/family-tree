@@ -1,13 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { useI18n } from '../i18n';
 
-function initialState(person, initialParentId) {
+function initialState(person, initialParentId, initialSpouseId) {
   return {
     firstName: person?.firstName || '',
     lastName: person?.lastName || '',
     gender: person?.gender || 'unknown',
     birthDate: person?.birthDate || '',
     deathDate: person?.deathDate || '',
+    spouseId: person?.spouseId
+      ? String(person.spouseId)
+      : initialSpouseId
+        ? String(initialSpouseId)
+        : '',
     spouseName: person?.spouseName || '',
     notes: person?.notes || '',
     parentId: initialParentId || '',
@@ -19,11 +24,14 @@ export default function PersonModal({
   person,
   people,
   initialParentId,
+  initialSpouseId,
   onSubmit,
   onClose,
 }) {
   const { t, translateApiError } = useI18n();
-  const [form, setForm] = useState(() => initialState(person, initialParentId));
+  const [form, setForm] = useState(() =>
+    initialState(person, initialParentId, initialSpouseId)
+  );
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -46,13 +54,39 @@ export default function PersonModal({
     }));
   };
 
+  const updateSpouse = (event) => {
+    const nextSpouseId = event.target.value;
+
+    setForm((current) => {
+      const previousPartner = current.spouseId
+        ? people.find((entry) => entry.id === current.spouseId)
+        : null;
+      const previousName = previousPartner
+        ? `${previousPartner.firstName} ${previousPartner.lastName}`.trim()
+        : '';
+
+      return {
+        ...current,
+        spouseId: nextSpouseId,
+        spouseName:
+          !nextSpouseId && current.spouseName === previousName
+            ? ''
+            : current.spouseName,
+      };
+    });
+  };
+
   const submit = async (event) => {
     event.preventDefault();
     setError('');
     setSaving(true);
 
     try {
-      await onSubmit({ ...form, parentId: form.parentId || null });
+      await onSubmit({
+        ...form,
+        parentId: form.parentId || null,
+        spouseId: form.spouseId || null,
+      });
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.savePerson'));
     } finally {
@@ -61,12 +95,20 @@ export default function PersonModal({
   };
 
   const parentOptions = people.filter((entry) => entry.id !== person?.id);
+  const spouseOptions = people.filter((entry) => {
+    if (entry.id === person?.id) return false;
+    if (!entry.spouseId) return true;
+    return String(entry.spouseId) === String(person?.id);
+  });
+
   const title =
     mode === 'edit'
       ? t('modal.editTitle', { name: person?.firstName || '' })
-      : form.parentId
-        ? t('modal.addChild')
-        : t('modal.addPerson');
+      : initialSpouseId
+        ? t('modal.addSpouseTitle')
+        : form.parentId
+          ? t('modal.addChild')
+          : t('modal.addPerson');
 
   return (
     <div
@@ -170,13 +212,32 @@ export default function PersonModal({
           </div>
 
           <label>
+            <span>{t('modal.linkedSpouse')}</span>
+            <select
+              name="spouseId"
+              onChange={updateSpouse}
+              value={form.spouseId}
+            >
+              <option value="">{t('modal.noLinkedSpouse')}</option>
+              {spouseOptions.map((entry) => (
+                <option key={entry.id} value={entry.id}>
+                  {`${entry.firstName} ${entry.lastName}`.trim()}
+                </option>
+              ))}
+            </select>
+            <small className="field-hint">{t('modal.linkedSpouseHint')}</small>
+          </label>
+
+          <label>
             <span>{t('modal.spouse')}</span>
             <input
+              disabled={Boolean(form.spouseId)}
               name="spouseName"
               onChange={update}
               placeholder={t('modal.spousePlaceholder')}
               value={form.spouseName}
             />
+            <small className="field-hint">{t('modal.spouseHint')}</small>
           </label>
 
           <label>

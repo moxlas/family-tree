@@ -19,7 +19,15 @@ function signToken(user) {
 }
 
 function publicUser(user) {
-  return { id: user.id, name: user.name, email: user.email };
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+    settings: {
+      bloodlineOnly: Boolean(user.settings?.bloodlineOnly),
+    },
+  };
 }
 
 router.post('/register', async (req, res) => {
@@ -72,6 +80,46 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticate, (req, res) => {
   res.json({ user: publicUser(req.user) });
+});
+
+router.put('/profile', authenticate, async (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const email = String(req.body.email || '').trim().toLowerCase();
+
+  if (!name || !email) {
+    return res.status(400).json({ error: 'Name and email are required' });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Please enter a valid email address' });
+  }
+
+  const existing = await User.findOne({
+    email,
+    _id: { $ne: req.user.id },
+  });
+
+  if (existing) {
+    return res
+      .status(409)
+      .json({ error: 'An account with this email already exists' });
+  }
+
+  req.user.name = name;
+  req.user.email = email;
+  await req.user.save();
+
+  return res.json({ user: publicUser(req.user) });
+});
+
+router.put('/settings', authenticate, async (req, res) => {
+  req.user.settings = {
+    ...req.user.settings,
+    bloodlineOnly: Boolean(req.body.bloodlineOnly),
+  };
+  await req.user.save();
+
+  return res.json({ user: publicUser(req.user) });
 });
 
 module.exports = router;

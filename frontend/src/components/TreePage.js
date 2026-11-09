@@ -9,16 +9,34 @@ import api from '../api';
 import { useI18n } from '../i18n';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonModal from './PersonModal';
+import SettingsModal from './SettingsModal';
+import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
 
-export default function TreePage({ user, onLogout }) {
+function initials(name) {
+  const parts = String(name || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return (
+    parts
+      .slice(0, 2)
+      .map((part) => part.charAt(0))
+      .join('')
+      .toUpperCase() || '?'
+  );
+}
+
+export default function TreePage({ user, onLogout, onUserUpdate }) {
   const { t, tn, translateApiError } = useI18n();
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const translateErrorRef = useRef(translateApiError);
+  const bloodlineOnly = Boolean(user.settings?.bloodlineOnly);
 
   useEffect(() => {
     translateErrorRef.current = translateApiError;
@@ -50,15 +68,50 @@ export default function TreePage({ user, onLogout }) {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
+  const bloodlinePeople = useMemo(() => {
+    const byId = new Map(people.map((person) => [person.id, person]));
+    const secondaryIds = new Set();
+    const remap = new Map();
+    const visited = new Set();
+
+    people.forEach((person) => {
+      if (visited.has(person.id)) return;
+
+      const spouseId = person.spouseId ? String(person.spouseId) : null;
+      if (!spouseId) return;
+
+      const spouse = byId.get(spouseId);
+      if (!spouse) return;
+      if (String(spouse.spouseId || '') !== person.id) return;
+
+      visited.add(person.id);
+      visited.add(spouse.id);
+      secondaryIds.add(spouse.id);
+      remap.set(spouse.id, person.id);
+    });
+
+    return people
+      .filter((person) => !secondaryIds.has(person.id))
+      .map((person) => {
+        const parentId = person.parentId ? String(person.parentId) : null;
+        if (parentId && remap.has(parentId)) {
+          return { ...person, parentId: remap.get(parentId) };
+        }
+        return person;
+      });
+  }, [people]);
+
+  const displayPeople = bloodlineOnly ? bloodlinePeople : people;
+
   const stats = useMemo(() => {
-    const ids = new Set(people.map((person) => person.id));
-    const roots = people.filter(
+    const ids = new Set(displayPeople.map((person) => person.id));
+    const roots = displayPeople.filter(
       (person) => !person.parentId || !ids.has(String(person.parentId))
     ).length;
 
-    const byId = new Map(people.map((person) => [person.id, person]));
+    const byId = new Map(displayPeople.map((person) => [person.id, person]));
     let generations = 0;
-    people.forEach((person) => {
+    displayPeople.forEach((person) => {
       let depth = 1;
       let current = person;
       const seen = new Set([person.id]);
@@ -73,10 +126,19 @@ export default function TreePage({ user, onLogout }) {
     });
 
     return { roots, generations };
-  }, [people]);
+  }, [displayPeople]);
 
   const openCreate = (parentId = '') => {
-    setModal({ mode: 'create', person: null, parentId });
+    setModal({ mode: 'create', person: null, parentId, spouseId: '' });
+  };
+
+  const openAddSpouse = (person) => {
+    setModal({
+      mode: 'create',
+      person: null,
+      parentId: '',
+      spouseId: person.id,
+    });
   };
 
   const openEdit = (person) => {
@@ -84,6 +146,7 @@ export default function TreePage({ user, onLogout }) {
       mode: 'edit',
       person,
       parentId: person.parentId ? String(person.parentId) : '',
+      spouseId: '',
     });
   };
 
@@ -155,9 +218,23 @@ export default function TreePage({ user, onLogout }) {
 
           <div className="account-menu">
             <LanguageSwitcher />
-            <span className="signed-in">
-              {t('tree.signedInAs')} <strong>{user.name}</strong>
-            </span>
+            <button
+              className="account-button"
+              onClick={() => setSettingsOpen(true)}
+              type="button"
+            >
+              <span className="account-avatar" aria-hidden="true">
+                {initials(user.name)}
+              </span>
+              <span className="account-name">
+                <span className="account-label">{t('tree.signedInAs')}</span>
+                <strong>{user.name}</strong>
+              </span>
+              <span className="account-cog" aria-hidden="true">
+                ⚙
+              </span>
+              <span className="sr-only">{t('settings.openSettings')}</span>
+            </button>
             <button className="button ghost small" onClick={onLogout} type="button">
               {t('common.logout')}
             </button>
@@ -207,7 +284,7 @@ export default function TreePage({ user, onLogout }) {
 
         <section className="stats-row" aria-label={t('tree.heading')}>
           <div className="stat-card">
-            <span className="stat-value">{people.length}</span>
+            <span className="stat-value">{displayPeople.length}</span>
             <span className="stat-label">{t('stats.people')}</span>
           </div>
           <div className="stat-card">
@@ -269,23 +346,44 @@ export default function TreePage({ user, onLogout }) {
             <div className="tree-panel-heading">
               <div>
                 <h2>{t('tree.heading')}</h2>
-                <p>{t('tree.headingHint')}</p>
+                <p>
+                  {bloodlineOnly
+                    ? t('tree.headingHint')
+                    : t('tree.headingHintSpouses')}
+                </p>
               </div>
-              <button
-                className="button secondary small"
-                onClick={() => openCreate('')}
-                type="button"
-              >
-                {t('tree.addRoot')}
-              </button>
+              <div className="tree-heading-actions">
+                <span className="mode-badge">
+                  {bloodlineOnly
+                    ? t('tree.modeBloodline')
+                    : t('tree.modeSpouses')}
+                </span>
+                <button
+                  className="button secondary small"
+                  onClick={() => openCreate('')}
+                  type="button"
+                >
+                  {t('tree.addRoot')}
+                </button>
+              </div>
             </div>
             <div className="tree-scroll">
-              <TreeComponent
-                onAddChild={(person) => openCreate(person.id)}
-                onDelete={deletePerson}
-                onEdit={openEdit}
-                people={people}
-              />
+              {bloodlineOnly ? (
+                <TreeComponent
+                  onAddChild={(person) => openCreate(person.id)}
+                  onDelete={deletePerson}
+                  onEdit={openEdit}
+                  people={bloodlinePeople}
+                />
+              ) : (
+                <SpouseTreeComponent
+                  onAddChild={(person) => openCreate(person.id)}
+                  onAddSpouse={openAddSpouse}
+                  onDelete={deletePerson}
+                  onEdit={openEdit}
+                  people={people}
+                />
+              )}
             </div>
           </section>
         )}
@@ -293,12 +391,21 @@ export default function TreePage({ user, onLogout }) {
 
       {modal && (
         <PersonModal
+          initialParentId={modal.parentId}
+          initialSpouseId={modal.spouseId}
           mode={modal.mode}
           onClose={() => setModal(null)}
           onSubmit={savePerson}
           people={people}
           person={modal.person}
-          initialParentId={modal.parentId}
+        />
+      )}
+
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onUserUpdate={onUserUpdate}
+          user={user}
         />
       )}
     </div>

@@ -37,6 +37,13 @@ const personSchema = new mongoose.Schema(
       maxlength: 40,
       default: '',
     },
+    spouseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Person',
+      default: null,
+      index: true,
+    },
+    // Kept for display in the bloodline-only view and for older records.
     spouseName: {
       type: String,
       trim: true,

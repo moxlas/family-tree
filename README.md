@@ -21,8 +21,13 @@ preserving the details that make a family story.
 ## Features
 
 - Register and sign in with a private account
+- Profile settings for name, email, and tree display preferences
 - Add, edit and remove relatives
 - Connect children to parents across multiple generations
+- Link spouses as people in the tree; each spouse can have their own parents
+  and children
+- Choose a bloodline-only view (spouses shown inline) or separate spouse cards
+  (the default)
 - Record birth/death dates, spouse or partner, and notes
 - Load an example family to explore the visualization
 - Responsive family tree with an overflow-friendly canvas
@@ -90,6 +95,8 @@ The frontend opens at `http://localhost:3000` and uses the API at
 | `POST` | `/api/auth/register` | Create an account |
 | `POST` | `/api/auth/login` | Sign in |
 | `GET` | `/api/auth/me` | Current user |
+| `PUT` | `/api/auth/profile` | Update the current user's name and email |
+| `PUT` | `/api/auth/settings` | Update tree display preferences |
 | `GET` | `/api/people` | List the signed-in user's people |
 | `POST` | `/api/people` | Add a person |
 | `POST` | `/api/people/demo` | Replace the tree with example data |
