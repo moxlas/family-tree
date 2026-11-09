@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
 import { useI18n } from './i18n';
+import ErrorBoundary from './components/ErrorBoundary';
 import Login from './components/Login';
 import TreePage from './components/TreePage';
 import './App.css';
@@ -73,11 +74,13 @@ function App() {
   }
 
   return (
-    <TreePage
-      onLogout={handleLogout}
-      onUserUpdate={setUser}
-      user={user}
-    />
+    <ErrorBoundary>
+      <TreePage
+        onLogout={handleLogout}
+        onUserUpdate={setUser}
+        user={user}
+      />
+    </ErrorBoundary>
   );
 }
 

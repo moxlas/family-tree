@@ -33,8 +33,6 @@ export default function PersonDetailsModal({
 
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
-  const spouse = person.spouseId ? byId.get(String(person.spouseId)) : null;
-  const parent = person.parentId ? byId.get(String(person.parentId)) : null;
 
   const relatedFamilies = (families || []).filter(
     (family) =>

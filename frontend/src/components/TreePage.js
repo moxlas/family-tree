@@ -130,6 +130,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     [activeTreeId]
   );
 
+  const loadFamilies = useCallback(async () => {
+    if (!activeTreeId) {
+      setFamilies([]);
+      return;
+    }
+
+    try {
+      const response = await api.get('/families', {
+        params: { treeId: activeTreeId },
+      });
+      setFamilies(response.data || []);
+    } catch (_error) {
+      setFamilies([]);
+    }
+  }, [activeTreeId]);
+
   useEffect(() => {
     loadTrees();
   }, [loadTrees]);
@@ -215,22 +231,6 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
     return { roots, generations };
   }, [displayPeople]);
-
-  const loadFamilies = useCallback(async () => {
-    if (!activeTreeId) {
-      setFamilies([]);
-      return;
-    }
-
-    try {
-      const response = await api.get('/families', {
-        params: { treeId: activeTreeId },
-      });
-      setFamilies(response.data || []);
-    } catch (_error) {
-      setFamilies([]);
-    }
-  }, [activeTreeId]);
 
   const refreshCounts = useCallback(
     () => loadTrees({ quiet: true, preferredId: activeTreeId }),
