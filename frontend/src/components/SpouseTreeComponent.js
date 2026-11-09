@@ -1013,7 +1013,7 @@ export default function SpouseTreeComponent({
             : -1;
 
           let heartNode = null;
-          if (firstIndex >= 0 && Math.abs(firstIndex - secondIndex) === 1) {
+          if (firstIndex >= 0 && secondIndex >= 0 && firstIndex !== secondIndex) {
             const leftMember = parentUnit.members[Math.min(firstIndex, secondIndex)];
             const rightMember = parentUnit.members[Math.max(firstIndex, secondIndex)];
             heartNode = heartRefs.current.get(
@@ -1022,10 +1022,33 @@ export default function SpouseTreeComponent({
           }
 
           if (!heartNode) {
-            const heartEntry = [...heartRefs.current.entries()].find(([key]) =>
-              key.startsWith(`heart-${parentUnit.id}-`)
+            // Fall back to the heart nearest the linked parent card so the
+            // connector never attaches to an unrelated marriage.
+            const heartEntries = [...heartRefs.current.entries()].filter(
+              ([key]) => key.startsWith(`heart-${parentUnit.id}-`)
             );
-            heartNode = heartEntry ? heartEntry[1] : null;
+            const parentCardNode = parentLink?.parentId
+              ? cardRefs.current.get(String(parentLink.parentId))
+              : null;
+
+            if (heartEntries.length <= 1 || !parentCardNode) {
+              heartNode = heartEntries[0] ? heartEntries[0][1] : null;
+            } else {
+              const parentCardRect = parentCardNode.getBoundingClientRect();
+              const parentCenterX = parentCardRect.left + parentCardRect.width / 2;
+              let bestEntry = null;
+
+              heartEntries.forEach((entry) => {
+                const rect = entry[1].getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const distance = Math.abs(centerX - parentCenterX);
+                if (!bestEntry || distance < bestEntry.distance) {
+                  bestEntry = { entry, distance };
+                }
+              });
+
+              heartNode = bestEntry ? bestEntry.entry[1] : null;
+            }
           }
 
           if (heartNode) {
