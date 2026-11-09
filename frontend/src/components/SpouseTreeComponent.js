@@ -16,6 +16,49 @@ function pairKeyOf(firstId, secondId) {
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
 }
 
+// When the marriages in a group form a simple chain (A - B - C - D), return
+// the people in chain order so every marriage sits between neighbours and
+// its heart is drawn beside the card. Returns null for any other shape.
+function pathOrderFor(ids, relationships) {
+  if (ids.length < 3 || relationships.length !== ids.length - 1) return null;
+
+  const adjacent = new Map(ids.map((id) => [id, []]));
+  relationships.forEach((relationship) => {
+    adjacent.get(relationship.firstId)?.push(relationship.secondId);
+    adjacent.get(relationship.secondId)?.push(relationship.firstId);
+  });
+
+  if ([...adjacent.values()].some((links) => links.length > 2)) return null;
+
+  const endpoints = ids.filter((id) => adjacent.get(id).length === 1);
+  if (endpoints.length !== 2) return null;
+
+  // Start from the endpoint whose only marriage is a former one, so the
+  // ex-spouse is drawn on the left and the current partner on the right.
+  const endpointStatus = (id) =>
+    relationships.find(
+      (relationship) => relationship.firstId === id || relationship.secondId === id
+    )?.status;
+  const start =
+    endpointStatus(endpoints[1]) === 'former' && endpointStatus(endpoints[0]) !== 'former'
+      ? endpoints[1]
+      : endpoints[0];
+
+  const walk = [start];
+  let previous = null;
+  let current = start;
+  while (walk.length < ids.length) {
+    const next = adjacent
+      .get(current)
+      .find((candidate) => candidate !== previous && !walk.includes(candidate));
+    if (!next) return null;
+    walk.push(next);
+    previous = current;
+    current = next;
+  }
+  return walk;
+}
+
 // One icon for both marriage states so solid and broken hearts share the
 // same size, outline and weight. Broken hearts get a crack and a white fill.
 export function HeartIcon({ broken = false }) {
@@ -311,15 +354,17 @@ export function buildScene(people, families, showFormerSpouses = true) {
       (partnerId) => statusWithAnchor(partnerId) !== 'former'
     );
     // Former partners sit on the left, the current partner on the right.
+    const chainOrder = pathOrderFor(personIds, relationships);
     const orderedPersonIds =
-      personIds.length > 2
+      chainOrder ||
+      (personIds.length > 2
         ? [
             ...formerAnchorIds,
             anchorPersonId,
             ...currentAnchorIds,
             ...otherPersonIds,
           ]
-        : personIds;
+        : personIds);
     const members = orderedPersonIds
       .map((personId) => byId.get(personId))
       .filter(Boolean);

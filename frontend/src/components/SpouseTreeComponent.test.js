@@ -140,6 +140,33 @@ describe('buildScene generation placement', () => {
     expect(unit.linkWidths.filter((width) => width === 72).length).toBeGreaterThan(0);
   });
 
+  it('orders chained marriages so every marriage sits between neighbours', () => {
+    const people = [
+      person('1', { firstName: 'Ex1', gender: 'female' }),
+      person('2', { firstName: 'Man', gender: 'male' }),
+      person('3', { firstName: 'Current', gender: 'female' }),
+      person('4', { firstName: 'Ex2', gender: 'male' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '2', wife: '1', status: 'former', children: [] },
+      { id: 'f2', husband: '2', wife: '3', status: 'current', children: [] },
+      { id: 'f3', husband: '4', wife: '3', status: 'former', children: [] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '2')
+    );
+    const order = unit.members.map((member) => member.id);
+
+    unit.relationships.forEach((relationship) => {
+      const gap = Math.abs(
+        order.indexOf(relationship.firstId) - order.indexOf(relationship.secondId)
+      );
+      expect(gap).toBe(1);
+    });
+    expect(unit.linkWidths.filter((width) => width === 72)).toHaveLength(2);
+  });
+
   it('keeps each family subtree beneath its own ancestors', () => {
     const people = [
       person('1', { firstName: 'ARoot', lastName: 'Doe' }),
