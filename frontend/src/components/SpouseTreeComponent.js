@@ -771,6 +771,36 @@ export function buildScene(people, families, showFormerSpouses = true) {
     });
   });
 
+  // Last-resort clearance pass: if two card units in one generation end
+  // up too close after heart alignment (or from an unusual ancestor graph),
+  // move the later unit and all of its descendants further right as one
+  // block. This keeps every generation horizontally collision-free while
+  // preserving the internal structure of each subtree.
+  const MIN_HORIZONTAL_GAP = 8;
+  rows.forEach((row) => {
+    const orderedRow = [...row].sort(
+      (first, second) => layoutX.get(first) - layoutX.get(second)
+    );
+    let nextLeft = Number.NEGATIVE_INFINITY;
+
+    orderedRow.forEach((unitIndex) => {
+      const currentCenter = layoutX.get(unitIndex) || 0;
+      const currentLeft = currentCenter - unitWidths[unitIndex] / 2;
+      const shift = nextLeft - currentLeft;
+
+      if (shift > 0) {
+        collectDescendants(unitIndex).forEach((descendantIndex) => {
+          layoutX.set(descendantIndex, (layoutX.get(descendantIndex) || 0) + shift);
+        });
+      }
+
+      nextLeft =
+        (layoutX.get(unitIndex) || 0) +
+        unitWidths[unitIndex] / 2 +
+        MIN_HORIZONTAL_GAP;
+    });
+  });
+
   units.forEach((unit, unitIndex) => {
     unit.x = layoutX.get(unitIndex) || 0;
     unit.width = unitWidths[unitIndex];
@@ -813,6 +843,7 @@ export default function SpouseTreeComponent({
   const cardRefCallbacks = useRef(new Map());
   const heartRefs = useRef(new Map());
   const [edges, setEdges] = useState([]);
+  const [rowHeights, setRowHeights] = useState({});
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const setHeartRef = useCallback((key, node) => {
@@ -998,8 +1029,30 @@ export default function SpouseTreeComponent({
     }));
 
     setEdges(nextEdges);
+
+    const measuredRowHeights = {};
+    scene.units.forEach((unit, unitIndex) => {
+      const depth = scene.depths[unitIndex] || 0;
+      const measuredHeights = unit.members
+        .map((member) => {
+          const node = cardRefs.current.get(String(member.id));
+          return node ? node.getBoundingClientRect().height / scale : 0;
+        })
+        .filter(Boolean);
+      if (measuredHeights.length) {
+        measuredRowHeights[depth] = Math.max(
+          measuredRowHeights[depth] || 0,
+          ...measuredHeights
+        );
+      }
+    });
+
+    if (JSON.stringify(measuredRowHeights) !== JSON.stringify(rowHeights)) {
+      setRowHeights(measuredRowHeights);
+    }
+
     setSize({ width: container.scrollWidth, height: container.scrollHeight });
-  }, [scene, zoom]);
+  }, [rowHeights, scene, zoom]);
 
   useLayoutEffect(() => {
     measure();
@@ -1040,7 +1093,12 @@ export default function SpouseTreeComponent({
       </svg>
 
       {scene.rows.map((row, depth) => (
-        <div className="spouse-generation" key={`generation-${depth}`} role="presentation">
+        <div
+          className="spouse-generation"
+          key={`generation-${depth}`}
+          role="presentation"
+          style={{ height: `${rowHeights[depth] || 126}px` }}
+        >
           {row.map((unitIndex) => {
             const unit = scene.units[unitIndex];
             return (
