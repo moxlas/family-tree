@@ -106,7 +106,10 @@ export default function PersonCard({
               aria-label={t('person.spouseLabel', { name: person.spouseName })}
               className="person-spouse"
             >
-              <span aria-hidden="true">♥</span> {person.spouseName}
+              <span aria-hidden="true">
+                {person.spouseStatus === 'former' ? '💔' : '♥'}
+              </span>{' '}
+              {person.spouseName}
             </p>
           )}
         </div>

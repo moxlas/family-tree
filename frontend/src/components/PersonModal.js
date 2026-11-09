@@ -13,6 +13,7 @@ function initialState(person, initialParentId, initialSpouseId) {
       : initialSpouseId
         ? String(initialSpouseId)
         : '',
+    spouseStatus: person?.spouseStatus || 'current',
     spouseName: person?.spouseName || '',
     notes: person?.notes || '',
     parentId: initialParentId || '',
@@ -256,6 +257,20 @@ export default function PersonModal({
             </select>
             <small className="field-hint">{t('modal.linkedSpouseHint')}</small>
           </label>
+
+          {form.spouseId && (
+            <label>
+              <span>{t('modal.spouseStatus')}</span>
+              <select
+                name="spouseStatus"
+                onChange={update}
+                value={form.spouseStatus}
+              >
+                <option value="current">{t('modal.spouseStatusCurrent')}</option>
+                <option value="former">{t('modal.spouseStatusFormer')}</option>
+              </select>
+            </label>
+          )}
 
           <label>
             <span>{t('modal.spouse')}</span>

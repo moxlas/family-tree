@@ -143,6 +143,9 @@ const translations = {
     'modal.noLinkedSpouse': 'No linked spouse',
     'modal.linkedSpouseHint':
       'Link an existing person to show them as a separate connected card.',
+    'modal.spouseStatus': 'Relationship status',
+    'modal.spouseStatusCurrent': 'Current spouse or partner',
+    'modal.spouseStatusFormer': 'Former spouse or partner',
     'modal.spouse': 'Spouse or partner name (optional)',
     'modal.spousePlaceholder': 'Name shown beside this person',
     'modal.spouseHint':
@@ -469,6 +472,9 @@ const translations = {
     'modal.noLinkedSpouse': 'Nėra susieto sutuoktinio (-ės)',
     'modal.linkedSpouseHint':
       'Susiekite esamą asmenį, kad jis būtų rodomas atskira sujungta kortele.',
+    'modal.spouseStatus': 'Ryšio būsena',
+    'modal.spouseStatusCurrent': 'Dabartinis sutuoktinis (-ė) arba partneris (-ė)',
+    'modal.spouseStatusFormer': 'Buvęs sutuoktinis (-ė) arba partneris (-ė)',
     'modal.spouse': 'Sutuoktinio (-ės) arba partnerio (-ės) vardas (neprivaloma)',
     'modal.spousePlaceholder': 'Vardas rodomas prie šio asmens',
     'modal.spouseHint':

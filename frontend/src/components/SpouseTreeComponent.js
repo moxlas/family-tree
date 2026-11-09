@@ -172,27 +172,59 @@ export default function SpouseTreeComponent({
     const scale = zoom || 1;
     const containerRect = container.getBoundingClientRect();
     const nextEdges = [];
+    const drawnChildren = new Set();
 
     people.forEach((person) => {
-      if (!person.parentId) return;
+      const parentIds = [person.parentId, person.secondParentId].filter(Boolean);
+      if (!parentIds.length) return;
+      if (drawnChildren.has(String(person.id))) return;
+      drawnChildren.add(String(person.id));
 
-      const parentNode = cardRefs.current.get(String(person.parentId));
       const childNode = cardRefs.current.get(String(person.id));
-      if (!parentNode || !childNode) return;
+      if (!childNode) return;
 
-      const parentRect = parentNode.getBoundingClientRect();
+      const parentNodes = parentIds
+        .map((id) => cardRefs.current.get(String(id)))
+        .filter(Boolean);
+      if (!parentNodes.length) return;
+
       const childRect = childNode.getBoundingClientRect();
-      const startX =
-        (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
-      const startY = (parentRect.bottom - containerRect.top) / scale;
       const endX =
         (childRect.left - containerRect.left + childRect.width / 2) / scale;
       const endY = (childRect.top - containerRect.top) / scale;
-      const middleY = startY + Math.max(16, (endY - startY) / 2);
+
+      if (parentNodes.length === 1) {
+        const parentRect = parentNodes[0].getBoundingClientRect();
+        const startX =
+          (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
+        const startY = (parentRect.bottom - containerRect.top) / scale;
+        const middleY = startY + Math.max(16, (endY - startY) / 2);
+
+        nextEdges.push({
+          id: `${String(parentIds[0])}-${String(person.id)}`,
+          path: `M ${startX} ${startY} V ${middleY} H ${endX} V ${endY}`,
+        });
+        return;
+      }
+
+      const parentRects = parentNodes.map((node) =>
+        node.getBoundingClientRect()
+      );
+      const xs = parentRects.map(
+        (rect) => (rect.left - containerRect.left + rect.width / 2) / scale
+      );
+      const ys = parentRects.map(
+        (rect) => (rect.bottom - containerRect.top) / scale
+      );
+      const x1 = xs[0];
+      const x2 = xs[1];
+      const yBar = Math.min(ys[0], ys[1]);
+      const midX = (x1 + x2) / 2;
+      const verticalStart = yBar;
 
       nextEdges.push({
-        id: `${String(person.parentId)}-${String(person.id)}`,
-        path: `M ${startX} ${startY} V ${middleY} H ${endX} V ${endY}`,
+        id: `${parentIds.join('+')}-${String(person.id)}`,
+        path: `M ${x1} ${yBar} H ${x2} M ${midX} ${verticalStart} V ${endY} H ${endX}`,
       });
     });
 
@@ -263,7 +295,13 @@ export default function SpouseTreeComponent({
                   <Fragment key={member.id}>
                     {memberIndex > 0 && (
                       <span className="spouse-link" aria-hidden="true">
-                        <span className="spouse-link-heart">♥</span>
+                        <span className="spouse-link-heart">
+                          {unit.members.some(
+                            (entry) => entry.spouseStatus === 'former'
+                          )
+                            ? '💔'
+                            : '♥'}
+                        </span>
                       </span>
                     )}
                     <PersonCard

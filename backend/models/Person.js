@@ -74,6 +74,11 @@ const personSchema = new mongoose.Schema(
     default: null,
     index: true,
   },
+  spouseStatus: {
+    type: String,
+    enum: ['current', 'former'],
+    default: 'current',
+  },
   },
   { timestamps: true }
 );

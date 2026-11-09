@@ -28,6 +28,9 @@ function readFields(body) {
   if ('birthDate' in body) fields.birthDate = cleanText(body.birthDate, 40);
   if ('deathDate' in body) fields.deathDate = cleanText(body.deathDate, 40);
   if ('spouseName' in body) fields.spouseName = cleanText(body.spouseName, 160);
+  if ('spouseStatus' in body) {
+    fields.spouseStatus = body.spouseStatus === 'former' ? 'former' : 'current';
+  }
   if ('notes' in body) fields.notes = cleanText(body.notes, 2000);
 
   return fields;
