@@ -8,6 +8,12 @@ const personSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    tree: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Tree',
+      default: null,
+      index: true,
+    },
     firstName: {
       type: String,
       required: [true, 'First name is required'],
@@ -67,6 +73,7 @@ const personSchema = new mongoose.Schema(
 );
 
 personSchema.index({ owner: 1, parentId: 1 });
+personSchema.index({ owner: 1, tree: 1, parentId: 1 });
 
 personSchema.set('toJSON', {
   transform: (_document, result) => {

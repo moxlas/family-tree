@@ -6,12 +6,17 @@ import React, {
   useState,
 } from 'react';
 import api from '../api';
+import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
+import GedcomModal from './GedcomModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonModal from './PersonModal';
 import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
+import TreesModal from './TreesModal';
+
+const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 
 function initials(name) {
   const parts = String(name || '')
@@ -29,12 +34,23 @@ function initials(name) {
 
 export default function TreePage({ user, onLogout, onUserUpdate }) {
   const { t, tn, translateApiError } = useI18n();
+  const [trees, setTrees] = useState([]);
+  const [treesLoading, setTreesLoading] = useState(true);
+  const [activeTreeId, setActiveTreeId] = useState(() => {
+    try {
+      return localStorage.getItem(ACTIVE_TREE_KEY) || '';
+    } catch (_error) {
+      return '';
+    }
+  });
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [treesOpen, setTreesOpen] = useState(false);
+  const [gedcomOpen, setGedcomOpen] = useState(false);
   const translateErrorRef = useRef(translateApiError);
   const bloodlineOnly = Boolean(user.settings?.bloodlineOnly);
 
@@ -42,12 +58,54 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     translateErrorRef.current = translateApiError;
   }, [translateApiError]);
 
+  const activeTree = useMemo(
+    () => trees.find((tree) => tree.id === activeTreeId) || null,
+    [activeTreeId, trees]
+  );
+
+  const loadTrees = useCallback(async ({ quiet = false, preferredId = '' } = {}) => {
+    if (!quiet) setTreesLoading(true);
+
+    try {
+      const response = await api.get('/trees');
+      const list = response.data || [];
+      setTrees(list);
+      setActiveTreeId((current) => {
+        let stored = '';
+        try {
+          stored = localStorage.getItem(ACTIVE_TREE_KEY) || '';
+        } catch (_error) {
+          stored = '';
+        }
+
+        const wanted = preferredId || current || stored;
+        if (wanted && list.some((tree) => tree.id === wanted)) return wanted;
+        return list[0]?.id || '';
+      });
+      return list;
+    } catch (requestError) {
+      setError(translateErrorRef.current(requestError, 'errors.loadTrees'));
+      return [];
+    } finally {
+      if (!quiet) setTreesLoading(false);
+    }
+  }, []);
+
   const loadPeople = useCallback(
     async ({ quiet = false } = {}) => {
+      if (!activeTreeId) {
+        setPeople([]);
+        setLoading(false);
+        return;
+      }
+
       if (!quiet) setLoading(true);
       setError('');
+
       try {
-        const response = await api.get('/people');
+        const response = await api.get('/people', {
+          params: { treeId: activeTreeId },
+        });
         setPeople(response.data);
       } catch (requestError) {
         setError(translateErrorRef.current(requestError, 'errors.loadTree'));
@@ -55,12 +113,25 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
         if (!quiet) setLoading(false);
       }
     },
-    []
+    [activeTreeId]
   );
 
   useEffect(() => {
-    loadPeople();
-  }, [loadPeople]);
+    loadTrees();
+  }, [loadTrees]);
+
+  useEffect(() => {
+    if (!treesLoading) loadPeople();
+  }, [treesLoading, loadPeople]);
+
+  useEffect(() => {
+    if (!activeTreeId) return;
+    try {
+      localStorage.setItem(ACTIVE_TREE_KEY, activeTreeId);
+    } catch (_error) {
+      // Switching trees still works for this session when storage is blocked.
+    }
+  }, [activeTreeId]);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -128,6 +199,46 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     return { roots, generations };
   }, [displayPeople]);
 
+  const refreshCounts = useCallback(
+    () => loadTrees({ quiet: true, preferredId: activeTreeId }),
+    [activeTreeId, loadTrees]
+  );
+
+  const handleTreeCreated = (tree) => {
+    setTrees((current) => [...current, tree]);
+    setActiveTreeId(tree.id);
+    setPeople([]);
+    setLoading(true);
+    setError('');
+  };
+
+  const handleTreeUpdated = (tree) => {
+    setTrees((current) =>
+      current.map((entry) => (entry.id === tree.id ? tree : entry))
+    );
+  };
+
+  const handleTreeDeleted = (treeId) => {
+    const remaining = trees.filter((entry) => entry.id !== treeId);
+    setTrees(remaining);
+
+    if (treeId === activeTreeId) {
+      setActiveTreeId(remaining[0]?.id || '');
+      setPeople([]);
+      setLoading(true);
+    }
+  };
+
+  const handleSelectTree = (treeId) => {
+    if (!treeId || treeId === activeTreeId) return;
+    setActiveTreeId(treeId);
+    setPeople([]);
+    setLoading(true);
+    setModal(null);
+    setNotice('');
+    setError('');
+  };
+
   const openCreate = (parentId = '') => {
     setModal({ mode: 'create', person: null, parentId, spouseId: '' });
   };
@@ -154,14 +265,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     if (modal.mode === 'edit') {
       await api.put(`/people/${modal.person.id}`, values);
     } else {
-      await api.post('/people', values);
+      await api.post('/people', { ...values, treeId: activeTreeId });
     }
 
     setModal(null);
     setNotice(
       modal.mode === 'edit' ? 'notice.personUpdated' : 'notice.personAdded'
     );
-    await loadPeople({ quiet: true });
+    await Promise.all([loadPeople({ quiet: true }), refreshCounts()]);
   };
 
   const deletePerson = async (person) => {
@@ -171,9 +282,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
     setError('');
     try {
-      await api.delete(`/people/${person.id}`);
+      await api.delete(`/people/${person.id}`, {
+        params: { treeId: activeTreeId },
+      });
       setNotice('notice.personDeleted');
-      await loadPeople({ quiet: true });
+      await Promise.all([loadPeople({ quiet: true }), refreshCounts()]);
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.deletePerson'));
     }
@@ -186,13 +299,44 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
     setError('');
     try {
-      const response = await api.post('/people/demo');
+      const response = await api.post('/people/demo', {
+        treeId: activeTreeId,
+      });
       setPeople(response.data);
       setNotice('notice.demoLoaded');
+      await refreshCounts();
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.loadDemo'));
     }
   };
+
+  const exportGedcom = () => {
+    if (!activeTree || !people.length) return;
+
+    const text = buildGedcom(people, activeTree.name);
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const safeName =
+      activeTree.name
+        .replace(/[^\p{L}\p{N}._-]+/gu, '-')
+        .replace(/^-+|-+$/g, '') || 'family-tree';
+
+    link.href = url;
+    link.download = `${safeName}.ged`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    setNotice('notice.gedcomExported');
+  };
+
+  const handleImported = () => {
+    loadPeople({ quiet: true });
+    refreshCounts();
+  };
+
+  const busy = treesLoading || loading;
 
   return (
     <div className="app-shell">
@@ -214,6 +358,36 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               </svg>
             </span>
             <span>{t('app.title')}</span>
+          </div>
+
+          <div className="tree-switcher">
+            <label className="tree-switcher-label" htmlFor="active-tree-select">
+              {t('trees.active')}
+            </label>
+            <span className="tree-switcher-select">
+              <select
+                disabled={!trees.length}
+                id="active-tree-select"
+                onChange={(event) => handleSelectTree(event.target.value)}
+                value={activeTreeId}
+              >
+                {trees.map((tree) => (
+                  <option key={tree.id} value={tree.id}>
+                    {tree.name}
+                  </option>
+                ))}
+              </select>
+              <span className="select-chevron" aria-hidden="true">
+                ▾
+              </span>
+            </span>
+            <button
+              className="button ghost small"
+              onClick={() => setTreesOpen(true)}
+              type="button"
+            >
+              {t('trees.manage')}
+            </button>
           </div>
 
           <div className="account-menu">
@@ -260,6 +434,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             <button className="button glass" onClick={loadDemo} type="button">
               {t('tree.loadDemo')}
             </button>
+            <button
+              className="button glass"
+              disabled={!activeTree}
+              onClick={() => setGedcomOpen(true)}
+              type="button"
+            >
+              {t('gedcom.import')}
+            </button>
+            <button
+              className="button glass"
+              disabled={!activeTree || !people.length}
+              onClick={exportGedcom}
+              type="button"
+            >
+              {t('gedcom.export')}
+            </button>
           </div>
         </section>
 
@@ -301,7 +491,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           </div>
         </section>
 
-        {loading ? (
+        {busy ? (
           <div className="panel-loading">
             <div className="loading-mark" aria-hidden="true">
               <span />
@@ -338,6 +528,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               </button>
               <button className="button secondary" onClick={loadDemo} type="button">
                 {t('empty.explore')}
+              </button>
+              <button
+                className="button secondary"
+                disabled={!activeTree}
+                onClick={() => setGedcomOpen(true)}
+                type="button"
+              >
+                {t('gedcom.import')}
               </button>
             </div>
           </section>
@@ -406,6 +604,26 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           onClose={() => setSettingsOpen(false)}
           onUserUpdate={onUserUpdate}
           user={user}
+        />
+      )}
+
+      {treesOpen && (
+        <TreesModal
+          activeTreeId={activeTreeId}
+          onClose={() => setTreesOpen(false)}
+          onCreated={handleTreeCreated}
+          onDeleted={handleTreeDeleted}
+          onSelect={handleSelectTree}
+          onUpdated={handleTreeUpdated}
+          trees={trees}
+        />
+      )}
+
+      {gedcomOpen && activeTree && (
+        <GedcomModal
+          onClose={() => setGedcomOpen(false)}
+          onImported={handleImported}
+          tree={activeTree}
         />
       )}
     </div>

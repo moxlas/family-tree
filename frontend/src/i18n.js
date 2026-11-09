@@ -17,6 +17,8 @@ const translations = {
     'common.close': 'Close',
     'common.loading': 'Please wait…',
     'common.logout': 'Log out',
+    'common.save': 'Save',
+    'common.delete': 'Delete',
 
     'auth.welcome': 'Welcome back',
     'auth.startStory': 'Start your family story',
@@ -66,11 +68,17 @@ const translations = {
     'notice.personUpdated': 'Person updated.',
     'notice.personDeleted': 'Person removed from the tree.',
     'notice.demoLoaded': 'Example family loaded.',
+    'notice.treeCreated': 'Tree created.',
+    'notice.treeRenamed': 'Tree renamed.',
+    'notice.treeDeleted': 'Tree deleted.',
+    'notice.gedcomExported': 'GEDCOM file exported.',
 
     'confirm.delete':
       'Delete {{name}}? Any children below this person will also be removed.',
     'confirm.demo':
-      'Loading the example family will replace the people currently in your tree. Continue?',
+      'Loading the example family will replace the people currently in this tree. Continue?',
+    'confirm.deleteTree':
+      'Delete the tree “{{name}}” and all {{count}} people in it? This cannot be undone.',
 
     'person.born': 'Born {{date}}',
     'person.died': 'Died {{date}}',
@@ -121,6 +129,106 @@ const translations = {
     'modal.saving': 'Saving…',
     'modal.addToTree': 'Add to tree',
 
+    'trees.active': 'Active tree',
+    'trees.manage': 'Manage trees',
+    'trees.manageEyebrow': 'Your archive',
+    'trees.manageTitle': 'Family trees',
+    'trees.manageCopy':
+      'Keep different family lines separate. Imports and new people go into the tree you open here.',
+    'trees.currentBadge': 'Open',
+    'trees.open': 'Open',
+    'trees.rename': 'Rename',
+    'trees.delete': 'Delete',
+    'trees.createTitle': 'Create a new tree',
+    'trees.createCopy':
+      'Start empty, then add people or import a GEDCOM file.',
+    'trees.name': 'Tree name',
+    'trees.namePlaceholder': 'e.g. Petrauskas family',
+    'trees.create': 'Create tree',
+    'trees.creating': 'Creating…',
+    'trees.save': 'Save name',
+    'trees.saving': 'Saving…',
+    'trees.cancelRename': 'Cancel',
+    'trees.renameLabel': 'New name for {{name}}',
+    'trees.lastTreeHint':
+      'You need at least one tree. Rename this one instead of deleting it.',
+    'trees.people.one': '{{count}} person',
+    'trees.people.few': '{{count}} people',
+    'trees.people.many': '{{count}} people',
+    'trees.people.other': '{{count}} people',
+
+    'gedcom.import': 'Import GEDCOM',
+    'gedcom.export': 'Export GEDCOM',
+    'gedcom.importTitle': 'Import a GEDCOM file',
+    'gedcom.eyebrow': 'Family data',
+    'gedcom.chooseFile': 'Choose a .ged file',
+    'gedcom.fileHint':
+      'GEDCOM 5.5.1 files from Ancestry, MyHeritage, Gramps or another family tree app.',
+    'gedcom.selectedFile': 'Selected file: {{name}}',
+    'gedcom.mergeHint':
+      'This import merges into “{{tree}}”. Existing people are matched by name and birth year, and missing details are filled in.',
+    'gedcom.changeFile': 'Choose another file',
+    'gedcom.reading': 'Reading file…',
+    'gedcom.previewTitle': 'Ready to import',
+    'gedcom.previewCopy':
+      'Review what was found before adding it to this tree.',
+    'gedcom.individuals': 'Individuals',
+    'gedcom.families': 'Families',
+    'gedcom.notes': 'With notes',
+    'gedcom.dated': 'With dates',
+    'gedcom.warnings': 'Warnings',
+    'gedcom.noWarnings': 'No warnings — this file looks good.',
+    'gedcom.warningCount.one': '{{count}} warning',
+    'gedcom.warningCount.few': '{{count}} warnings',
+    'gedcom.warningCount.many': '{{count}} warnings',
+    'gedcom.warningCount.other': '{{count}} warnings',
+    'gedcom.moreWarnings': '…and {{count}} more.',
+    'gedcom.importing': 'Importing…',
+    'gedcom.doImport': 'Import into this tree',
+    'gedcom.resultTitle': 'Import complete',
+    'gedcom.resultCopy':
+      '“{{tree}}” now includes the imported family data.',
+    'gedcom.created': 'People added',
+    'gedcom.updated': 'People merged',
+    'gedcom.spouseLinks': 'Spouse links added',
+    'gedcom.parentLinks': 'Parent links added',
+    'gedcom.done': 'Done',
+    'gedcom.importAnother': 'Import another file',
+    'gedcom.parseError': 'This file could not be read as GEDCOM 5.5.1.',
+    'gedcom.noPeople': 'No people were found in this GEDCOM file.',
+    'gedcom.tooMany':
+      'This file has {{count}} people. Up to {{max}} people can be imported at once.',
+    'gedcom.fileTooLarge': 'Please choose a file smaller than 20 MB.',
+    'gedcom.warn.missingName':
+      'An individual without a first name was skipped.',
+    'gedcom.warn.duplicateReference':
+      'A duplicate reference ({{ref}}) was skipped.',
+    'gedcom.warn.unknownReference':
+      'A family reference ({{ref}}) was not found and was skipped.',
+    'gedcom.warn.ambiguousMatch':
+      'Several existing people match {{name}}, so a new person was added instead.',
+    'gedcom.warn.spouseConflict':
+      'The spouse link between {{person}} and {{spouse}} was skipped because one of them already has a different spouse.',
+    'gedcom.warn.parentConflict':
+      '{{person}} already has a different parent, so {{parent}} was not linked.',
+    'gedcom.warn.fieldConflict':
+      'Kept your existing details for {{person}} where they differ from the imported file.',
+    'gedcom.warn.cycle':
+      'A parent link for {{person}} was skipped because it would create a loop.',
+    'gedcom.warn.multipleParentFamilies':
+      '{{count}} people appear in more than one family as a child; only the first parent link is kept.',
+    'gedcom.warn.multipleSpouseFamilies':
+      '{{count}} people appear in more than one family as a spouse; only one spouse link is kept.',
+    'gedcom.warn.twoParentFamily':
+      '{{count}} families have two parents. This app keeps one parent per person, so children are linked to the first parent.',
+    'gedcom.warn.unsupportedVersion':
+      'This file reports GEDCOM {{version}}; only GEDCOM 5.5.1 is fully supported.',
+    'gedcom.warn.unsupportedEncoding':
+      'This file uses {{encoding}} encoding. Export it as UTF-8 for the most reliable names.',
+    'gedcom.warn.malformedLines': '{{count}} malformed lines were skipped.',
+    'gedcom.warn.tooManyIndividuals':
+      'Only the first {{count}} people can be imported at once.',
+
     'errors.generic': 'Something went wrong. Please try again.',
     'errors.loadTree':
       'Could not load your family tree. Please try again.',
@@ -131,6 +239,13 @@ const translations = {
     'errors.saveProfile': 'Could not save your profile. Please try again.',
     'errors.saveSettings':
       'Could not save your preferences. Please try again.',
+    'errors.loadTrees':
+      'Could not load your family trees. Please try again.',
+    'errors.createTree': 'Could not create this tree. Please try again.',
+    'errors.renameTree': 'Could not rename this tree. Please try again.',
+    'errors.deleteTree': 'Could not delete this tree. Please try again.',
+    'errors.importGedcom':
+      'Could not import this GEDCOM file. Please try again.',
 
     'settings.openSettings': 'Open profile and settings',
     'settings.eyebrow': 'Your account',
@@ -177,6 +292,14 @@ const translations = {
     'api.ownSpouse': 'A person cannot be their own spouse.',
     'api.firstNameRequired': 'First name is required.',
     'api.personNotFound': 'Person not found.',
+    'api.treeNotFound': 'Family tree not found.',
+    'api.treeNameRequired': 'Tree name is required.',
+    'api.treeNameExists': 'A tree with this name already exists.',
+    'api.lastTree': 'You need at least one tree.',
+    'api.gedcomEmpty': 'No GEDCOM data to import.',
+    'api.gedcomTooMany': 'This GEDCOM file contains too many people.',
+    'api.gedcomInvalid': 'Invalid GEDCOM data.',
+    'api.gedcomTooLarge': 'The import file is too large.',
     'api.notFound': 'Route not found.',
     'api.database': 'Database connection failed.',
     'api.inUse': 'That value is already in use.',
@@ -191,6 +314,8 @@ const translations = {
     'common.close': 'Uždaryti',
     'common.loading': 'Palaukite…',
     'common.logout': 'Atsijungti',
+    'common.save': 'Išsaugoti',
+    'common.delete': 'Ištrinti',
 
     'auth.welcome': 'Sveiki sugrįžę',
     'auth.startStory': 'Pradėkite savo šeimos istoriją',
@@ -244,11 +369,17 @@ const translations = {
     'notice.personUpdated': 'Asmens duomenys atnaujinti.',
     'notice.personDeleted': 'Asmuo pašalintas iš medžio.',
     'notice.demoLoaded': 'Pavyzdinė šeima įkelta.',
+    'notice.treeCreated': 'Medis sukurtas.',
+    'notice.treeRenamed': 'Medžio pavadinimas pakeistas.',
+    'notice.treeDeleted': 'Medis ištrintas.',
+    'notice.gedcomExported': 'GEDCOM failas eksportuotas.',
 
     'confirm.delete':
       'Pašalinti {{name}}? Visi šio asmens vaikai taip pat bus pašalinti.',
     'confirm.demo':
-      'Įkėlus pavyzdinę šeimą, dabartiniai jūsų medžio žmonės bus pakeisti. Tęsti?',
+      'Įkėlus pavyzdinę šeimą, dabartiniai šio medžio žmonės bus pakeisti. Tęsti?',
+    'confirm.deleteTree':
+      'Ištrinti medį „{{name}}“ ir visus {{count}} jame esančius žmones? To atšaukti negalima.',
 
     'person.born': 'Gimė {{date}}',
     'person.died': 'Mirė {{date}}',
@@ -299,6 +430,106 @@ const translations = {
     'modal.saving': 'Išsaugoma…',
     'modal.addToTree': 'Pridėti į medį',
 
+    'trees.active': 'Aktyvus medis',
+    'trees.manage': 'Tvarkyti medžius',
+    'trees.manageEyebrow': 'Jūsų archyvas',
+    'trees.manageTitle': 'Šeimos medžiai',
+    'trees.manageCopy':
+      'Atskiras šeimos linijas laikykite atskiruose medžiuose. Importuoti duomenys ir nauji žmonės patenka į čia atidarytą medį.',
+    'trees.currentBadge': 'Atidarytas',
+    'trees.open': 'Atidaryti',
+    'trees.rename': 'Pervadinti',
+    'trees.delete': 'Ištrinti',
+    'trees.createTitle': 'Sukurti naują medį',
+    'trees.createCopy':
+      'Pradėkite tuščią, tada pridėkite žmonių arba importuokite GEDCOM failą.',
+    'trees.name': 'Medžio pavadinimas',
+    'trees.namePlaceholder': 'pvz., Petrauskų šeima',
+    'trees.create': 'Sukurti medį',
+    'trees.creating': 'Sukuriama…',
+    'trees.save': 'Išsaugoti pavadinimą',
+    'trees.saving': 'Išsaugoma…',
+    'trees.cancelRename': 'Atšaukti',
+    'trees.renameLabel': 'Naujas „{{name}}“ pavadinimas',
+    'trees.lastTreeHint':
+      'Reikia bent vieno medžio. Pervadinkite šį medį, o ne ištrinkite.',
+    'trees.people.one': '{{count}} asmuo',
+    'trees.people.few': '{{count}} asmenys',
+    'trees.people.many': '{{count}} asmenų',
+    'trees.people.other': '{{count}} asmenų',
+
+    'gedcom.import': 'Importuoti GEDCOM',
+    'gedcom.export': 'Eksportuoti GEDCOM',
+    'gedcom.importTitle': 'Importuoti GEDCOM failą',
+    'gedcom.eyebrow': 'Šeimos duomenys',
+    'gedcom.chooseFile': 'Pasirinkite .ged failą',
+    'gedcom.fileHint':
+      'GEDCOM 5.5.1 failai iš „Ancestry“, „MyHeritage“, „Gramps“ ar kitos šeimos medžio programos.',
+    'gedcom.selectedFile': 'Pasirinktas failas: {{name}}',
+    'gedcom.mergeHint':
+      'Šis importas bus sujungtas su medžiu „{{tree}}“. Esami žmonės sutapatinami pagal vardą ir gimimo metus, o trūkstami duomenys papildomi.',
+    'gedcom.changeFile': 'Pasirinkti kitą failą',
+    'gedcom.reading': 'Skaitomas failas…',
+    'gedcom.previewTitle': 'Paruošta importuoti',
+    'gedcom.previewCopy':
+      'Peržiūrėkite, kas rasta, prieš pridėdami į šį medį.',
+    'gedcom.individuals': 'Asmenys',
+    'gedcom.families': 'Šeimos',
+    'gedcom.notes': 'Su užrašais',
+    'gedcom.dated': 'Su datomis',
+    'gedcom.warnings': 'Įspėjimai',
+    'gedcom.noWarnings': 'Įspėjimų nėra – failas atrodo tvarkingas.',
+    'gedcom.warningCount.one': '{{count}} įspėjimas',
+    'gedcom.warningCount.few': '{{count}} įspėjimai',
+    'gedcom.warningCount.many': '{{count}} įspėjimų',
+    'gedcom.warningCount.other': '{{count}} įspėjimų',
+    'gedcom.moreWarnings': '…ir dar {{count}}.',
+    'gedcom.importing': 'Importuojama…',
+    'gedcom.doImport': 'Importuoti į šį medį',
+    'gedcom.resultTitle': 'Importas baigtas',
+    'gedcom.resultCopy':
+      'Medyje „{{tree}}“ dabar yra importuoti šeimos duomenys.',
+    'gedcom.created': 'Pridėta žmonių',
+    'gedcom.updated': 'Sujungta žmonių',
+    'gedcom.spouseLinks': 'Pridėta sutuoktinių sąsajų',
+    'gedcom.parentLinks': 'Pridėta tėvų sąsajų',
+    'gedcom.done': 'Atlikta',
+    'gedcom.importAnother': 'Importuoti kitą failą',
+    'gedcom.parseError': 'Šio failo nepavyko perskaityti kaip GEDCOM 5.5.1.',
+    'gedcom.noPeople': 'Šiame GEDCOM faile nerasta žmonių.',
+    'gedcom.tooMany':
+      'Šiame faile yra {{count}} žmonių. Vienu metu galima importuoti iki {{max}} žmonių.',
+    'gedcom.fileTooLarge': 'Pasirinkite failą, mažesnį nei 20 MB.',
+    'gedcom.warn.missingName': 'Asmuo be vardo buvo praleistas.',
+    'gedcom.warn.duplicateReference':
+      'Dviguba nuoroda ({{ref}}) buvo praleista.',
+    'gedcom.warn.unknownReference':
+      'Šeimos nuoroda ({{ref}}) nerasta ir buvo praleista.',
+    'gedcom.warn.ambiguousMatch':
+      'Su {{name}} sutampa keli esami žmonės, todėl buvo pridėtas naujas asmuo.',
+    'gedcom.warn.spouseConflict':
+      'Sutuoktinių sąsaja tarp {{person}} ir {{spouse}} praleista, nes vienas iš jų jau turi kitą sutuoktinį.',
+    'gedcom.warn.parentConflict':
+      '{{person}} jau turi kitą tėvą ar motiną, todėl {{parent}} nebuvo susietas (-a).',
+    'gedcom.warn.fieldConflict':
+      'Išsaugoti jūsų esami {{person}} duomenys, kurie skiriasi nuo importuoto failo.',
+    'gedcom.warn.cycle':
+      '{{person}} tėvų sąsaja praleista, nes ji sukurtų ciklą.',
+    'gedcom.warn.multipleParentFamilies':
+      '{{count}} žmonių patenka į daugiau nei vieną šeimą kaip vaikai; išsaugoma tik pirmoji tėvų sąsaja.',
+    'gedcom.warn.multipleSpouseFamilies':
+      '{{count}} žmonių patenka į daugiau nei vieną šeimą kaip sutuoktiniai; išsaugoma tik viena sutuoktinio sąsaja.',
+    'gedcom.warn.twoParentFamily':
+      '{{count}} šeimų turi du tėvus. Ši programa išsaugo vieną tėvą vienam asmeniui, todėl vaikai susiejami su pirmuoju tėvu.',
+    'gedcom.warn.unsupportedVersion':
+      'Failas nurodo GEDCOM {{version}}; pilnai palaikomas tik GEDCOM 5.5.1.',
+    'gedcom.warn.unsupportedEncoding':
+      'Failas naudoja {{encoding}} koduotę. Eksportuokite jį kaip UTF-8, kad vardai būtų patikimi.',
+    'gedcom.warn.malformedLines':
+      '{{count}} netaisyklingų eilučių buvo praleista.',
+    'gedcom.warn.tooManyIndividuals':
+      'Vienu metu galima importuoti tik pirmuosius {{count}} žmones.',
+
     'errors.generic': 'Kažkas nepavyko. Bandykite dar kartą.',
     'errors.loadTree': 'Nepavyko įkelti šeimos medžio. Bandykite dar kartą.',
     'errors.savePerson':
@@ -309,6 +540,16 @@ const translations = {
       'Nepavyko išsaugoti profilio. Bandykite dar kartą.',
     'errors.saveSettings':
       'Nepavyko išsaugoti nuostatų. Bandykite dar kartą.',
+    'errors.loadTrees':
+      'Nepavyko įkelti šeimos medžių. Bandykite dar kartą.',
+    'errors.createTree':
+      'Nepavyko sukurti šio medžio. Bandykite dar kartą.',
+    'errors.renameTree':
+      'Nepavyko pervadinti šio medžio. Bandykite dar kartą.',
+    'errors.deleteTree':
+      'Nepavyko ištrinti šio medžio. Bandykite dar kartą.',
+    'errors.importGedcom':
+      'Nepavyko importuoti šio GEDCOM failo. Bandykite dar kartą.',
 
     'settings.openSettings': 'Atidaryti profilį ir nustatymus',
     'settings.eyebrow': 'Jūsų paskyra',
@@ -359,6 +600,14 @@ const translations = {
     'api.ownSpouse': 'Asmuo negali būti savo paties sutuoktiniu (-e).',
     'api.firstNameRequired': 'Būtina įvesti vardą.',
     'api.personNotFound': 'Asmuo nerastas.',
+    'api.treeNotFound': 'Šeimos medis nerastas.',
+    'api.treeNameRequired': 'Būtina įvesti medžio pavadinimą.',
+    'api.treeNameExists': 'Medis šiuo pavadinimu jau egzistuoja.',
+    'api.lastTree': 'Reikia bent vieno medžio.',
+    'api.gedcomEmpty': 'Nėra GEDCOM duomenų importuoti.',
+    'api.gedcomTooMany': 'Šiame GEDCOM faile per daug žmonių.',
+    'api.gedcomInvalid': 'Netaisyklingi GEDCOM duomenys.',
+    'api.gedcomTooLarge': 'Importo failas per didelis.',
     'api.notFound': 'Nuoroda nerasta.',
     'api.database': 'Nepavyko prisijungti prie duomenų bazės.',
     'api.inUse': 'Ši reikšmė jau naudojama.',
@@ -385,6 +634,14 @@ const API_ERROR_KEYS = {
   'A person cannot be their own spouse': 'api.ownSpouse',
   'First name is required': 'api.firstNameRequired',
   'Person not found': 'api.personNotFound',
+  'Tree not found': 'api.treeNotFound',
+  'Tree name is required': 'api.treeNameRequired',
+  'A tree with this name already exists': 'api.treeNameExists',
+  'You need at least one tree': 'api.lastTree',
+  'No GEDCOM data to import': 'api.gedcomEmpty',
+  'This GEDCOM file contains too many people': 'api.gedcomTooMany',
+  'Invalid GEDCOM data': 'api.gedcomInvalid',
+  'Import file is too large': 'api.gedcomTooLarge',
   'Route not found': 'api.notFound',
   'Database connection failed': 'api.database',
   'That value is already in use': 'api.inUse',

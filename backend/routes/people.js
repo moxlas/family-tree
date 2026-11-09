@@ -2,15 +2,11 @@ const express = require('express');
 const mongoose = require('mongoose');
 const Person = require('../models/Person');
 const authenticate = require('../middleware/auth');
+const { resolveTree } = require('../utils/trees');
+const { httpError } = require('../utils/http');
 
 const router = express.Router();
 router.use(authenticate);
-
-function httpError(status, message) {
-  const error = new Error(message);
-  error.status = status;
-  return error;
-}
 
 function cleanText(value, maxLength) {
   return String(value == null ? '' : value).trim().slice(0, maxLength);
@@ -37,7 +33,7 @@ function readFields(body) {
   return fields;
 }
 
-async function resolveParent(parentId, ownerId, currentId = null) {
+async function resolveParent(parentId, ownerId, treeId, currentId = null) {
   if (parentId == null || parentId === '') {
     return null;
   }
@@ -46,7 +42,11 @@ async function resolveParent(parentId, ownerId, currentId = null) {
     throw httpError(400, 'Invalid parent');
   }
 
-  let cursor = await Person.findOne({ _id: parentId, owner: ownerId });
+  let cursor = await Person.findOne({
+    _id: parentId,
+    owner: ownerId,
+    tree: treeId,
+  });
   if (!cursor) {
     throw httpError(400, 'Parent not found');
   }
@@ -64,14 +64,18 @@ async function resolveParent(parentId, ownerId, currentId = null) {
     visited.add(cursor.id);
 
     cursor = cursor.parentId
-      ? await Person.findOne({ _id: cursor.parentId, owner: ownerId })
+      ? await Person.findOne({
+          _id: cursor.parentId,
+          owner: ownerId,
+          tree: treeId,
+        })
       : null;
   }
 
   return parentId;
 }
 
-async function resolveSpouse(spouseId, ownerId, currentId = null) {
+async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {
   if (spouseId == null || spouseId === '') {
     return null;
   }
@@ -84,7 +88,11 @@ async function resolveSpouse(spouseId, ownerId, currentId = null) {
     throw httpError(400, 'A person cannot be their own spouse');
   }
 
-  const spouse = await Person.findOne({ _id: spouseId, owner: ownerId });
+  const spouse = await Person.findOne({
+    _id: spouseId,
+    owner: ownerId,
+    tree: treeId,
+  });
   if (!spouse) {
     throw httpError(400, 'Spouse not found');
   }
@@ -98,6 +106,7 @@ async function detachSpouse(person) {
   const partner = await Person.findOne({
     _id: person.spouseId,
     owner: person.owner,
+    tree: person.tree,
   });
 
   if (partner && String(partner.spouseId) === String(person._id)) {
@@ -119,6 +128,7 @@ async function attachSpouse(person, spouse) {
     const previous = await Person.findOne({
       _id: person.spouseId,
       owner: person.owner,
+      tree: person.tree,
     });
     if (previous && String(previous.spouseId) === String(person._id)) {
       previous.spouseId = null;
@@ -131,6 +141,7 @@ async function attachSpouse(person, spouse) {
     const previous = await Person.findOne({
       _id: spouse.spouseId,
       owner: person.owner,
+      tree: person.tree,
     });
     if (previous && String(previous.spouseId) === String(spouse._id)) {
       previous.spouseId = null;
@@ -153,6 +164,7 @@ async function syncSpouseLabels(person) {
   const spouse = await Person.findOne({
     _id: person.spouseId,
     owner: person.owner,
+    tree: person.tree,
   });
 
   if (!spouse) {
@@ -184,27 +196,38 @@ async function syncSpouseLabels(person) {
   if (spouseChanged) await spouse.save();
 }
 
-async function listPeople(ownerId) {
-  return Person.find({ owner: ownerId }).sort({ createdAt: 1 });
+async function listPeople(ownerId, treeId) {
+  return Person.find({ owner: ownerId, tree: treeId }).sort({ createdAt: 1 });
 }
 
 router.get('/', async (req, res) => {
-  res.json(await listPeople(req.user.id));
+  const tree = await resolveTree(req.user.id, req.query.treeId);
+  res.json(await listPeople(req.user.id, tree._id));
 });
 
 router.post('/', async (req, res) => {
+  const tree = await resolveTree(req.user.id, req.body.treeId);
   const fields = readFields(req.body);
 
   if (!fields.firstName) {
     return res.status(400).json({ error: 'First name is required' });
   }
 
-  const parentId = await resolveParent(req.body.parentId, req.user.id);
-  const spouse = await resolveSpouse(req.body.spouseId, req.user.id);
+  const parentId = await resolveParent(
+    req.body.parentId,
+    req.user.id,
+    tree._id
+  );
+  const spouse = await resolveSpouse(
+    req.body.spouseId,
+    req.user.id,
+    tree._id
+  );
 
   const person = await Person.create({
     ...fields,
     owner: req.user.id,
+    tree: tree._id,
     parentId,
     spouseId: null,
   });
@@ -217,7 +240,12 @@ router.post('/', async (req, res) => {
 });
 
 router.post('/demo', async (req, res) => {
-  await Person.deleteMany({ owner: req.user.id });
+  const tree = await resolveTree(
+    req.user.id,
+    req.body.treeId || req.query.treeId
+  );
+
+  await Person.deleteMany({ owner: req.user.id, tree: tree._id });
 
   const demo = [
     {
@@ -295,6 +323,7 @@ router.post('/demo', async (req, res) => {
   for (const entry of demo) {
     const person = await Person.create({
       owner: req.user.id,
+      tree: tree._id,
       firstName: entry.firstName,
       lastName: entry.lastName,
       gender: entry.gender,
@@ -321,7 +350,7 @@ router.post('/demo', async (req, res) => {
     await Promise.all([first.save(), second.save()]);
   }
 
-  return res.status(201).json(await listPeople(req.user.id));
+  return res.status(201).json(await listPeople(req.user.id, tree._id));
 });
 
 router.put('/:id', async (req, res) => {
@@ -338,6 +367,14 @@ router.put('/:id', async (req, res) => {
     return res.status(404).json({ error: 'Person not found' });
   }
 
+  const tree = await resolveTree(
+    req.user.id,
+    person.tree || req.body.treeId
+  );
+  if (String(person.tree || '') !== String(tree._id)) {
+    person.tree = tree._id;
+  }
+
   const fields = readFields(req.body);
   if ('firstName' in fields && !fields.firstName) {
     return res.status(400).json({ error: 'First name is required' });
@@ -350,7 +387,12 @@ router.put('/:id', async (req, res) => {
   let spouse = null;
 
   if (spouseProvided) {
-    spouse = await resolveSpouse(req.body.spouseId, req.user.id, person.id);
+    spouse = await resolveSpouse(
+      req.body.spouseId,
+      req.user.id,
+      tree._id,
+      person.id
+    );
     // The display name is derived from the linked person.
     delete fields.spouseName;
   }
@@ -359,6 +401,7 @@ router.put('/:id', async (req, res) => {
     person.parentId = await resolveParent(
       req.body.parentId,
       req.user.id,
+      tree._id,
       person.id
     );
   }
@@ -396,7 +439,15 @@ router.delete('/:id', async (req, res) => {
     return res.status(404).json({ error: 'Person not found' });
   }
 
-  const people = await Person.find({ owner: req.user.id })
+  const tree = await resolveTree(
+    req.user.id,
+    person.tree || req.query.treeId
+  );
+
+  const people = await Person.find({
+    owner: req.user.id,
+    tree: tree._id,
+  })
     .select('_id parentId')
     .lean();
 
@@ -425,12 +476,14 @@ router.delete('/:id', async (req, res) => {
   await Person.deleteMany({
     _id: { $in: deletedIds },
     owner: req.user.id,
+    tree: tree._id,
   });
 
   // Surviving spouses of the deleted people become unlinked.
   await Person.updateMany(
     {
       owner: req.user.id,
+      tree: tree._id,
       spouseId: { $in: deletedIds },
     },
     {
