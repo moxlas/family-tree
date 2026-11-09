@@ -110,4 +110,27 @@ describe('buildScene generation placement', () => {
     expect(aGrandchild.x).toBeLessThan(bChild.x);
     expect(scene.treeWidth).toBeGreaterThan(bGrandchild.x + bGrandchild.width / 2);
   });
+
+  it('targets the actual child in a child spouse pair', () => {
+    const people = [
+      person('1', { firstName: 'Father', lastName: 'Root', gender: 'male' }),
+      person('2', { firstName: 'Mother', lastName: 'Root', gender: 'female', spouseId: '1' }),
+      person('3', { firstName: 'Daughter', lastName: 'Root', gender: 'female', parentId: '1' }),
+      person('4', { firstName: 'SonInLaw', lastName: 'Other', gender: 'male', spouseId: '3' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '1', wife: '2', status: 'current', marriageDate: '', divorceDate: '', children: ['3'] },
+      { id: 'f2', husband: '4', wife: '3', status: 'current', marriageDate: '', divorceDate: '', children: [] },
+    ];
+    const scene = buildScene(people, families, true);
+    const rootIndex = scene.units.findIndex((unit) =>
+      unit.members.some((member) => member.id === '1')
+    );
+    const childUnit = scene.units.find((unit) =>
+      unit.members.some((member) => member.id === '3')
+    );
+
+    expect(childUnit.parentLinks?.get(rootIndex)?.childId).toBe('3');
+    expect(childUnit.members.map((member) => member.id)).toEqual(['4', '3']);
+  });
 });

@@ -28,6 +28,24 @@ export function buildScene(people, families, showFormerSpouses = true) {
     }
   }
 
+  function linkChildToUnit(parentUnitIndex, childPersonId, linkedParentId) {
+    const childUnitIndexes = personUnits.get(String(childPersonId));
+    if (!childUnitIndexes) return;
+
+    childUnitIndexes.forEach((childUnitIndex) => {
+      if (childUnitIndex === parentUnitIndex) return;
+      if (!units[childUnitIndex].parentLinks) {
+        units[childUnitIndex].parentLinks = new Map();
+      }
+      if (!units[childUnitIndex].parentLinks.has(parentUnitIndex)) {
+        units[childUnitIndex].parentLinks.set(parentUnitIndex, {
+          childId: String(childPersonId),
+          parentId: linkedParentId ? String(linkedParentId) : null,
+        });
+      }
+    });
+  }
+
   // 1. Create units from families.
   // Families that share a spouse belong to one visual unit: the shared
   // person's card must not be duplicated when they have several spouses.
@@ -305,9 +323,20 @@ export function buildScene(people, families, showFormerSpouses = true) {
       (family.children || []).forEach((childId) => {
         const childUnits = personUnits.get(String(childId));
         if (!childUnits) return;
+
+        const childPerson = byId.get(String(childId));
+        const parentCandidates = [family.husband, family.wife]
+          .filter(Boolean)
+          .map(String);
+        const linkedParentId =
+          parentCandidates.find(
+            (parentId) => byId.get(parentId)?.gender === childPerson?.gender
+          ) || parentCandidates[0] || null;
+
         childUnits.forEach((cu) => {
           if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
           units[cu].parentUnits.add(parentUnitIndex);
+          linkChildToUnit(parentUnitIndex, childId, linkedParentId);
         });
       });
     });
@@ -327,6 +356,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
         if (pu === cu) return;
         if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
         units[cu].parentUnits.add(pu);
+        linkChildToUnit(pu, person.id, person.parentId);
       });
     });
   });
@@ -343,13 +373,45 @@ export function buildScene(people, families, showFormerSpouses = true) {
         if (pu === cu) return;
         if (!units[cu].parentUnits) units[cu].parentUnits = new Set();
         units[cu].parentUnits.add(pu);
+        linkChildToUnit(pu, person.id, person.secondParentId);
       });
     });
   });
 
-  // Spouse / ex-spouse links: a card without parent cards that belongs to a
-  // marriage (current or former) is placed in the generation of its spouse or
-  // ex-spouse instead of always falling back to the root generation.
+
+  // Place the descendant in the spouse pair at the same side as the
+  // linked parent where possible. This keeps the child card nearest the
+  // parent connection and avoids connectors targeting a spouse first.
+  units.forEach((childUnit) => {
+    if (!childUnit.parentUnits?.size || childUnit.members.length < 2) return;
+
+    const parentUnitIndex = [...childUnit.parentUnits][0];
+    const parentUnit = units[parentUnitIndex];
+    const parentLink = childUnit.parentLinks?.get(parentUnitIndex);
+    if (!parentUnit || !parentLink?.childId) return;
+
+    const childPosition = childUnit.members.findIndex(
+      (member) => String(member.id) === parentLink.childId
+    );
+    if (childPosition < 0) return;
+
+    const parentPosition = parentUnit.members.findIndex(
+      (member) => String(member.id) === parentLink.parentId
+    );
+    const targetPosition = Math.min(
+      parentPosition >= 0 ? parentPosition : 0,
+      childUnit.members.length - 1
+    );
+    if (targetPosition === childPosition) return;
+
+    const reorderedMembers = [...childUnit.members];
+    const [childMember] = reorderedMembers.splice(childPosition, 1);
+    reorderedMembers.splice(targetPosition, 0, childMember);
+    childUnit.members = reorderedMembers;
+  });
+
+  // Spouse / ex-spouse links keep a card without parent cards in the
+  // generation of its spouse.
   const unitPartners = units.map(() => new Set());
 
   people.forEach((person) => {
@@ -631,15 +693,33 @@ export default function SpouseTreeComponent({
         const childNodes = childUnit.members
           .map((m) => cardRefs.current.get(String(m.id)))
           .filter(Boolean);
-        if (!parentNodes.length || !childNodes.length) return;
 
-        const childNode = childNodes[0];
+        const parentLink = childUnit.parentLinks?.get(parentIndex);
+        const linkedChildMember = parentLink
+          ? childUnit.members.find((member) => String(member.id) === parentLink.childId)
+          : childUnit.members.find((member) =>
+              parentUnit.members.some(
+                (parentMember) =>
+                  String(member.parentId || '') === String(parentMember.id) ||
+                  String(member.secondParentId || '') === String(parentMember.id)
+              )
+            );
+        const childMemberForEdge = linkedChildMember || childUnit.members[0];
+        const childNode = childMemberForEdge
+          ? cardRefs.current.get(String(childMemberForEdge.id))
+          : childNodes[0];
+
+        if (!parentNodes.length || !childNode) return;
+
         const childRect = childNode.getBoundingClientRect();
         const endX =
           (childRect.left - containerRect.left + childRect.width / 2) / scale;
         const endY = (childRect.top - containerRect.top) / scale;
 
-        const parentNode = parentNodes[0];
+        const parentNode =
+          (parentLink?.parentId &&
+            cardRefs.current.get(String(parentLink.parentId))) ||
+          parentNodes[0];
         const parentRect = parentNode.getBoundingClientRect();
         const startX =
           (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
