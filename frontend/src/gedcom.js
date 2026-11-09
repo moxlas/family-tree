@@ -121,7 +121,8 @@ function parseRecords(text) {
   return { records, malformedLines };
 }
 
-export function parseGedcom(input) {
+export function parseGedcom(input, language = 'en') {
+  const namePlaceholder = language === 'lt' ? 'Vardas' : 'Name';
   const text = String(input == null ? '' : input)
     .replace(/^\uFEFF/, '')
     .replace(/\r\n?/g, '\n');
@@ -189,11 +190,8 @@ export function parseGedcom(input) {
     }
     seenKeys.add(key);
 
-    const { firstName, lastName } = readName(record);
-    if (!firstName) {
-      addWarning('missingName');
-      continue;
-    }
+    const { firstName: parsedFirstName, lastName } = readName(record);
+    const firstName = parsedFirstName || namePlaceholder;
 
     const sex = cleanText(
       record.children.find((child) => child.tag === 'SEX')?.value,

@@ -40,7 +40,7 @@ function WarningList({ warnings, total }) {
 }
 
 export default function GedcomModal({ tree, onClose, onImported }) {
-  const { t, translateApiError } = useI18n();
+  const { language, t, translateApiError } = useI18n();
   const [status, setStatus] = useState('idle');
   const [fileName, setFileName] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -89,7 +89,7 @@ export default function GedcomModal({ tree, onClose, onImported }) {
 
     try {
       const text = await file.text();
-      const nextParsed = parseGedcom(text);
+      const nextParsed = parseGedcom(text, language);
 
       if (!nextParsed.individuals.length) {
         setError(t('gedcom.noPeople'));
