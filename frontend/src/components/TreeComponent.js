@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useI18n } from '../i18n';
 
 function initials(person) {
   const first = (person.firstName || '').trim().charAt(0);
@@ -6,17 +7,18 @@ function initials(person) {
   return `${first}${last}`.toUpperCase() || '?';
 }
 
-function lifespan(person) {
-  if (person.birthDate && person.deathDate) {
-    return `${person.birthDate} – ${person.deathDate}`;
-  }
-  if (person.birthDate) return `Born ${person.birthDate}`;
-  if (person.deathDate) return `Died ${person.deathDate}`;
-  return 'Dates not added';
-}
-
 function PersonCard({ person, onAddChild, onEdit, onDelete }) {
+  const { t } = useI18n();
   const fullName = `${person.firstName} ${person.lastName}`.trim();
+
+  let life = t('person.datesUnknown');
+  if (person.birthDate && person.deathDate) {
+    life = `${person.birthDate} – ${person.deathDate}`;
+  } else if (person.birthDate) {
+    life = t('person.born', { date: person.birthDate });
+  } else if (person.deathDate) {
+    life = t('person.died', { date: person.deathDate });
+  }
 
   return (
     <article className={`person-card gender-${person.gender}`}>
@@ -26,9 +28,12 @@ function PersonCard({ person, onAddChild, onEdit, onDelete }) {
         </div>
         <div className="person-details">
           <h3>{fullName}</h3>
-          <p className="person-life">{lifespan(person)}</p>
+          <p className="person-life">{life}</p>
           {person.spouseName && (
-            <p className="person-spouse">
+            <p
+              aria-label={t('person.spouseLabel', { name: person.spouseName })}
+              className="person-spouse"
+            >
               <span aria-hidden="true">♥</span> {person.spouseName}
             </p>
           )}
@@ -37,28 +42,28 @@ function PersonCard({ person, onAddChild, onEdit, onDelete }) {
 
       <div className="person-actions">
         <button
-          aria-label={`Add a child of ${fullName}`}
+          aria-label={t('person.addChild', { name: fullName })}
           className="icon-button add"
           onClick={() => onAddChild(person)}
-          title="Add child"
+          title={t('person.addChildTitle')}
           type="button"
         >
           +
         </button>
         <button
-          aria-label={`Edit ${fullName}`}
+          aria-label={t('person.edit', { name: fullName })}
           className="icon-button"
           onClick={() => onEdit(person)}
-          title="Edit person"
+          title={t('person.editTitle')}
           type="button"
         >
           ✎
         </button>
         <button
-          aria-label={`Delete ${fullName}`}
+          aria-label={t('person.delete', { name: fullName })}
           className="icon-button danger"
           onClick={() => onDelete(person)}
-          title="Delete person"
+          title={t('person.deleteTitle')}
           type="button"
         >
           ×

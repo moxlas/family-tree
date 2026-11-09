@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useI18n } from '../i18n';
 
 function initialState(person, initialParentId) {
   return {
@@ -21,6 +22,7 @@ export default function PersonModal({
   onSubmit,
   onClose,
 }) {
+  const { t, translateApiError } = useI18n();
   const [form, setForm] = useState(() => initialState(person, initialParentId));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -52,16 +54,19 @@ export default function PersonModal({
     try {
       await onSubmit({ ...form, parentId: form.parentId || null });
     } catch (requestError) {
-      setError(
-        requestError.response?.data?.error ||
-          'Could not save this person. Please try again.'
-      );
+      setError(translateApiError(requestError, 'errors.savePerson'));
     } finally {
       setSaving(false);
     }
   };
 
   const parentOptions = people.filter((entry) => entry.id !== person?.id);
+  const title =
+    mode === 'edit'
+      ? t('modal.editTitle', { name: person?.firstName || '' })
+      : form.parentId
+        ? t('modal.addChild')
+        : t('modal.addPerson');
 
   return (
     <div
@@ -79,17 +84,15 @@ export default function PersonModal({
       >
         <div className="modal-heading">
           <div>
-            <p className="eyebrow">{mode === 'edit' ? 'Update details' : 'New relative'}</p>
-            <h2 id="person-modal-title">
+            <p className="eyebrow">
               {mode === 'edit'
-                ? `Edit ${person?.firstName || 'person'}`
-                : form.parentId
-                  ? 'Add a child'
-                  : 'Add a person'}
-            </h2>
+                ? t('modal.updateDetails')
+                : t('modal.newRelative')}
+            </p>
+            <h2 id="person-modal-title">{title}</h2>
           </div>
           <button
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="icon-button"
             onClick={onClose}
             type="button"
@@ -101,22 +104,22 @@ export default function PersonModal({
         <form className="person-form" onSubmit={submit}>
           <div className="form-grid">
             <label>
-              <span>First name *</span>
+              <span>{t('modal.firstName')}</span>
               <input
                 autoFocus
                 name="firstName"
                 onChange={update}
-                placeholder="Maria"
+                placeholder={t('modal.firstNamePlaceholder')}
                 required
                 value={form.firstName}
               />
             </label>
             <label>
-              <span>Last name</span>
+              <span>{t('modal.lastName')}</span>
               <input
                 name="lastName"
                 onChange={update}
-                placeholder="Doe"
+                placeholder={t('modal.lastNamePlaceholder')}
                 value={form.lastName}
               />
             </label>
@@ -124,18 +127,18 @@ export default function PersonModal({
 
           <div className="form-grid">
             <label>
-              <span>Gender</span>
+              <span>{t('modal.gender')}</span>
               <select name="gender" onChange={update} value={form.gender}>
-                <option value="unknown">Not specified</option>
-                <option value="female">Female</option>
-                <option value="male">Male</option>
-                <option value="other">Other</option>
+                <option value="unknown">{t('modal.genderUnknown')}</option>
+                <option value="female">{t('modal.genderFemale')}</option>
+                <option value="male">{t('modal.genderMale')}</option>
+                <option value="other">{t('modal.genderOther')}</option>
               </select>
             </label>
             <label>
-              <span>Parent in this tree</span>
+              <span>{t('modal.parent')}</span>
               <select name="parentId" onChange={update} value={form.parentId}>
-                <option value="">No parent / family root</option>
+                <option value="">{t('modal.noParent')}</option>
                 {parentOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {`${entry.firstName} ${entry.lastName}`.trim()}
@@ -147,41 +150,41 @@ export default function PersonModal({
 
           <div className="form-grid">
             <label>
-              <span>Birth date or year</span>
+              <span>{t('modal.birth')}</span>
               <input
                 name="birthDate"
                 onChange={update}
-                placeholder="e.g. 1945 or 1945-06-12"
+                placeholder={t('modal.birthPlaceholder')}
                 value={form.birthDate}
               />
             </label>
             <label>
-              <span>Death date or year</span>
+              <span>{t('modal.death')}</span>
               <input
                 name="deathDate"
                 onChange={update}
-                placeholder="Leave empty if living"
+                placeholder={t('modal.deathPlaceholder')}
                 value={form.deathDate}
               />
             </label>
           </div>
 
           <label>
-            <span>Spouse or partner</span>
+            <span>{t('modal.spouse')}</span>
             <input
               name="spouseName"
               onChange={update}
-              placeholder="Name shown beside this person"
+              placeholder={t('modal.spousePlaceholder')}
               value={form.spouseName}
             />
           </label>
 
           <label>
-            <span>Notes and memories</span>
+            <span>{t('modal.notes')}</span>
             <textarea
               name="notes"
               onChange={update}
-              placeholder="A story, occupation, place, or anything worth remembering…"
+              placeholder={t('modal.notesPlaceholder')}
               rows={4}
               value={form.notes}
             />
@@ -200,14 +203,14 @@ export default function PersonModal({
               onClick={onClose}
               type="button"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button className="button primary" disabled={saving} type="submit">
               {saving
-                ? 'Saving…'
+                ? t('modal.saving')
                 : mode === 'edit'
-                  ? 'Save changes'
-                  : 'Add to tree'}
+                  ? t('modal.save')
+                  : t('modal.addToTree')}
             </button>
           </div>
         </form>

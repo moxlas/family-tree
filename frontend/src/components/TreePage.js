@@ -1,36 +1,33 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '../api';
+import { useI18n } from '../i18n';
+import LanguageSwitcher from './LanguageSwitcher';
 import PersonModal from './PersonModal';
 import TreeComponent from './TreeComponent';
 
-function requestMessage(error, fallback) {
-  return error.response?.data?.error || fallback;
-}
-
 export default function TreePage({ user, onLogout }) {
+  const { t, tn, translateApiError } = useI18n();
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
 
-  const loadPeople = useCallback(async ({ quiet = false } = {}) => {
-    if (!quiet) setLoading(true);
-    setError('');
-    try {
-      const response = await api.get('/people');
-      setPeople(response.data);
-    } catch (requestError) {
-      setError(
-        requestMessage(
-          requestError,
-          'Could not load your family tree. Please try again.'
-        )
-      );
-    } finally {
-      if (!quiet) setLoading(false);
-    }
-  }, []);
+  const loadPeople = useCallback(
+    async ({ quiet = false } = {}) => {
+      if (!quiet) setLoading(true);
+      setError('');
+      try {
+        const response = await api.get('/people');
+        setPeople(response.data);
+      } catch (requestError) {
+        setError(translateApiError(requestError, 'errors.loadTree'));
+      } finally {
+        if (!quiet) setLoading(false);
+      }
+    },
+    [translateApiError]
+  );
 
   useEffect(() => {
     loadPeople();
@@ -87,34 +84,29 @@ export default function TreePage({ user, onLogout }) {
     }
 
     setModal(null);
-    setNotice(modal.mode === 'edit' ? 'Person updated.' : 'Person added.');
+    setNotice(
+      modal.mode === 'edit' ? 'notice.personUpdated' : 'notice.personAdded'
+    );
     await loadPeople({ quiet: true });
   };
 
   const deletePerson = async (person) => {
     const name = `${person.firstName} ${person.lastName}`.trim();
-    const confirmed = window.confirm(
-      `Delete ${name}? Any children below this person will also be removed.`
-    );
+    const confirmed = window.confirm(t('confirm.delete', { name }));
     if (!confirmed) return;
 
     setError('');
     try {
       await api.delete(`/people/${person.id}`);
-      setNotice('Person removed from the tree.');
+      setNotice('notice.personDeleted');
       await loadPeople({ quiet: true });
     } catch (requestError) {
-      setError(requestMessage(requestError, 'Could not delete this person.'));
+      setError(translateApiError(requestError, 'errors.deletePerson'));
     }
   };
 
   const loadDemo = async () => {
-    if (
-      people.length > 0 &&
-      !window.confirm(
-        'Loading the example family will replace the people currently in your tree. Continue?'
-      )
-    ) {
+    if (people.length > 0 && !window.confirm(t('confirm.demo'))) {
       return;
     }
 
@@ -122,9 +114,9 @@ export default function TreePage({ user, onLogout }) {
     try {
       const response = await api.post('/people/demo');
       setPeople(response.data);
-      setNotice('Example family loaded.');
+      setNotice('notice.demoLoaded');
     } catch (requestError) {
-      setError(requestMessage(requestError, 'Could not load the example family.'));
+      setError(translateApiError(requestError, 'errors.loadDemo'));
     }
   };
 
@@ -147,15 +139,16 @@ export default function TreePage({ user, onLogout }) {
                 <circle cx="24" cy="15" r="4" fill="currentColor" />
               </svg>
             </span>
-            <span>Family Tree</span>
+            <span>{t('app.title')}</span>
           </div>
 
           <div className="account-menu">
+            <LanguageSwitcher />
             <span className="signed-in">
-              Signed in as <strong>{user.name}</strong>
+              {t('tree.signedInAs')} <strong>{user.name}</strong>
             </span>
             <button className="button ghost small" onClick={onLogout} type="button">
-              Log out
+              {t('common.logout')}
             </button>
           </div>
         </div>
@@ -164,12 +157,9 @@ export default function TreePage({ user, onLogout }) {
       <main className="workspace">
         <section className="hero-panel">
           <div>
-            <p className="eyebrow">Your family archive</p>
-            <h1>Every name is a story worth keeping.</h1>
-            <p className="hero-copy">
-              Add relatives, connect generations and watch your family tree grow.
-              Everything you create here is private to your account.
-            </p>
+            <p className="eyebrow">{t('tree.eyebrow')}</p>
+            <h1>{t('tree.heroTitle')}</h1>
+            <p className="hero-copy">{t('tree.heroCopy')}</p>
           </div>
           <div className="hero-actions">
             <button
@@ -177,24 +167,24 @@ export default function TreePage({ user, onLogout }) {
               onClick={() => openCreate('')}
               type="button"
             >
-              <span aria-hidden="true">＋</span> Add person
+              <span aria-hidden="true">＋</span> {t('tree.addPerson')}
             </button>
             <button className="button glass" onClick={loadDemo} type="button">
-              Load example family
+              {t('tree.loadDemo')}
             </button>
           </div>
         </section>
 
         {notice && (
           <div className="alert success" role="status">
-            {notice}
+            {t(notice)}
           </div>
         )}
         {error && (
           <div className="alert error" role="alert">
             {error}
             <button
-              aria-label="Dismiss error"
+              aria-label={t('tree.dismissError')}
               className="alert-close"
               onClick={() => setError('')}
               type="button"
@@ -204,21 +194,21 @@ export default function TreePage({ user, onLogout }) {
           </div>
         )}
 
-        <section className="stats-row" aria-label="Family tree overview">
+        <section className="stats-row" aria-label={t('tree.heading')}>
           <div className="stat-card">
             <span className="stat-value">{people.length}</span>
-            <span className="stat-label">People in the tree</span>
+            <span className="stat-label">{t('stats.people')}</span>
           </div>
           <div className="stat-card">
             <span className="stat-value">{stats.generations}</span>
             <span className="stat-label">
-              {stats.generations === 1 ? 'Generation' : 'Generations'}
+              {tn('stats.generations', stats.generations)}
             </span>
           </div>
           <div className="stat-card">
             <span className="stat-value">{stats.roots}</span>
             <span className="stat-label">
-              {stats.roots === 1 ? 'Family root' : 'Family roots'}
+              {tn('stats.roots', stats.roots)}
             </span>
           </div>
         </section>
@@ -230,7 +220,7 @@ export default function TreePage({ user, onLogout }) {
               <span />
               <span />
             </div>
-            <p>Growing your tree…</p>
+            <p>{t('tree.loading')}</p>
           </div>
         ) : people.length === 0 ? (
           <section className="empty-state">
@@ -248,37 +238,34 @@ export default function TreePage({ user, onLogout }) {
                 <circle cx="49" cy="27" r="8" fill="currentColor" opacity="0.8" />
               </svg>
             </div>
-            <h2>Your tree is waiting for its first name</h2>
-            <p>
-              Start with yourself, a parent or an ancestor. You can connect the
-              rest of the family from there.
-            </p>
+            <h2>{t('empty.title')}</h2>
+            <p>{t('empty.copy')}</p>
             <div className="empty-actions">
               <button
                 className="button primary"
                 onClick={() => openCreate('')}
                 type="button"
               >
-                Add the first person
+                {t('empty.addFirst')}
               </button>
               <button className="button secondary" onClick={loadDemo} type="button">
-                Explore with example data
+                {t('empty.explore')}
               </button>
             </div>
           </section>
         ) : (
-          <section className="tree-panel" aria-label="Family tree">
+          <section className="tree-panel" aria-label={t('tree.heading')}>
             <div className="tree-panel-heading">
               <div>
-                <h2>Family tree</h2>
-                <p>Use the + button on a card to add a child.</p>
+                <h2>{t('tree.heading')}</h2>
+                <p>{t('tree.headingHint')}</p>
               </div>
               <button
                 className="button secondary small"
                 onClick={() => openCreate('')}
                 type="button"
               >
-                Add another root
+                {t('tree.addRoot')}
               </button>
             </div>
             <div className="tree-scroll">

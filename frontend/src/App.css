@@ -55,6 +55,18 @@ p {
   margin-top: 0;
 }
 
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
 .button {
   align-items: center;
   border: 1px solid transparent;
@@ -158,6 +170,66 @@ p {
   width: 27px;
 }
 
+.language-switcher {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 7px;
+  height: 38px;
+  padding: 0 27px 0 10px;
+  position: relative;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.language-switcher:focus-within {
+  border-color: #4da9a1;
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.11);
+}
+
+.language-switcher .globe-icon {
+  flex: 0 0 auto;
+  height: 16px;
+  width: 16px;
+}
+
+.language-switcher select {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  width: auto;
+}
+
+.language-switcher select:focus {
+  box-shadow: none;
+}
+
+.language-switcher select option {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.language-switcher .select-chevron {
+  color: var(--muted);
+  font-size: 11px;
+  pointer-events: none;
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 /* Authentication */
 .auth-page {
   background:
@@ -205,6 +277,14 @@ p {
   box-shadow: var(--shadow-lg);
   margin: 20px 0;
   padding: 52px;
+}
+
+.auth-card-top {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: space-between;
 }
 
 .auth-card h1 {
@@ -331,7 +411,9 @@ textarea {
 .account-menu {
   align-items: center;
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
 }
 
 .signed-in {
@@ -908,6 +990,14 @@ textarea {
   .auth-card {
     border-radius: 22px;
     padding: 30px 24px;
+  }
+
+  .auth-card-top {
+    gap: 10px;
+  }
+
+  .language-switcher {
+    height: 36px;
   }
 
   .topbar-inner {

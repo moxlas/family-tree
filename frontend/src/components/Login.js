@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import api from '../api';
+import { useI18n } from '../i18n';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const EMPTY_FORM = { name: '', email: '', password: '' };
 
 export default function Login({ onAuth }) {
+  const { t, translateApiError } = useI18n();
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
@@ -35,10 +38,7 @@ export default function Login({ onAuth }) {
       const response = await api.post(`/auth/${mode}`, payload);
       onAuth(response.data);
     } catch (requestError) {
-      setError(
-        requestError.response?.data?.error ||
-          'Something went wrong. Please try again.'
-      );
+      setError(translateApiError(requestError, 'errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -88,32 +88,33 @@ export default function Login({ onAuth }) {
       </div>
 
       <section className="auth-card">
-        <div className="brand-lockup">
-          <span className="brand-icon" aria-hidden="true">
-            <svg viewBox="0 0 32 32" role="presentation">
-              <path
-                d="M16 28V17M16 20c-5 0-8-3-8-7M16 22c5 0 8-3 8-7"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeWidth="2.2"
-              />
-              <circle cx="16" cy="12" r="5" fill="currentColor" />
-              <circle cx="8" cy="13" r="3.5" fill="currentColor" />
-              <circle cx="24" cy="15" r="4" fill="currentColor" />
-            </svg>
-          </span>
-          <span>Family Tree</span>
+        <div className="auth-card-top">
+          <div className="brand-lockup">
+            <span className="brand-icon" aria-hidden="true">
+              <svg viewBox="0 0 32 32" role="presentation">
+                <path
+                  d="M16 28V17M16 20c-5 0-8-3-8-7M16 22c5 0 8-3 8-7"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="round"
+                  strokeWidth="2.2"
+                />
+                <circle cx="16" cy="12" r="5" fill="currentColor" />
+                <circle cx="8" cy="13" r="3.5" fill="currentColor" />
+                <circle cx="24" cy="15" r="4" fill="currentColor" />
+              </svg>
+            </span>
+            <span>{t('app.title')}</span>
+          </div>
+          <LanguageSwitcher />
         </div>
 
-        <h1>{isRegister ? 'Start your family story' : 'Welcome back'}</h1>
+        <h1>{isRegister ? t('auth.startStory') : t('auth.welcome')}</h1>
         <p className="auth-lede">
-          {isRegister
-            ? 'Create a private space for the people, dates and stories that matter.'
-            : 'Sign in to explore and grow your family archive.'}
+          {isRegister ? t('auth.registerLede') : t('auth.signInLede')}
         </p>
 
-        <div className="auth-tabs" role="tablist" aria-label="Authentication">
+        <div className="auth-tabs" role="tablist" aria-label={t('auth.signIn')}>
           <button
             type="button"
             role="tab"
@@ -121,7 +122,7 @@ export default function Login({ onAuth }) {
             className={!isRegister ? 'active' : ''}
             onClick={() => switchMode('login')}
           >
-            Sign in
+            {t('auth.signIn')}
           </button>
           <button
             type="button"
@@ -130,19 +131,19 @@ export default function Login({ onAuth }) {
             className={isRegister ? 'active' : ''}
             onClick={() => switchMode('register')}
           >
-            Create account
+            {t('auth.createAccount')}
           </button>
         </div>
 
         <form className="auth-form" onSubmit={submit}>
           {isRegister && (
             <label>
-              <span>Your name</span>
+              <span>{t('auth.yourName')}</span>
               <input
                 autoComplete="name"
                 name="name"
                 onChange={update}
-                placeholder="Alex Doe"
+                placeholder={t('auth.namePlaceholder')}
                 required
                 type="text"
                 value={form.name}
@@ -151,12 +152,12 @@ export default function Login({ onAuth }) {
           )}
 
           <label>
-            <span>Email address</span>
+            <span>{t('auth.email')}</span>
             <input
               autoComplete="email"
               name="email"
               onChange={update}
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               required
               type="email"
               value={form.email}
@@ -164,13 +165,13 @@ export default function Login({ onAuth }) {
           </label>
 
           <label>
-            <span>Password</span>
+            <span>{t('auth.password')}</span>
             <input
               autoComplete={isRegister ? 'new-password' : 'current-password'}
               minLength={6}
               name="password"
               onChange={update}
-              placeholder="At least 6 characters"
+              placeholder={t('auth.passwordPlaceholder')}
               required
               type="password"
               value={form.password}
@@ -185,16 +186,14 @@ export default function Login({ onAuth }) {
 
           <button className="button primary full" disabled={loading} type="submit">
             {loading
-              ? 'Please wait…'
+              ? t('common.loading')
               : isRegister
-                ? 'Create my family tree'
-                : 'Sign in'}
+                ? t('auth.createTree')
+                : t('auth.signIn')}
           </button>
         </form>
 
-        <p className="auth-footnote">
-          Every account keeps its own family tree private.
-        </p>
+        <p className="auth-footnote">{t('auth.footnote')}</p>
       </section>
     </main>
   );

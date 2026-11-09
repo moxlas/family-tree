@@ -26,6 +26,7 @@ preserving the details that make a family story.
 - Record birth/death dates, spouse or partner, and notes
 - Load an example family to explore the visualization
 - Responsive family tree with an overflow-friendly canvas
+- English and Lithuanian interface with a language switcher
 - Each account only sees its own tree
 
 ## Project structure

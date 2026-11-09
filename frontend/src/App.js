@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from './api';
+import { useI18n } from './i18n';
 import Login from './components/Login';
 import TreePage from './components/TreePage';
 import './App.css';
@@ -7,6 +8,7 @@ import './App.css';
 const TOKEN_KEY = 'familyTreeToken';
 
 function App() {
+  const { t } = useI18n();
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(token));
@@ -61,7 +63,7 @@ function App() {
           <span />
           <span />
         </div>
-        <p>Opening your family archive…</p>
+        <p>{t('app.loading')}</p>
       </div>
     );
   }
