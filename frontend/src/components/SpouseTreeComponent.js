@@ -666,6 +666,111 @@ export function buildScene(people, families, showFormerSpouses = true) {
     if (!layoutX.has(unitIndex)) layoutUnit(unitIndex);
   });
 
+  // Align every direct child under the relationship heart that produced it.
+  // Child subtrees are kept in left-to-right heart order, so a former
+  // partner's children collect under the broken heart and current
+  // partner's children under the normal heart. Current subtree-relative
+  // dimensions are preserved while the whole subtree is shifted as one.
+  const ALIGNED_GAP = 8;
+
+  function memberCenterOffset(unitIndex, memberIndex) {
+    const width = unitWidths[unitIndex];
+    return memberIndex * (CARD_WIDTH + SPOUSE_LINK_WIDTH) + CARD_WIDTH / 2 - width / 2;
+  }
+
+  function relationshipHeartOffset(parentIndex, childIndex) {
+    const parentUnit = units[parentIndex];
+    const relationshipContext =
+      units[childIndex].parentLinks?.get(parentIndex)?.relationshipContext;
+    if (!relationshipContext?.firstId || !relationshipContext?.secondId) return 0;
+
+    const firstIndex = parentUnit.members.findIndex(
+      (member) => String(member.id) === String(relationshipContext.firstId)
+    );
+    const secondIndex = parentUnit.members.findIndex(
+      (member) => String(member.id) === String(relationshipContext.secondId)
+    );
+    if (firstIndex < 0 || secondIndex < 0) return 0;
+
+    return (
+      (memberCenterOffset(parentIndex, firstIndex) +
+        memberCenterOffset(parentIndex, secondIndex)) /
+      2
+    );
+  }
+
+  function targetMemberIndexFor(unitIndex, parentIndex) {
+    const parentLink = units[unitIndex].parentLinks?.get(parentIndex);
+    if (parentLink?.childId) {
+      const index = units[unitIndex].members.findIndex(
+        (member) => String(member.id) === parentLink.childId
+      );
+      if (index >= 0) return index;
+    }
+
+    const parentUnit = units[parentIndex];
+    return units[unitIndex].members.findIndex((member) =>
+      parentUnit.members.some(
+        (parentMember) =>
+          String(member.parentId || '') === String(parentMember.id) ||
+          String(member.secondParentId || '') === String(parentMember.id)
+      )
+    );
+  }
+
+  function descendantsSpan(unitIndex) {
+    let left = Number.POSITIVE_INFINITY;
+    let right = Number.NEGATIVE_INFINITY;
+
+    collectDescendants(unitIndex).forEach((descendantIndex) => {
+      const center = layoutX.get(descendantIndex) || 0;
+      const halfWidth = unitWidths[descendantIndex] / 2;
+      left = Math.min(left, center - halfWidth);
+      right = Math.max(right, center + halfWidth);
+    });
+
+    return { left, right, width: right - left };
+  }
+
+  layoutRootOrder.forEach((parentIndex) => {
+    const children = primaryChildrenByParent.get(parentIndex) || [];
+    if (!children.length) return;
+
+    const parentX = layoutX.get(parentIndex) || 0;
+    const orderedChildren = [...children].sort(
+      (first, second) =>
+        relationshipHeartOffset(parentIndex, first) -
+          relationshipHeartOffset(parentIndex, second) ||
+        layoutX.get(first) - layoutX.get(second)
+    );
+    let cursor = Math.min(...orderedChildren.map((childIndex) => descendantsSpan(childIndex).left));
+
+    orderedChildren.forEach((childIndex) => {
+      const span = descendantsSpan(childIndex);
+      const targetMemberIndex = targetMemberIndexFor(childIndex, parentIndex);
+      if (targetMemberIndex < 0) {
+        cursor = span.right + ALIGNED_GAP;
+        return;
+      }
+
+      const desiredTargetX =
+        parentX + relationshipHeartOffset(parentIndex, childIndex);
+      const currentTargetX =
+        (layoutX.get(childIndex) || 0) +
+        memberCenterOffset(childIndex, targetMemberIndex);
+      const desiredLeft = span.left + (desiredTargetX - currentTargetX);
+      const left = Math.max(desiredLeft, cursor);
+      const shift = left - span.left;
+
+      if (shift) {
+        collectDescendants(childIndex).forEach((descendantIndex) => {
+          layoutX.set(descendantIndex, (layoutX.get(descendantIndex) || 0) + shift);
+        });
+      }
+      cursor = left + span.width + ALIGNED_GAP;
+    });
+  });
+
   units.forEach((unit, unitIndex) => {
     unit.x = layoutX.get(unitIndex) || 0;
     unit.width = unitWidths[unitIndex];

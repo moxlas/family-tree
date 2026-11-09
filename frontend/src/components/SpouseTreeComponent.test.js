@@ -80,6 +80,12 @@ describe('buildScene generation placement', () => {
     expect(formerChildLink?.relationshipContext).toEqual(
       expect.objectContaining({ firstId: '1', secondId: '2', status: 'former' })
     );
+
+    const currentChildUnit = scene.units.find((unit) =>
+      unit.members.some((m) => m.id === '5')
+    );
+    expect(formerChildUnit.x).toBeCloseTo(johnUnits[0].x - 134, 0);
+    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 134, 0);
   });
 
   it('keeps each family subtree beneath its own ancestors', () => {

@@ -44,16 +44,27 @@ export default function PersonDetailsModal({
       (family.children || []).includes(person.id)
   );
 
-  const spouseIds = [];
   const parentIds = [];
   const childIds = [];
+  const currentSpouseIds = [];
+  const previousSpouseIds = [];
+
+  function addSpouseId(ids, spouseId) {
+    if (spouseId && !ids.includes(spouseId)) ids.push(spouseId);
+  }
 
   relatedFamilies.forEach((family) => {
-    if (family.husband === person.id && family.wife) {
-      if (!spouseIds.includes(family.wife)) spouseIds.push(family.wife);
-    }
-    if (family.wife === person.id && family.husband) {
-      if (!spouseIds.includes(family.husband)) spouseIds.push(family.husband);
+    const otherSpouseId =
+      family.husband === person.id
+        ? family.wife
+        : family.wife === person.id
+          ? family.husband
+          : null;
+    if (otherSpouseId) {
+      addSpouseId(
+        family.status === 'former' ? previousSpouseIds : currentSpouseIds,
+        otherSpouseId
+      );
     }
     if ((family.children || []).includes(person.id)) {
       if (family.husband && !parentIds.includes(family.husband)) {
@@ -70,12 +81,51 @@ export default function PersonDetailsModal({
     }
   });
 
-  const spouseNames = spouseIds
+  if (person.spouseId) {
+    addSpouseId(
+      person.spouseStatus === 'former' ? previousSpouseIds : currentSpouseIds,
+      person.spouseId
+    );
+  }
+
+  const currentSpouseIdSet = new Set(currentSpouseIds);
+  const uniquePreviousSpouseIds = previousSpouseIds.filter(
+    (id) => !currentSpouseIdSet.has(id)
+  );
+
+  const currentSpouseNames = currentSpouseIds
     .map((id) => {
       const entry = byId.get(String(id));
       return entry ? `${entry.firstName} ${entry.lastName}`.trim() : null;
     })
     .filter(Boolean);
+
+  const previousSpouseNames = uniquePreviousSpouseIds
+    .map((id) => {
+      const entry = byId.get(String(id));
+      return entry ? `${entry.firstName} ${entry.lastName}`.trim() : null;
+    })
+    .filter(Boolean);
+
+  const currentSpouseFallback =
+    !currentSpouseNames.length &&
+    person.spouseName &&
+    person.spouseStatus !== 'former'
+      ? [person.spouseName]
+      : [];
+  const previousSpouseFallback =
+    !previousSpouseNames.length &&
+    person.spouseName &&
+    person.spouseStatus === 'former'
+      ? [person.spouseName]
+      : [];
+
+  const currentSpouseDisplay = currentSpouseNames.length
+    ? currentSpouseNames
+    : currentSpouseFallback;
+  const previousSpouseDisplay = previousSpouseNames.length
+    ? previousSpouseNames
+    : previousSpouseFallback;
 
   const parentNames = parentIds
     .map((id) => {
@@ -159,13 +209,19 @@ export default function PersonDetailsModal({
             </div>
           )}
           <div>
-            <dt>{t('details.spouse')}</dt>
+            <dt>{t('details.currentSpouse')}</dt>
             <dd>
-              {spouseNames.length
-                ? spouseNames.join(', ')
-                : person.spouseName || t('modal.noLinkedSpouse')}
+              {currentSpouseDisplay.length
+                ? currentSpouseDisplay.join(', ')
+                : t('modal.noLinkedSpouse')}
             </dd>
           </div>
+          {previousSpouseDisplay.length > 0 && (
+            <div>
+              <dt>{t('details.previousSpouses')}</dt>
+              <dd>{previousSpouseDisplay.join(', ')}</dd>
+            </div>
+          )}
           {parentNames.length > 0 && (
             <div>
               <dt>{t('details.parent')}</dt>
