@@ -699,25 +699,6 @@ export function buildScene(people, families, showFormerSpouses = true) {
     );
   }
 
-  function targetMemberIndexFor(unitIndex, parentIndex) {
-    const parentLink = units[unitIndex].parentLinks?.get(parentIndex);
-    if (parentLink?.childId) {
-      const index = units[unitIndex].members.findIndex(
-        (member) => String(member.id) === parentLink.childId
-      );
-      if (index >= 0) return index;
-    }
-
-    const parentUnit = units[parentIndex];
-    return units[unitIndex].members.findIndex((member) =>
-      parentUnit.members.some(
-        (parentMember) =>
-          String(member.parentId || '') === String(parentMember.id) ||
-          String(member.secondParentId || '') === String(parentMember.id)
-      )
-    );
-  }
-
   function descendantsSpan(unitIndex) {
     let left = Number.POSITIVE_INFINITY;
     let right = Number.NEGATIVE_INFINITY;
@@ -737,37 +718,51 @@ export function buildScene(people, families, showFormerSpouses = true) {
     if (!children.length) return;
 
     const parentX = layoutX.get(parentIndex) || 0;
-    const orderedChildren = [...children].sort(
-      (first, second) =>
-        relationshipHeartOffset(parentIndex, first) -
-          relationshipHeartOffset(parentIndex, second) ||
-        layoutX.get(first) - layoutX.get(second)
-    );
-    let cursor = Math.min(...orderedChildren.map((childIndex) => descendantsSpan(childIndex).left));
 
-    orderedChildren.forEach((childIndex) => {
-      const span = descendantsSpan(childIndex);
-      const targetMemberIndex = targetMemberIndexFor(childIndex, parentIndex);
-      if (targetMemberIndex < 0) {
-        cursor = span.right + ALIGNED_GAP;
-        return;
+    // Group direct children by the heart that produced them, then centre
+    // each relationship group underneath its own current or broken heart.
+    const groups = new Map();
+    children.forEach((childIndex) => {
+      const offset = Math.round(relationshipHeartOffset(parentIndex, childIndex));
+      if (!groups.has(offset)) groups.set(offset, []);
+      groups.get(offset).push(childIndex);
+    });
+
+    const orderedGroups = [...groups.entries()].sort(
+      (first, second) => first[0] - second[0]
+    );
+    let cursor = Number.NEGATIVE_INFINITY;
+
+    orderedGroups.forEach(([offset, groupChildren]) => {
+      let left = Number.POSITIVE_INFINITY;
+      let right = Number.NEGATIVE_INFINITY;
+
+      groupChildren.forEach((childIndex) => {
+        const span = descendantsSpan(childIndex);
+        left = Math.min(left, span.left);
+        right = Math.max(right, span.right);
+      });
+
+      const groupWidth = right - left;
+      const desiredCenter = parentX + offset;
+      let newLeft = desiredCenter - groupWidth / 2;
+      if (cursor !== Number.NEGATIVE_INFINITY) {
+        newLeft = Math.max(newLeft, cursor);
       }
 
-      const desiredTargetX =
-        parentX + relationshipHeartOffset(parentIndex, childIndex);
-      const currentTargetX =
-        (layoutX.get(childIndex) || 0) +
-        memberCenterOffset(childIndex, targetMemberIndex);
-      const desiredLeft = span.left + (desiredTargetX - currentTargetX);
-      const left = Math.max(desiredLeft, cursor);
-      const shift = left - span.left;
-
+      const shift = newLeft - left;
       if (shift) {
-        collectDescendants(childIndex).forEach((descendantIndex) => {
-          layoutX.set(descendantIndex, (layoutX.get(descendantIndex) || 0) + shift);
+        groupChildren.forEach((childIndex) => {
+          collectDescendants(childIndex).forEach((descendantIndex) => {
+            layoutX.set(
+              descendantIndex,
+              (layoutX.get(descendantIndex) || 0) + shift
+            );
+          });
         });
       }
-      cursor = left + span.width + ALIGNED_GAP;
+
+      cursor = newLeft + groupWidth + ALIGNED_GAP;
     });
   });
 
@@ -800,6 +795,24 @@ export function buildScene(people, families, showFormerSpouses = true) {
         MIN_HORIZONTAL_GAP;
     });
   });
+
+  // Normalize the finished layout so the leftmost card starts just inside
+  // the tree padding instead of leaving a large empty strip on the left.
+  const TREE_PADDING = 34;
+  const minLeft = units.reduce(
+    (value, _unit, unitIndex) =>
+      Math.min(value, (layoutX.get(unitIndex) || 0) - unitWidths[unitIndex] / 2),
+    Number.POSITIVE_INFINITY
+  );
+
+  if (Number.isFinite(minLeft)) {
+    units.forEach((_unit, unitIndex) => {
+      layoutX.set(
+        unitIndex,
+        (layoutX.get(unitIndex) || 0) - minLeft + TREE_PADDING
+      );
+    });
+  }
 
   units.forEach((unit, unitIndex) => {
     unit.x = layoutX.get(unitIndex) || 0;

@@ -28,6 +28,14 @@ function assertNoOverlap(scene, label) {
       }
     }
   }
+
+  const leftmost = Math.min(...all.flat().map((entry) => entry.left));
+  if (leftmost < -0.001) {
+    throw new Error(`Negative card position in ${label}: ${leftmost}`);
+  }
+  if (leftmost > 40) {
+    throw new Error(`Large empty left strip in ${label}: ${leftmost}`);
+  }
 }
 
 describe('large layout overlap audit', () => {
