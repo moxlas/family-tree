@@ -361,7 +361,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
             : null;
         const relationshipStatus =
           familyRelationship?.status ||
-          (family.status === 'former' || parentCandidates.some((parentId) => byId.get(parentId)?.spouseStatus === 'former')
+          ((family.status === 'former' ||
+            parentCandidates.some((parentId) => byId.get(parentId)?.spouseStatus === 'former'))
             ? 'former'
             : 'current');
 
