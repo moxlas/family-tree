@@ -1571,6 +1571,114 @@ textarea {
   color: var(--danger);
 }
 
+/* Clickable person cards */
+.person-card.is-clickable {
+  cursor: pointer;
+}
+
+.person-card.is-clickable:focus-visible {
+  box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.18);
+  outline: none;
+}
+
+/* Zoom toolbar */
+.tree-zoom-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 12px 24px 0;
+}
+
+.zoom-level {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  min-width: 46px;
+  text-align: center;
+}
+
+/* Person details */
+.details-card {
+  max-width: 560px;
+}
+
+.details-identity {
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+}
+
+.details-avatar {
+  height: 46px;
+  width: 46px;
+}
+
+.details-identity strong {
+  display: block;
+  font-size: 18px;
+}
+
+.details-identity p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 2px 0 0;
+}
+
+.details-list {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.details-list div {
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+  padding-bottom: 10px;
+}
+
+.details-list dt {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.details-list dd {
+  font-size: 14px;
+  margin: 0;
+}
+
+.details-notes {
+  white-space: pre-wrap;
+}
+
+/* Dropdown polish */
+.language-switcher,
+.tree-switcher {
+  padding: 6px 10px;
+}
+
+.language-switcher select,
+.tree-switcher-select select {
+  font-size: 14px;
+  line-height: 1.2;
+  padding: 8px 28px 8px 10px;
+}
+
+.person-form select,
+.settings-card select,
+.modal-card select {
+  padding: 12px 34px 12px 14px;
+}
+
 /* GEDCOM */
 .gedcom-card {
   max-width: 860px;

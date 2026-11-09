@@ -11,8 +11,9 @@ export default function PersonCard({
   person,
   onAddChild,
   onAddSpouse,
-  onEdit,
   onDelete,
+  onEdit,
+  onView,
   showSpouseName = true,
   cardRef,
 }) {
@@ -28,8 +29,29 @@ export default function PersonCard({
     life = t('person.died', { date: person.deathDate });
   }
 
+  const handleCardClick = () => {
+    if (onView) onView(person);
+  };
+
+  const handleKeyDown = (event) => {
+    if (!onView) return;
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onView(person);
+    }
+  };
+
   return (
-    <article className={`person-card gender-${person.gender}`} ref={cardRef}>
+    <article
+      className={`person-card gender-${person.gender}${
+        onView ? ' is-clickable' : ''
+      }`}
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      ref={cardRef}
+      role={onView ? 'button' : undefined}
+      tabIndex={onView ? 0 : undefined}
+    >
       <div className="person-main">
         <div className="avatar" aria-hidden="true">
           {initials(person)}
@@ -53,7 +75,10 @@ export default function PersonCard({
           <button
             aria-label={t('person.addSpouse', { name: fullName })}
             className="icon-button spouse"
-            onClick={() => onAddSpouse(person)}
+            onClick={(event) => {
+              event.stopPropagation();
+              onAddSpouse(person);
+            }}
             title={t('person.addSpouseTitle')}
             type="button"
           >
@@ -63,7 +88,10 @@ export default function PersonCard({
         <button
           aria-label={t('person.addChild', { name: fullName })}
           className="icon-button add"
-          onClick={() => onAddChild(person)}
+          onClick={(event) => {
+              event.stopPropagation();
+              onAddChild(person);
+            }}
           title={t('person.addChildTitle')}
           type="button"
         >
@@ -72,7 +100,10 @@ export default function PersonCard({
         <button
           aria-label={t('person.edit', { name: fullName })}
           className="icon-button"
-          onClick={() => onEdit(person)}
+          onClick={(event) => {
+              event.stopPropagation();
+              onEdit(person);
+            }}
           title={t('person.editTitle')}
           type="button"
         >
@@ -81,7 +112,10 @@ export default function PersonCard({
         <button
           aria-label={t('person.delete', { name: fullName })}
           className="icon-button danger"
-          onClick={() => onDelete(person)}
+          onClick={(event) => {
+              event.stopPropagation();
+              onDelete(person);
+            }}
           title={t('person.deleteTitle')}
           type="button"
         >

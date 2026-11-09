@@ -124,11 +124,12 @@ function buildScene(people) {
 }
 
 export default function SpouseTreeComponent({
-  people,
   onAddChild,
   onAddSpouse,
-  onEdit,
   onDelete,
+  onEdit,
+  onView,
+  people,
 }) {
   const { t } = useI18n();
   const scene = useMemo(() => buildScene(people), [people]);
@@ -265,6 +266,7 @@ export default function SpouseTreeComponent({
                       onAddSpouse={onAddSpouse}
                       onDelete={onDelete}
                       onEdit={onEdit}
+                      onView={onView}
                       person={member}
                       showSpouseName={false}
                     />

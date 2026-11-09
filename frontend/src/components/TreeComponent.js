@@ -23,7 +23,13 @@ function TreeNode({ person, childrenByParent, ...actions }) {
   );
 }
 
-export default function TreeComponent({ people, onAddChild, onEdit, onDelete }) {
+export default function TreeComponent({
+  people,
+  onAddChild,
+  onDelete,
+  onEdit,
+  onView,
+}) {
   const { roots, childrenByParent } = useMemo(() => {
     const ids = new Set(people.map((person) => person.id));
     const children = new Map();
@@ -63,6 +69,7 @@ export default function TreeComponent({ people, onAddChild, onEdit, onDelete }) 
             onAddChild={onAddChild}
             onDelete={onDelete}
             onEdit={onEdit}
+            onView={onView}
             person={person}
           />
         ))}

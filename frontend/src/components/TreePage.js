@@ -10,6 +10,7 @@ import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
 import GedcomModal from './GedcomModal';
 import LanguageSwitcher from './LanguageSwitcher';
+import PersonDetailsModal from './PersonDetailsModal';
 import PersonModal from './PersonModal';
 import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
@@ -48,7 +49,9 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
+  const [detailsPerson, setDetailsPerson] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [zoom, setZoom] = useState(1);
   const [treesOpen, setTreesOpen] = useState(false);
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const translateErrorRef = useRef(translateApiError);
@@ -565,12 +568,37 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 </button>
               </div>
             </div>
-            <div className="tree-scroll">
+            <div className="tree-zoom-toolbar" aria-label={t('tree.zoom')}>
+              <button
+                className="button ghost small"
+                onClick={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))}
+                type="button"
+              >
+                −
+              </button>
+              <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+              <button
+                className="button ghost small"
+                onClick={() => setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10))}
+                type="button"
+              >
+                +
+              </button>
+              <button
+                className="button ghost small"
+                onClick={() => setZoom(1)}
+                type="button"
+              >
+                {t('tree.zoomReset')}
+              </button>
+            </div>
+            <div className="tree-scroll" style={{ zoom }}>
               {bloodlineOnly ? (
                 <TreeComponent
                   onAddChild={(person) => openCreate(person.id)}
                   onDelete={deletePerson}
                   onEdit={openEdit}
+                  onView={(person) => setDetailsPerson(person)}
                   people={bloodlinePeople}
                 />
               ) : (
@@ -579,6 +607,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onAddSpouse={openAddSpouse}
                   onDelete={deletePerson}
                   onEdit={openEdit}
+                  onView={(person) => setDetailsPerson(person)}
                   people={people}
                 />
               )}
@@ -586,6 +615,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           </section>
         )}
       </main>
+
+      {detailsPerson && (
+        <PersonDetailsModal
+          onClose={() => setDetailsPerson(null)}
+          onEdit={openEdit}
+          people={people}
+          person={detailsPerson}
+        />
+      )}
 
       {modal && (
         <PersonModal
