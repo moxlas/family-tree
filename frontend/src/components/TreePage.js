@@ -44,6 +44,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       return '';
     }
   });
+  const [families, setFamilies] = useState([]);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -134,8 +135,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   }, [loadTrees]);
 
   useEffect(() => {
-    if (!treesLoading) loadPeople();
-  }, [treesLoading, loadPeople]);
+    if (!treesLoading) {
+      loadPeople();
+      loadFamilies();
+    }
+  }, [treesLoading, loadPeople, loadFamilies]);
 
   useEffect(() => {
     if (!activeTreeId) return;
@@ -211,6 +215,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
     return { roots, generations };
   }, [displayPeople]);
+
+  const loadFamilies = useCallback(async () => {
+    if (!activeTreeId) {
+      setFamilies([]);
+      return;
+    }
+
+    try {
+      const response = await api.get('/families', {
+        params: { treeId: activeTreeId },
+      });
+      setFamilies(response.data || []);
+    } catch (_error) {
+      setFamilies([]);
+    }
+  }, [activeTreeId]);
 
   const refreshCounts = useCallback(
     () => loadTrees({ quiet: true, preferredId: activeTreeId }),
@@ -346,7 +366,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     setNotice(
       modal.mode === 'edit' ? 'notice.personUpdated' : 'notice.personAdded'
     );
-    await Promise.all([loadPeople({ quiet: true }), refreshCounts()]);
+    await Promise.all([
+      loadPeople({ quiet: true }),
+      loadFamilies(),
+      refreshCounts(),
+    ]);
   };
 
   const deletePerson = async (person) => {
@@ -360,7 +384,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
         params: { treeId: activeTreeId },
       });
       setNotice('notice.personDeleted');
-      await Promise.all([loadPeople({ quiet: true }), refreshCounts()]);
+      await Promise.all([
+        loadPeople({ quiet: true }),
+        loadFamilies(),
+        refreshCounts(),
+      ]);
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.deletePerson'));
     }
@@ -378,7 +406,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       });
       setPeople(response.data);
       setNotice('notice.demoLoaded');
-      await refreshCounts();
+      await Promise.all([loadFamilies(), refreshCounts()]);
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.loadDemo'));
     }
@@ -417,6 +445,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
   const handleImported = () => {
     loadPeople({ quiet: true });
+    loadFamilies();
     refreshCounts();
   };
 
@@ -782,6 +811,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
       {detailsPerson && (
         <PersonDetailsModal
+          families={families}
           onClose={() => setDetailsPerson(null)}
           onEdit={openEdit}
           people={people}

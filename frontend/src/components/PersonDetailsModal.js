@@ -8,7 +8,13 @@ function genderLabel(t, gender) {
   return t('modal.genderUnknown');
 }
 
-export default function PersonDetailsModal({ person, people, onClose, onEdit }) {
+export default function PersonDetailsModal({
+  families,
+  onClose,
+  onEdit,
+  people,
+  person,
+}) {
   const { t } = useI18n();
 
   useEffect(() => {
@@ -29,6 +35,60 @@ export default function PersonDetailsModal({ person, people, onClose, onEdit }) 
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
   const spouse = person.spouseId ? byId.get(String(person.spouseId)) : null;
   const parent = person.parentId ? byId.get(String(person.parentId)) : null;
+
+  const relatedFamilies = (families || []).filter(
+    (family) =>
+      family.husband === person.id ||
+      family.wife === person.id ||
+      (family.children || []).includes(person.id)
+  );
+
+  const spouseIds = [];
+  const parentIds = [];
+  const childIds = [];
+
+  relatedFamilies.forEach((family) => {
+    if (family.husband === person.id && family.wife) {
+      if (!spouseIds.includes(family.wife)) spouseIds.push(family.wife);
+    }
+    if (family.wife === person.id && family.husband) {
+      if (!spouseIds.includes(family.husband)) spouseIds.push(family.husband);
+    }
+    if ((family.children || []).includes(person.id)) {
+      if (family.husband && !parentIds.includes(family.husband)) {
+        parentIds.push(family.husband);
+      }
+      if (family.wife && !parentIds.includes(family.wife)) {
+        parentIds.push(family.wife);
+      }
+    }
+    if (family.husband === person.id || family.wife === person.id) {
+      (family.children || []).forEach((childId) => {
+        if (!childIds.includes(childId)) childIds.push(childId);
+      });
+    }
+  });
+
+  const spouseNames = spouseIds
+    .map((id) => {
+      const entry = byId.get(String(id));
+      return entry ? `${entry.firstName} ${entry.lastName}`.trim() : null;
+    })
+    .filter(Boolean);
+
+  const parentNames = parentIds
+    .map((id) => {
+      const entry = byId.get(String(id));
+      return entry ? `${entry.firstName} ${entry.lastName}`.trim() : null;
+    })
+    .filter(Boolean);
+
+  const childNames = childIds
+    .map((id) => {
+      const entry = byId.get(String(id));
+      return entry ? `${entry.firstName} ${entry.lastName}`.trim() : null;
+    })
+    .filter(Boolean);
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
@@ -100,15 +160,21 @@ export default function PersonDetailsModal({ person, people, onClose, onEdit }) 
           <div>
             <dt>{t('details.spouse')}</dt>
             <dd>
-              {spouse
-                ? `${spouse.firstName} ${spouse.lastName}`.trim()
+              {spouseNames.length
+                ? spouseNames.join(', ')
                 : person.spouseName || t('modal.noLinkedSpouse')}
             </dd>
           </div>
-          {parent && (
+          {parentNames.length > 0 && (
             <div>
               <dt>{t('details.parent')}</dt>
-              <dd>{`${parent.firstName} ${parent.lastName}`.trim()}</dd>
+              <dd>{parentNames.join(', ')}</dd>
+            </div>
+          )}
+          {childNames.length > 0 && (
+            <div>
+              <dt>{t('details.children')}</dt>
+              <dd>{childNames.join(', ')}</dd>
             </div>
           )}
           <div>

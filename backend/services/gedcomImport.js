@@ -341,12 +341,8 @@ async function importGedcom({ ownerId, tree, body }) {
             spouseName: fullName(first),
           });
           spouseLinks += 1;
-        } else {
-          addWarning('spouseConflict', {
-            person: fullName(first),
-            spouse: fullName(second),
-          });
         }
+        // Additional spouse relationships are preserved in Family records.
       }
     }
 
