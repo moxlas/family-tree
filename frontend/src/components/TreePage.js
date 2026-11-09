@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import api from '../api';
 import { useI18n } from '../i18n';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -12,6 +18,11 @@ export default function TreePage({ user, onLogout }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
+  const translateErrorRef = useRef(translateApiError);
+
+  useEffect(() => {
+    translateErrorRef.current = translateApiError;
+  }, [translateApiError]);
 
   const loadPeople = useCallback(
     async ({ quiet = false } = {}) => {
@@ -21,12 +32,12 @@ export default function TreePage({ user, onLogout }) {
         const response = await api.get('/people');
         setPeople(response.data);
       } catch (requestError) {
-        setError(translateApiError(requestError, 'errors.loadTree'));
+        setError(translateErrorRef.current(requestError, 'errors.loadTree'));
       } finally {
         if (!quiet) setLoading(false);
       }
     },
-    [translateApiError]
+    []
   );
 
   useEffect(() => {
