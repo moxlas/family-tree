@@ -45,7 +45,7 @@ export default function Login({ onAuth }) {
   };
 
   return (
-    <div className="auth-page">
+    <main className="auth-page">
       <div className="auth-art" aria-hidden="true">
         <div className="auth-art-glow" />
         <svg viewBox="0 0 520 520" role="presentation">
@@ -196,6 +196,6 @@ export default function Login({ onAuth }) {
           Every account keeps its own family tree private.
         </p>
       </section>
-    </div>
+    </main>
   );
 }

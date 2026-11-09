@@ -234,7 +234,7 @@ p {
   background: transparent;
   border: 0;
   border-radius: 9px;
-  color: var(--muted);
+  color: #536579;
   font-size: 14px;
   font-weight: 650;
   padding: 10px;
@@ -298,7 +298,7 @@ textarea {
 }
 
 .auth-footnote {
-  color: #8a9aab;
+  color: #5f7083;
   font-size: 12px;
   margin: 24px 0 0;
   text-align: center;
@@ -639,7 +639,7 @@ textarea {
 
 .tree-children {
   gap: 26px;
-  margin-top: 14px;
+  margin-top: 0;
   padding-top: 34px;
   position: relative;
 }
@@ -660,7 +660,7 @@ textarea {
   background: var(--line);
   content: "";
   position: absolute;
-  top: 20px;
+  top: -14px;
 }
 
 .tree-children > .tree-item::before {
@@ -674,8 +674,8 @@ textarea {
 .tree-children > .tree-item::after {
   border-top: 2px solid var(--line);
   height: 0;
-  left: 0;
-  right: 0;
+  left: -13px;
+  right: -13px;
 }
 
 .tree-children > .tree-item:first-child::after {
