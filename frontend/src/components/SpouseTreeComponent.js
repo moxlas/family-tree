@@ -843,25 +843,49 @@ export function buildScene(people, families, showFormerSpouses = true) {
     return left + CARD_WIDTH / 2 - width / 2;
   }
 
-  function relationshipHeartOffset(parentIndex, childIndex) {
+  // Children are centred under their parents. When the two parents sit
+  // beside each other this is the heart between their cards; when they are
+  // not adjacent (a partner with several marriages), the children collect
+  // under the linked parent's card instead so lineage stays unambiguous.
+  function childAnchorOffset(parentIndex, childIndex) {
     const parentUnit = units[parentIndex];
-    const relationshipContext =
-      units[childIndex].parentLinks?.get(parentIndex)?.relationshipContext;
-    if (!relationshipContext?.firstId || !relationshipContext?.secondId) return 0;
+    const parentLink = units[childIndex].parentLinks?.get(parentIndex);
+    const relationshipContext = parentLink?.relationshipContext;
+    const members = parentUnit.members;
 
-    const firstIndex = parentUnit.members.findIndex(
-      (member) => String(member.id) === String(relationshipContext.firstId)
-    );
-    const secondIndex = parentUnit.members.findIndex(
-      (member) => String(member.id) === String(relationshipContext.secondId)
-    );
-    if (firstIndex < 0 || secondIndex < 0) return 0;
+    const linkedParentIndex = parentLink?.parentId
+      ? members.findIndex(
+          (member) => String(member.id) === String(parentLink.parentId)
+        )
+      : -1;
 
-    return (
-      (memberCenterOffset(parentIndex, firstIndex) +
-        memberCenterOffset(parentIndex, secondIndex)) /
-      2
-    );
+    if (relationshipContext?.firstId && relationshipContext?.secondId) {
+      const firstIndex = members.findIndex(
+        (member) => String(member.id) === String(relationshipContext.firstId)
+      );
+      const secondIndex = members.findIndex(
+        (member) => String(member.id) === String(relationshipContext.secondId)
+      );
+
+      if (firstIndex >= 0 && secondIndex >= 0) {
+        if (Math.abs(firstIndex - secondIndex) === 1) {
+          return (
+            (memberCenterOffset(parentIndex, Math.min(firstIndex, secondIndex)) +
+              memberCenterOffset(parentIndex, Math.max(firstIndex, secondIndex))) /
+            2
+          );
+        }
+
+        const anchorIndex = linkedParentIndex >= 0 ? linkedParentIndex : firstIndex;
+        return memberCenterOffset(parentIndex, anchorIndex);
+      }
+    }
+
+    if (linkedParentIndex >= 0) {
+      return memberCenterOffset(parentIndex, linkedParentIndex);
+    }
+
+    return 0;
   }
 
   function descendantsSpan(unitIndex) {
@@ -888,7 +912,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
     // each relationship group underneath its own current or broken heart.
     const groups = new Map();
     children.forEach((childIndex) => {
-      const offset = Math.round(relationshipHeartOffset(parentIndex, childIndex));
+      const offset = Math.round(childAnchorOffset(parentIndex, childIndex));
       if (!groups.has(offset)) groups.set(offset, []);
       groups.get(offset).push(childIndex);
     });
@@ -1368,7 +1392,9 @@ export default function SpouseTreeComponent({
                     type="button"
                   >
                     {isCollapsed
-                      ? t('branch.showChildren', { count: childCount })
+                      ? childCount === 1
+                        ? t('branch.showChild')
+                        : t('branch.showChildren', { count: childCount })
                       : t('branch.hideChildren')}
                   </button>
                 )}

@@ -321,6 +321,7 @@ const translations = {
     'settings.unknownDate': 'Unknown',
 
     'branch.hideChildren': 'Hide children',
+    'branch.showChild': 'Show 1 child',
     'branch.showChildren': 'Show {{count}} children',
     'branch.focus': 'Show only this branch',
     'branch.focusAria': 'Show only the branch of {{name}}',
@@ -680,6 +681,7 @@ const translations = {
     'settings.unknownDate': 'Nežinoma',
 
     'branch.hideChildren': 'Slėpti vaikus',
+    'branch.showChild': 'Rodyti 1 vaiką',
     'branch.showChildren': 'Rodyti vaikus ({{count}})',
     'branch.focus': 'Rodyti tik šią šaką',
     'branch.focusAria': 'Rodyti tik {{name}} šaką',

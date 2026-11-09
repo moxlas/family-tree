@@ -176,6 +176,41 @@ describe('buildScene generation placement', () => {
     expect(buildScene(people, families, true).units).toHaveLength(1);
   });
 
+  it('centres children under the linked parent card when parents are not adjacent', () => {
+    const people = [
+      person('1', { firstName: 'Shared', gender: 'male' }),
+      person('2', { firstName: 'ExFar', gender: 'female' }),
+      person('3', { firstName: 'ExNear', gender: 'female' }),
+      person('4', { firstName: 'Current', gender: 'female' }),
+      person('5', { firstName: 'Kid', gender: 'male', parentId: '1' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '1', wife: '2', status: 'former', children: ['5'] },
+      { id: 'f2', husband: '1', wife: '3', status: 'former', children: [] },
+      { id: 'f3', husband: '1', wife: '4', status: 'current', children: [] },
+    ];
+    const scene = buildScene(people, families, true);
+    const parentUnit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '1')
+    );
+    const childUnit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '5')
+    );
+    const parentIndex = scene.units.indexOf(parentUnit);
+    const childIndex = scene.units.indexOf(childUnit);
+    const parentLink = childUnit.parentLinks?.get(parentIndex);
+
+    const partnerIndex = parentUnit.members.findIndex(
+      (member) => String(member.id) === String(parentLink?.parentId)
+    );
+    expect(partnerIndex).toBeGreaterThanOrEqual(0);
+
+    const partnerCenter =
+      parentUnit.x - parentUnit.width / 2 + parentUnit.memberCenters[partnerIndex];
+    expect(Math.abs(childUnit.x - partnerCenter)).toBeLessThanOrEqual(1);
+    expect(scene.depths[childIndex]).toBeGreaterThan(scene.depths[parentIndex]);
+  });
+
   it('keeps each family subtree beneath its own ancestors', () => {
     const people = [
       person('1', { firstName: 'ARoot', lastName: 'Doe' }),
