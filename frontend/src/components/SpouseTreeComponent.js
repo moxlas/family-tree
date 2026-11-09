@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useI18n } from '../i18n';
 import PersonCard from './PersonCard';
 
 export function buildScene(people, families, showFormerSpouses = true) {
@@ -276,7 +275,6 @@ export default function SpouseTreeComponent({
   suppressClickRef,
   zoom = 1,
 }) {
-  const { t } = useI18n();
   const scene = useMemo(
     () => buildScene(people, families, showFormerSpouses),
     [people, families, showFormerSpouses]
@@ -346,21 +344,22 @@ export default function SpouseTreeComponent({
         const startY = (parentRect.bottom - containerRect.top) / scale;
 
         // Couple units connect through the heart between the spouses;
-        // single cards connect straight from the card itself. The path is a
-        // single clean vertical drop into the child card - no extra lines.
-        let dropX = startX;
-        let dropY = startY;
+        // single cards connect straight from the card itself. The connector
+        // starts at the child card and extends upwards before running to the
+        // parent side - a single clean line, no extra segments.
+        let junctionX = startX;
+        let junctionY = startY;
         if (parentUnit.members.length > 1) {
           const heartNode = heartRefs.current.get(`heart-${parentUnit.id}`);
           if (heartNode) {
             const heartRect = heartNode.getBoundingClientRect();
-            dropX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
-            dropY = heartRect.top - containerRect.top;
+            junctionX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
+            junctionY = (heartRect.bottom - containerRect.top) / scale;
           }
         }
 
-        let path = `M ${dropX} ${dropY} V ${endY}`;
-        if (endX !== dropX) path += ` H ${endX}`;
+        let path = `M ${endX} ${endY} V ${junctionY}`;
+        if (endX !== junctionX) path += ` H ${junctionX}`;
 
         nextEdges.push({
           id: `edge-${parentIndex}-${childUnitIndex}`,
@@ -371,7 +370,7 @@ export default function SpouseTreeComponent({
 
     setEdges(nextEdges);
     setSize({ width: container.scrollWidth, height: container.scrollHeight });
-  }, [people, families, scene, zoom]);
+  }, [scene, zoom]);
 
   useLayoutEffect(() => {
     measure();

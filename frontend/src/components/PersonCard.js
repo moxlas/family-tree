@@ -118,20 +118,6 @@ export default function PersonCard({
       </div>
 
       <div className="person-actions">
-        {onAddSpouse && (
-          <button
-            aria-label={t('person.addSpouse', { name: fullName })}
-            className="icon-button spouse"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAddSpouse(person);
-            }}
-            title={t('person.addSpouseTitle')}
-            type="button"
-          >
-            ♥
-          </button>
-        )}
         <div className="person-add-menu" ref={menuRef}>
           <button
             aria-expanded={menuOpen}
