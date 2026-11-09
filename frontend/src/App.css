@@ -1450,13 +1450,17 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 12px;
   display: flex;
-  flex: 0 1 420px;
+  flex: 1 1 520px;
   gap: 12px;
   justify-content: flex-start;
   margin: 0 auto;
-  max-width: 100%;
-  min-width: 260px;
+  max-width: 680px;
+  min-width: 280px;
   padding: 6px 12px;
+}
+
+.tree-switcher .button {
+  white-space: normal;
 }
 
 .tree-switcher-label {

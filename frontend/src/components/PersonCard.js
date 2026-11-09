@@ -33,26 +33,32 @@ export default function PersonCard({
   }
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuStyle, setMenuStyle] = useState(null);
+  const buttonRef = useRef(null);
   const menuRef = useRef(null);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
 
+    const close = () => setMenuOpen(false);
     const handlePointerDown = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setMenuOpen(false);
       }
     };
-
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setMenuOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
     };
   }, [menuOpen]);
 
@@ -126,9 +132,21 @@ export default function PersonCard({
             aria-haspopup="menu"
             aria-label={t('person.addRelative', { name: fullName })}
             className="icon-button add"
+            ref={buttonRef}
             onClick={(event) => {
               event.stopPropagation();
-              setMenuOpen((value) => !value);
+              setMenuOpen((value) => {
+                const next = !value;
+                if (next && buttonRef.current) {
+                  const rect = buttonRef.current.getBoundingClientRect();
+                  setMenuStyle({
+                    position: 'fixed',
+                    top: rect.bottom + 6,
+                    left: Math.max(8, rect.right - 168),
+                  });
+                }
+                return next;
+              });
             }}
             title={t('person.addRelativeTitle')}
             type="button"
@@ -136,7 +154,11 @@ export default function PersonCard({
             +
           </button>
           {menuOpen && (
-            <div className="person-add-options" role="menu">
+            <div
+              className="person-add-options"
+              role="menu"
+              style={menuStyle || undefined}
+            >
               {onAddChild && (
                 <button
                   onClick={(event) => {

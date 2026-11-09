@@ -466,6 +466,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     const container = scrollRef.current;
     if (!container) return;
 
+    if (event.ctrlKey || event.metaKey) {
+      event.preventDefault();
+      setZoom((value) => {
+        const delta = event.deltaY > 0 ? -0.1 : 0.1;
+        return Math.min(2, Math.max(0.5, Math.round((value + delta) * 10) / 10));
+      });
+      return;
+    }
+
     if (event.shiftKey) {
       container.scrollLeft += event.deltaY;
     } else {
@@ -562,13 +571,6 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             <p className="hero-copy">{t('tree.heroCopy')}</p>
           </div>
           <div className="hero-actions">
-            <button
-              className="button primary"
-              onClick={() => openCreate('')}
-              type="button"
-            >
-              <span aria-hidden="true">＋</span> {t('tree.addPerson')}
-            </button>
             <button className="button glass" onClick={loadDemo} type="button">
               {t('tree.loadDemo')}
             </button>
@@ -699,7 +701,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onClick={() => openCreate('')}
                   type="button"
                 >
-                  {t('tree.addRoot')}
+                  <span aria-hidden="true">＋</span> {t('tree.addPerson')}
                 </button>
               </div>
             </div>
