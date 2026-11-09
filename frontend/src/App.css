@@ -1602,12 +1602,13 @@ textarea {
   box-shadow: var(--shadow-lg);
   display: grid;
   gap: 2px;
+  max-width: 220px;
   min-width: 150px;
   padding: 6px;
-  position: absolute;
-  right: 0;
-  top: calc(100% + 6px);
-  z-index: 30;
+  position: fixed;
+  right: auto;
+  top: 0;
+  z-index: 1000;
 }
 
 .person-add-options button {
