@@ -88,6 +88,31 @@ describe('buildScene generation placement', () => {
     expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 134, 0);
   });
 
+  it('keeps only one current marriage per person', () => {
+    const people = [
+      person('1', { firstName: 'Adam' }),
+      person('2', { firstName: 'Emma' }),
+      person('3', { firstName: 'Nina' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '1', wife: '2', status: 'current', marriageDate: '1990', divorceDate: '', children: [] },
+      { id: 'f2', husband: '1', wife: '3', status: 'current', marriageDate: '1998', divorceDate: '', children: [] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '1')
+    );
+    const statuses = unit.relationships.map((relationship) => relationship.status);
+
+    expect(statuses.filter((status) => status === 'current')).toHaveLength(1);
+    expect(statuses.filter((status) => status === 'former')).toHaveLength(1);
+    // The newer marriage stays current.
+    const current = unit.relationships.find(
+      (relationship) => relationship.status === 'current'
+    );
+    expect([current.firstId, current.secondId].sort()).toEqual(['1', '3']);
+  });
+
   it('keeps each family subtree beneath its own ancestors', () => {
     const people = [
       person('1', { firstName: 'ARoot', lastName: 'Doe' }),

@@ -15,6 +15,11 @@ function pairKeyOf(firstId, secondId) {
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
 }
 
+function yearFromDate(value) {
+  const match = String(value == null ? '' : value).match(/\b(\d{4})\b/);
+  return match ? Number(match[1]) : 0;
+}
+
 export function buildScene(people, families, showFormerSpouses = true) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
@@ -164,6 +169,53 @@ export function buildScene(people, families, showFormerSpouses = true) {
       }
     });
   }
+
+  // A person can only have one current spouse. GEDCOM exports often list
+  // several FAM records without divorce events; keep the newest marriage
+  // current and treat the older ones as previous partnerships so their
+  // broken-heart connections are shown.
+  const recordIndex = new Map(
+    familyRecords.map((record, index) => [record, index])
+  );
+  const newestCurrentByPerson = new Map();
+
+  const isNewerCurrentMarriage = (candidate, current) => {
+    const candidateYear = yearFromDate(candidate.family.marriageDate);
+    const currentYear = yearFromDate(current.family.marriageDate);
+    if (candidateYear !== currentYear) return candidateYear > currentYear;
+    return recordIndex.get(candidate) > recordIndex.get(current);
+  };
+
+  familyRecords.forEach((record) => {
+    if (record.status !== 'current') return;
+    [record.family.husband, record.family.wife].forEach((personKey) => {
+      if (!personKey) return;
+      const id = String(personKey);
+      const best = newestCurrentByPerson.get(id);
+      if (!best || isNewerCurrentMarriage(record, best)) {
+        newestCurrentByPerson.set(id, record);
+      }
+    });
+  });
+
+  familyRecords.forEach((record) => {
+    if (record.status !== 'current') return;
+    const husbandKey = record.family.husband
+      ? String(record.family.husband)
+      : null;
+    const wifeKey = record.family.wife ? String(record.family.wife) : null;
+    const newestForHusband =
+      !husbandKey || newestCurrentByPerson.get(husbandKey) === record;
+    const newestForWife =
+      !wifeKey || newestCurrentByPerson.get(wifeKey) === record;
+    if (newestForHusband && newestForWife) return;
+
+    record.status = 'former';
+    const relationship = relationshipByPair.get(
+      pairKeyOf(husbandKey || '', wifeKey || '')
+    );
+    if (relationship) relationship.status = 'former';
+  });
 
   const familyGroups = new Map();
   memberSequence.forEach((personId) => {
@@ -1163,6 +1215,53 @@ export default function SpouseTreeComponent({
                     </Fragment>
                   );
                 })}
+                {unit.relationships
+                  ?.filter((relationship) => {
+                    const firstIndex = unit.members.findIndex(
+                      (member) => String(member.id) === String(relationship.firstId)
+                    );
+                    const secondIndex = unit.members.findIndex(
+                      (member) => String(member.id) === String(relationship.secondId)
+                    );
+                    if (firstIndex < 0 || secondIndex < 0) return false;
+                    return Math.abs(firstIndex - secondIndex) > 1;
+                  })
+                  .map((relationship, floatingIndex) => {
+                    const firstIndex = unit.members.findIndex(
+                      (member) => String(member.id) === String(relationship.firstId)
+                    );
+                    const secondIndex = unit.members.findIndex(
+                      (member) => String(member.id) === String(relationship.secondId)
+                    );
+                    const leftMember = unit.members[Math.min(firstIndex, secondIndex)];
+                    const rightMember = unit.members[Math.max(firstIndex, secondIndex)];
+                    const middleX =
+                      ((firstIndex + secondIndex) / 2) * 268 + 116;
+
+                    return (
+                      <span
+                        className="spouse-heart-float"
+                        key={`float-${relationship.firstId}-${relationship.secondId}`}
+                        style={{
+                          left: `${middleX + floatingIndex * 30}px`,
+                          top: '-26px',
+                        }}
+                        aria-hidden="true"
+                      >
+                        <span
+                          className="spouse-link-heart"
+                          ref={(node) =>
+                            setHeartRef(
+                              `heart-${unit.id}-${leftMember.id}-${rightMember.id}`,
+                              node
+                            )
+                          }
+                        >
+                          {relationship.status === 'former' ? '💔' : '♥'}
+                        </span>
+                      </span>
+                    );
+                  })}
               </div>
             );
           })}

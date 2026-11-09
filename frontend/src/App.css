@@ -850,6 +850,13 @@ textarea {
   width: 24px;
 }
 
+.spouse-heart-float {
+  display: flex;
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
 .family-tree {
   min-width: max-content;
   padding: 26px 34px 0;

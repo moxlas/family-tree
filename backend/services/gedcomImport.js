@@ -183,8 +183,54 @@ function wouldCreateCycle(child, parent, allById) {
   return false;
 }
 
+function yearOfDate(value) {
+  const match = String(value == null ? '' : value).match(/\b(\d{4})\b/);
+  return match ? Number(match[1]) : 0;
+}
+
+// GEDCOM exports often list several FAM records for one person without
+// divorce events. Only one marriage can be current, so keep the newest
+// marriage current and treat the older ones as previous partnerships.
+function inferCurrentMarriages(families) {
+  const marriagesByPerson = new Map();
+
+  families.forEach((family, index) => {
+    if (family.status !== 'current') return;
+    [family.husband, family.wife].forEach((key) => {
+      if (!key) return;
+      if (!marriagesByPerson.has(key)) marriagesByPerson.set(key, []);
+      marriagesByPerson.get(key).push({ family, index });
+    });
+  });
+
+  const newestByPerson = new Map();
+
+  marriagesByPerson.forEach((entries, personKey) => {
+    const newest = entries.reduce((best, entry) => {
+      const bestYear = yearOfDate(best.family.marriageDate);
+      const entryYear = yearOfDate(entry.family.marriageDate);
+      if (entryYear !== bestYear) return entryYear > bestYear ? entry : best;
+      return entry.index > best.index ? entry : best;
+    });
+    newestByPerson.set(personKey, newest.family);
+  });
+
+  families.forEach((family) => {
+    if (family.status !== 'current') return;
+    const newestForHusband =
+      !family.husband || newestByPerson.get(family.husband) === family;
+    const newestForWife =
+      !family.wife || newestByPerson.get(family.wife) === family;
+
+    if (!newestForHusband || !newestForWife) {
+      family.status = 'former';
+    }
+  });
+}
+
 async function importGedcom({ ownerId, tree, body }) {
   const { individuals, families } = validateImportBody(body);
+  inferCurrentMarriages(families);
   const existing = await Person.find({ owner: ownerId, tree: tree._id });
 
   const index = buildIndex(existing);
