@@ -33,7 +33,9 @@ preserving the details that make a family story.
 - Responsive family tree with an overflow-friendly canvas
 - English and Lithuanian interface with a language switcher
 - Each account only sees its own tree
-
+- Create and switch between multiple family trees per account
+- Import GEDCOM 5.5.1 files with merge matching and a warning report
+- Export the current tree as a GEDCOM 5.5.1 file
 ## Project structure
 
 ```text
@@ -41,13 +43,16 @@ backend/
   api/               Vercel serverless entry points
   database/          Cached MongoDB connection
   middleware/        JWT authentication
-  models/            User and Person schemas
-  routes/            Auth and people endpoints
+  models/            User, Person and Tree schemas
+  routes/            Auth, people and tree endpoints
+  services/          GEDCOM import service
+  utils/             Shared helpers
   app.js             Express application
   server.js          Local server
 frontend/
   public/
-  src/components/    Login, tree, and person form
+  src/components/    Login, tree, person form, trees and GEDCOM modals
+  src/gedcom.js      GEDCOM 5.5.1 parser and exporter
   src/api.js         Axios client and token handling
 ```
 
@@ -97,13 +102,27 @@ The frontend opens at `http://localhost:3000` and uses the API at
 | `GET` | `/api/auth/me` | Current user |
 | `PUT` | `/api/auth/profile` | Update the current user's name and email |
 | `PUT` | `/api/auth/settings` | Update tree display preferences |
-| `GET` | `/api/people` | List the signed-in user's people |
-| `POST` | `/api/people` | Add a person |
-| `POST` | `/api/people/demo` | Replace the tree with example data |
+| `GET` | `/api/people` | List people in a tree (`?treeId=`) |
+| `POST` | `/api/people` | Add a person to a tree |
+| `POST` | `/api/people/demo` | Replace a tree with example data |
 | `PUT` | `/api/people/:id` | Update a person |
 | `DELETE` | `/api/people/:id` | Delete a person and descendants |
+| `GET` | `/api/trees` | List the signed-in user's trees |
+| `POST` | `/api/trees` | Create a tree |
+| `PUT` | `/api/trees/:id` | Rename a tree |
+| `DELETE` | `/api/trees/:id` | Delete a tree and its people |
+| `POST` | `/api/trees/:id/import` | Merge a GEDCOM 5.5.1 file into a tree |
 
 Authenticated requests use `Authorization: Bearer <token>`.
+
+## GEDCOM notes
+
+- Only GEDCOM 5.5.1 is supported. GEDCOM 7.0 may be added later.
+- Import merges into the selected tree. Existing people are matched by name and
+  birth year; missing details are filled in.
+- This app stores one parent and one spouse per person, so GEDCOM families with
+  two parents produce a warning and children are linked to the first parent.
+- Up to 3,000 people can be imported in one file.
 
 ## Deployment
 
