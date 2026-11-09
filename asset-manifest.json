@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/family-tree/static/css/main.4336d031.css",
+    "main.js": "/family-tree/static/js/main.ea34595d.js",
+    "index.html": "/family-tree/index.html",
+    "main.4336d031.css.map": "/family-tree/static/css/main.4336d031.css.map",
+    "main.ea34595d.js.map": "/family-tree/static/js/main.ea34595d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.4336d031.css",
+    "static/js/main.ea34595d.js"
+  ]
+}
