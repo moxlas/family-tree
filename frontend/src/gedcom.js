@@ -153,15 +153,7 @@ export function parseGedcom(input) {
     head?.children.find((child) => child.tag === 'CHAR')?.value,
     20
   );
-  const sourceText = cleanText(
-    (head?.children.find((child) => child.tag === 'SOUR')?.value || '') +
-      ' ' +
-      (head?.children
-        .find((child) => child.tag === 'SOUR')
-        ?.children.find((child) => child.tag === 'NAME')?.value || ''),
-    120
-  );
-  const ownExport = /family[- ]?tree/i.test(sourceText);
+  // GEDCOM 5.5.x files are all accepted without source-specific warnings.
 
   if (version && !/^5\.5(\.\d+)?$/i.test(version)) {
     addWarning('unsupportedVersion', { version });

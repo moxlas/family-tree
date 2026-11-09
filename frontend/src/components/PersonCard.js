@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
 
 function initials(person) {
@@ -153,12 +154,13 @@ export default function PersonCard({
           >
             +
           </button>
-          {menuOpen && (
-            <div
-              className="person-add-options"
-              role="menu"
-              style={menuStyle || undefined}
-            >
+          {menuOpen && menuStyle
+            ? createPortal(
+                <div
+                  className="person-add-options"
+                  role="menu"
+                  style={menuStyle}
+                >
               {onAddChild && (
                 <button
                   onClick={(event) => {
@@ -207,8 +209,9 @@ export default function PersonCard({
                   {t('person.addSpouseTitle')}
                 </button>
               )}
-            </div>
-          )}
+            </div>,
+            document.body
+          ) : null}
         </div>
         <button
           aria-label={t('person.edit', { name: fullName })}
