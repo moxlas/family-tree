@@ -1602,8 +1602,10 @@ textarea {
   box-shadow: var(--shadow-lg);
   display: grid;
   gap: 2px;
-  max-width: 220px;
+  max-height: calc(100vh - 16px);
+  max-width: calc(100vw - 16px);
   min-width: 150px;
+  overflow: auto;
   padding: 6px;
   position: fixed;
   right: auto;

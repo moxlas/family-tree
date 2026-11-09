@@ -51,7 +51,7 @@ describe('buildScene generation placement', () => {
     expect(hidden.units).toHaveLength(0);
   });
 
-  it('renders one unit per marriage for a person with several spouses', () => {
+  it('renders one shared person card for several spouses', () => {
     const people = [
       person('1', { firstName: 'John', spouseId: '3' }),
       person('2', { firstName: 'Mary', spouseId: '1', spouseStatus: 'former' }),
@@ -65,7 +65,9 @@ describe('buildScene generation placement', () => {
     ];
     const scene = buildScene(people, families, true);
     const johnUnits = scene.units.filter((u) => u.members.some((m) => m.id === '1'));
-    expect(johnUnits).toHaveLength(2);
-    expect(scene.units).toHaveLength(4);
+    expect(johnUnits).toHaveLength(1);
+    expect(scene.units).toHaveLength(3);
+    expect(johnUnits[0].members.map((m) => m.id)).toEqual(['2', '1', '3']);
+    expect(johnUnits[0].relationships).toHaveLength(2);
   });
 });

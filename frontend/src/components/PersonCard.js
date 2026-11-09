@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
 
@@ -39,31 +39,66 @@ export default function PersonCard({
   const [menuStyle, setMenuStyle] = useState({});
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+  const optionsRef = useRef(null);
+
+  const getMenuStyle = useCallback(() => {
+    if (!buttonRef.current) return {};
+
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = optionsRef.current?.offsetWidth || 168;
+    const menuHeight = optionsRef.current?.offsetHeight || 160;
+    const belowTop = rect.bottom + 6;
+    const aboveTop = rect.top - menuHeight - 6;
+    const fitsBelow = belowTop + menuHeight <= window.innerHeight;
+    const left = Math.min(
+      Math.max(8, window.innerWidth - menuWidth - 8),
+      Math.max(8, rect.right - menuWidth)
+    );
+
+    return {
+      position: 'fixed',
+      top: fitsBelow ? belowTop : Math.max(8, aboveTop),
+      left,
+    };
+  }, []);
+
+  const placeMenu = useCallback(() => {
+    setMenuStyle(getMenuStyle());
+  }, [getMenuStyle]);
 
   useEffect(() => {
     if (!menuOpen) return undefined;
 
-    const close = () => setMenuOpen(false);
+    placeMenu();
+
+    const updatePosition = () => placeMenu();
+
     const handlePointerDown = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
+      // The menu is portaled to document.body, so React’s local wrapper
+      // ref alone does not contain clicks on the menu itself. Check both
+      // refs; otherwise clicking an option closes before its click fires.
+      const inAnchor = menuRef.current?.contains(event.target);
+      const inOptions = optionsRef.current?.contains(event.target);
+      if (!inAnchor && !inOptions) {
         setMenuOpen(false);
       }
     };
+
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') setMenuOpen(false);
     };
 
     document.addEventListener('mousedown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('scroll', close, true);
-    window.addEventListener('resize', close);
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
     return () => {
       document.removeEventListener('mousedown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', close, true);
-      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
     };
-  }, [menuOpen]);
+  }, [menuOpen, placeMenu]);
 
   const handleCardClick = () => {
     if (suppressClickRef?.current) return;
@@ -127,14 +162,7 @@ export default function PersonCard({
             ref={buttonRef}
             onClick={(event) => {
               event.stopPropagation();
-              if (!menuOpen && buttonRef.current) {
-                const rect = buttonRef.current.getBoundingClientRect();
-                setMenuStyle({
-                  position: 'fixed',
-                  top: rect.bottom + 6,
-                  left: Math.max(8, rect.right - 168),
-                });
-              }
+              if (!menuOpen) placeMenu();
               setMenuOpen((value) => !value);
             }}
             title={t('person.addRelativeTitle')}
@@ -146,6 +174,7 @@ export default function PersonCard({
             ? createPortal(
                 <div
                   className="person-add-options"
+                  ref={optionsRef}
                   role="menu"
                   style={menuStyle}
                 >

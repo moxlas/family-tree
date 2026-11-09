@@ -9,6 +9,12 @@ import React, {
 } from 'react';
 import PersonCard from './PersonCard';
 
+function pairKeyOf(firstId, secondId) {
+  const first = String(firstId);
+  const second = String(secondId);
+  return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
+}
+
 export function buildScene(people, families, showFormerSpouses = true) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
@@ -22,7 +28,44 @@ export function buildScene(people, families, showFormerSpouses = true) {
     }
   }
 
-  // 1. Create units from families
+  // 1. Create units from families.
+  // Families that share a spouse belong to one visual unit: the shared
+  // person's card must not be duplicated when they have several spouses.
+  const familyRecords = [];
+  const memberSequence = [];
+  const relationCountById = new Map();
+  const relationshipByPair = new Map();
+  const relationshipCountByPerson = new Map();
+
+  function incrementRelationshipCount(personId) {
+    const id = String(personId);
+    relationshipCountByPerson.set(id, (relationshipCountByPerson.get(id) || 0) + 1);
+  }
+
+  const findRoot = (personId) => {
+    let current = String(personId);
+    if (!relationCountById.has(current)) relationCountById.set(current, current);
+
+    let root = current;
+    while (relationCountById.get(root) !== root) {
+      root = relationCountById.get(root);
+    }
+
+    while (relationCountById.get(current) !== root) {
+      const next = relationCountById.get(current);
+      relationCountById.set(current, root);
+      current = next;
+    }
+    return root;
+  };
+
+  const unionMembers = (firstId, secondId) => {
+    const firstRoot = findRoot(firstId);
+    const secondRoot = findRoot(secondId);
+    if (firstRoot !== secondRoot) relationCountById.set(firstRoot, secondRoot);
+    incrementRelationshipCount(secondId);
+  };
+
   if (Array.isArray(families) && families.length) {
     families.forEach((family) => {
       const members = [];
@@ -35,10 +78,10 @@ export function buildScene(people, families, showFormerSpouses = true) {
       // Avoid duplicate if husband === wife
       const uniqueMembers = [];
       const seen = new Set();
-      members.forEach((m) => {
-        if (seen.has(String(m.id))) return;
-        seen.add(String(m.id));
-        uniqueMembers.push(m);
+      members.forEach((member) => {
+        if (seen.has(String(member.id))) return;
+        seen.add(String(member.id));
+        uniqueMembers.push(member);
       });
 
       if (uniqueMembers.length === 0) return;
@@ -46,25 +89,130 @@ export function buildScene(people, families, showFormerSpouses = true) {
       const status = family.status || 'current';
       const isFormer =
         status === 'former' ||
-        uniqueMembers.some((m) => m.spouseStatus === 'former');
+        uniqueMembers.some((member) => member.spouseStatus === 'former');
 
       // Ex-spouses can be hidden through the user preferences.
       if (isFormer && !showFormerSpouses) return;
 
-      const unitIndex = units.length;
-      familyUnitIndex.set(String(family.id), unitIndex);
-      units.push({
-        id: `family-${family.id}`,
+      familyRecords.push({
+        family,
         members: uniqueMembers,
-        familyId: family.id,
         status: isFormer ? 'former' : 'current',
-        marriageDate: family.marriageDate || '',
-        divorceDate: family.divorceDate || '',
         children: family.children || [],
       });
-      uniqueMembers.forEach((m) => addPersonToUnit(unitIndex, String(m.id)));
+
+      uniqueMembers.forEach((member) => {
+        const id = String(member.id);
+        findRoot(id);
+        if (!memberSequence.includes(id)) memberSequence.push(id);
+      });
+
+      if (uniqueMembers.length > 1) {
+        const firstId = String(uniqueMembers[0].id);
+        const secondId = String(uniqueMembers[1].id);
+        unionMembers(firstId, secondId);
+        incrementRelationshipCount(firstId);
+        relationshipByPair.set(pairKeyOf(firstId, secondId), {
+          familyId: family.id,
+          firstId,
+          secondId,
+          status: isFormer ? 'former' : 'current',
+          marriageDate: family.marriageDate || '',
+          divorceDate: family.divorceDate || '',
+        });
+      }
     });
   }
+
+  const familyGroups = new Map();
+  memberSequence.forEach((personId) => {
+    const root = findRoot(personId);
+    if (!familyGroups.has(root)) familyGroups.set(root, []);
+    familyGroups.get(root).push(personId);
+  });
+
+  const familyGroupIndex = new Map();
+
+  familyGroups.forEach((personIds) => {
+    const relatedFamilyRecords = familyRecords.filter((record) =>
+      record.members.some((member) => personIds.includes(String(member.id)))
+    );
+    const relationships = relatedFamilyRecords.map((record) => {
+      const firstId = String(record.members[0].id);
+      const secondId = String(record.members[1].id);
+      return {
+        familyId: record.family.id,
+        firstId,
+        secondId,
+        status: record.status,
+        marriageDate: record.family.marriageDate || '',
+        divorceDate: record.family.divorceDate || '',
+      };
+    });
+
+    // Put the most-connected person between all spouses so no card is
+    // repeated: one spouse goes to the left and the rest to the right.
+    const anchorPersonId = personIds.reduce((bestId, personId) => {
+      const bestCount = relationshipCountByPerson.get(bestId) || 0;
+      const currentCount = relationshipCountByPerson.get(personId) || 0;
+      return currentCount > bestCount ? personId : bestId;
+    }, personIds[0]);
+    const anchorSpouseIds = relationships.reduce((spouseIds, relationship) => {
+      const otherId =
+        relationship.firstId === anchorPersonId
+          ? relationship.secondId
+          : relationship.secondId === anchorPersonId
+            ? relationship.firstId
+            : null;
+      if (otherId && !spouseIds.includes(otherId)) spouseIds.push(otherId);
+      return spouseIds;
+    }, []);
+    const otherPersonIds = personIds.filter(
+      (personId) => personId !== anchorPersonId && !anchorSpouseIds.includes(personId)
+    );
+    const orderedPersonIds =
+      personIds.length > 2
+        ? [
+            ...anchorSpouseIds.slice(0, 1),
+            anchorPersonId,
+            ...anchorSpouseIds.slice(1),
+            ...otherPersonIds,
+          ]
+        : personIds;
+    const members = orderedPersonIds
+      .map((personId) => byId.get(personId))
+      .filter(Boolean);
+
+    const children = [...new Set(relatedFamilyRecords.flatMap((record) => record.children))];
+    const unitIndex = units.length;
+    const unitId = `family-group-${orderedPersonIds.join('-')}`;
+
+    relatedFamilyRecords.forEach((record) => {
+      familyUnitIndex.set(String(record.family.id), unitIndex);
+      familyGroupIndex.set(String(record.family.id), personIds[0]);
+    });
+
+    units.push({
+      id: unitId,
+      members,
+      familyIds: relatedFamilyRecords.map((record) => record.family.id),
+      familyId: relatedFamilyRecords[0]?.family.id || null,
+      relationships,
+      relationshipByPair: new Map(
+        relationships.map((relationship) => [
+          pairKeyOf(relationship.firstId, relationship.secondId),
+          relationship,
+        ])
+      ),
+      status: relatedFamilyRecords.some((record) => record.status === 'current')
+        ? 'current'
+        : 'former',
+      marriageDate: relatedFamilyRecords[0]?.family.marriageDate || '',
+      divorceDate: relatedFamilyRecords[0]?.family.divorceDate || '',
+      children,
+    });
+    personIds.forEach((personId) => addPersonToUnit(unitIndex, personId));
+  });
 
   // 2. Legacy spouseId-based units for people not in any family
   const peopleInFamilies = new Set();
@@ -87,20 +235,37 @@ export function buildScene(people, families, showFormerSpouses = true) {
         // mutual — create unit if spouse not already in a unit with this person
         const alreadyPaired = units.some(
           (u) =>
-            u.members.length === 2 &&
             u.members.some((m) => String(m.id) === pid) &&
             u.members.some((m) => String(m.id) === String(spouse.id))
         );
+        const spouseAlreadyPlaced = (personUnits.get(String(spouse.id)) || []).length > 0;
         const status =
           person.spouseStatus === 'former' || spouse.spouseStatus === 'former'
             ? 'former'
             : 'current';
-        if (!alreadyPaired && (status !== 'former' || showFormerSpouses)) {
+        if (
+          !alreadyPaired &&
+          !spouseAlreadyPlaced &&
+          (status !== 'former' || showFormerSpouses)
+        ) {
+          const relationship = {
+            familyId: null,
+            firstId: pid,
+            secondId: String(spouse.id),
+            status,
+            marriageDate: '',
+            divorceDate: '',
+          };
           const unitIndex = units.length;
           units.push({
             id: `legacy-${pid}`,
             members: [person, spouse],
             familyId: null,
+            familyIds: [],
+            relationships: [relationship],
+            relationshipByPair: new Map([
+              [pairKeyOf(pid, String(spouse.id)), relationship],
+            ]),
             status,
             marriageDate: '',
             divorceDate: '',
@@ -108,8 +273,12 @@ export function buildScene(people, families, showFormerSpouses = true) {
           });
           addPersonToUnit(unitIndex, pid);
           addPersonToUnit(unitIndex, String(spouse.id));
+          return;
         }
-        return;
+
+        if (alreadyPaired) return;
+
+        if (!spouseAlreadyPlaced) return;
       }
     }
 
@@ -266,6 +435,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
 export default function SpouseTreeComponent({
   families = [],
   onAddChild,
+  onAddParent,
+  onAddSibling,
   onAddSpouse,
   onDelete,
   onEdit,
@@ -344,13 +515,16 @@ export default function SpouseTreeComponent({
         const startY = (parentRect.bottom - containerRect.top) / scale;
 
         // Couple units connect through the heart between the spouses;
-        // single cards connect straight from the card itself. The connector
-        // starts at the child card and extends upwards before running to the
-        // parent side - a single clean line, no extra segments.
+        // single cards connect straight from the card itself. The child
+        // line rises only halfway into the gap, where it meets a midpoint
+        // branch from the parent side.
         let junctionX = startX;
         let junctionY = startY;
         if (parentUnit.members.length > 1) {
-          const heartNode = heartRefs.current.get(`heart-${parentUnit.id}`);
+          const heartEntry = [...heartRefs.current.entries()].find(([key]) =>
+            key.startsWith(`heart-${parentUnit.id}-`)
+          );
+          const heartNode = heartEntry ? heartEntry[1] : null;
           if (heartNode) {
             const heartRect = heartNode.getBoundingClientRect();
             junctionX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
@@ -358,8 +532,10 @@ export default function SpouseTreeComponent({
           }
         }
 
-        let path = `M ${endX} ${endY} V ${junctionY}`;
-        if (endX !== junctionX) path += ` H ${junctionX}`;
+        const midY = junctionY + (endY - junctionY) / 2;
+        const path = Math.abs(endX - junctionX) < 0.5
+          ? `M ${junctionX} ${junctionY} V ${endY}`
+          : `M ${junctionX} ${junctionY} V ${midY} M ${endX} ${endY} V ${midY} M ${junctionX} ${midY} H ${endX}`;
 
         nextEdges.push({
           id: `edge-${parentIndex}-${childUnitIndex}`,
@@ -411,32 +587,48 @@ export default function SpouseTreeComponent({
                 key={unit.id}
                 role="listitem"
               >
-                {unit.members.map((member, memberIndex) => (
-                  <Fragment key={member.id}>
-                    {memberIndex > 0 && (
-                      <span className="spouse-link" aria-hidden="true">
-                        <span
-                          className="spouse-link-heart"
-                          ref={(node) => setHeartRef(`heart-${unit.id}`, node)}
-                        >
-                          {unit.status === 'former' ? '💔' : '♥'}
+                {unit.members.map((member, memberIndex) => {
+                  const previousMember = memberIndex > 0 ? unit.members[memberIndex - 1] : null;
+                  const relationship = previousMember
+                    ? unit.relationshipByPair?.get(
+                        pairKeyOf(previousMember.id, member.id)
+                      )
+                    : null;
+                  const heartKey = previousMember
+                    ? `heart-${unit.id}-${previousMember.id}-${String(member.id)}`
+                    : null;
+
+                  return (
+                    <Fragment key={String(member.id)}>
+                      {previousMember && (
+                        <span className="spouse-link" aria-hidden="true">
+                          {relationship && (
+                            <span
+                              className="spouse-link-heart"
+                              ref={(node) => setHeartRef(heartKey, node)}
+                            >
+                              {relationship.status === 'former' ? '💔' : '♥'}
+                            </span>
+                          )}
                         </span>
-                      </span>
-                    )}
-                    <PersonCard
-                      cardRef={getCardRef(member.id)}
-                      onAddChild={onAddChild}
-                      onAddSpouse={onAddSpouse}
-                      onDelete={onDelete}
-                      onEdit={onEdit}
-                      onView={onView}
-                      person={member}
-                      showSpouseName={false}
-                      spouseStatus={unit.status}
-                      suppressClickRef={suppressClickRef}
-                    />
-                  </Fragment>
-                ))}
+                      )}
+                      <PersonCard
+                        cardRef={getCardRef(member.id)}
+                        onAddChild={onAddChild}
+                        onAddParent={onAddParent}
+                        onAddSibling={onAddSibling}
+                        onAddSpouse={onAddSpouse}
+                        onDelete={onDelete}
+                        onEdit={onEdit}
+                        onView={onView}
+                        person={member}
+                        showSpouseName={false}
+                        spouseStatus={relationship?.status || unit.status}
+                        suppressClickRef={suppressClickRef}
+                      />
+                    </Fragment>
+                  );
+                })}
               </div>
             );
           })}

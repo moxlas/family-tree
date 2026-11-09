@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Person = require('../models/Person');
+const Family = require('../models/Family');
 const authenticate = require('../middleware/auth');
 const { resolveTree } = require('../utils/trees');
 const { httpError } = require('../utils/http');
@@ -103,6 +104,31 @@ async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {
   return spouse;
 }
 
+async function retireCurrentMarriages(person, keepSpouseId) {
+  const currentMarriages = await Family.find({
+    owner: person.owner,
+    tree: person.tree,
+    status: 'current',
+    $or: [{ husband: person._id }, { wife: person._id }],
+  });
+
+  for (const marriage of currentMarriages) {
+    const firstId = marriage.husband ? String(marriage.husband) : '';
+    const secondId = marriage.wife ? String(marriage.wife) : '';
+    const otherId =
+      firstId === String(person._id)
+        ? secondId
+        : secondId === String(person._id)
+          ? firstId
+          : firstId;
+
+    if (otherId && otherId === String(keepSpouseId)) continue;
+
+    marriage.status = 'former';
+    await marriage.save();
+  }
+}
+
 async function detachSpouse(person) {
   if (!person.spouseId) return;
 
@@ -125,6 +151,20 @@ async function detachSpouse(person) {
 async function attachSpouse(person, spouse) {
   if (String(spouse.id) === String(person.id)) {
     throw httpError(400, 'A person cannot be their own spouse');
+  }
+
+  const previousSpouseId = person.spouseId ? String(person.spouseId) : null;
+  const spousePreviousSpouseId = spouse.spouseId ? String(spouse.spouseId) : null;
+  const marriageChanged =
+    previousSpouseId !== String(spouse._id) ||
+    spousePreviousSpouseId !== String(person._id);
+
+  if (marriageChanged) {
+    // A person can have several family records, but only one current
+    // marriage. Retirement is therefore limited to "current" families and
+    // preserves every marriage record for former-spouse display.
+    await retireCurrentMarriages(person, spouse._id);
+    await retireCurrentMarriages(spouse, person._id);
   }
 
   if (person.spouseId && String(person.spouseId) !== String(spouse._id)) {
@@ -155,8 +195,52 @@ async function attachSpouse(person, spouse) {
 
   person.spouseId = spouse._id;
   person.spouseName = fullName(spouse);
+  person.spouseStatus = 'current';
   spouse.spouseId = person._id;
   spouse.spouseName = fullName(person);
+  spouse.spouseStatus = 'current';
+
+  if (marriageChanged) {
+    const familyCandidates = await Family.find({
+      owner: person.owner,
+      tree: person.tree,
+      $or: [
+        { husband: person._id },
+        { wife: person._id },
+        { husband: spouse._id },
+        { wife: spouse._id },
+      ],
+    });
+    const existingCouple = familyCandidates.find((candidate) => {
+      const pair = [candidate.husband, candidate.wife]
+        .filter(Boolean)
+        .map(String);
+      return (
+        pair.includes(String(person._id)) &&
+        pair.includes(String(spouse._id))
+      );
+    });
+
+    if (existingCouple) {
+      if (existingCouple.status !== 'current') {
+        existingCouple.status = 'current';
+        await existingCouple.save();
+      }
+    } else {
+      const husbandId = person.gender === 'male' ? person._id : spouse._id;
+      const wifeId = person.gender === 'female' ? person._id : spouse._id;
+      await Family.create({
+        owner: person.owner,
+        tree: person.tree,
+        husband: husbandId,
+        wife: wifeId,
+        status: 'current',
+        marriageDate: '',
+        divorceDate: '',
+        notes: '',
+      });
+    }
+  }
 
   await Promise.all([person.save(), spouse.save()]);
 }
