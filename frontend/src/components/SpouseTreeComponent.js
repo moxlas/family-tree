@@ -486,7 +486,7 @@ export default function SpouseTreeComponent({
 
     const scale = zoom || 1;
     const containerRect = container.getBoundingClientRect();
-    const nextEdges = [];
+    const descriptorById = new Map();
 
     scene.units.forEach((unit, childUnitIndex) => {
       const childUnit = scene.units[childUnitIndex];
@@ -515,9 +515,7 @@ export default function SpouseTreeComponent({
         const startY = (parentRect.bottom - containerRect.top) / scale;
 
         // Couple units connect through the heart between the spouses;
-        // single cards connect straight from the card itself. The child
-        // line rises only halfway into the gap, where it meets a midpoint
-        // branch from the parent side.
+        // single cards connect straight from the card itself.
         let junctionX = startX;
         let junctionY = startY;
         if (parentUnit.members.length > 1) {
@@ -532,17 +530,61 @@ export default function SpouseTreeComponent({
           }
         }
 
-        const midY = junctionY + (endY - junctionY) / 2;
-        const path = Math.abs(endX - junctionX) < 0.5
-          ? `M ${junctionX} ${junctionY} V ${endY}`
-          : `M ${junctionX} ${junctionY} V ${midY} M ${endX} ${endY} V ${midY} M ${junctionX} ${midY} H ${endX}`;
-
-        nextEdges.push({
+        const connector = {
           id: `edge-${parentIndex}-${childUnitIndex}`,
-          path,
-        });
+          parentIndex,
+          childUnitIndex,
+          parentDepth: scene.depths[parentIndex] || 0,
+          childDepth: scene.depths[childUnitIndex] || 0,
+          junctionX,
+          junctionY,
+          endX,
+          endY,
+        };
+        descriptorById.set(connector.id, connector);
       });
     });
+
+    // A family branch gets its own track within the gap. Nesting sibling
+    // tracks lower toward the child keeps each child stub at most one
+    // quarter of the full parent-child gap while preventing horizontal
+    // paths for different branches from sharing a line.
+    const trackGroups = new Map();
+    descriptorById.forEach((descriptor) => {
+      const key = `${descriptor.parentDepth}->${descriptor.childDepth}`;
+      if (!trackGroups.has(key)) trackGroups.set(key, []);
+      trackGroups.get(key).push(descriptor);
+    });
+
+    trackGroups.forEach((track) => {
+      const ordered = [...track].sort(
+        (first, second) => first.endX - second.endX || first.parentIndex - second.parentIndex
+      );
+      const averageGap = ordered.reduce(
+        (sum, descriptor) => sum + (descriptor.endY - descriptor.junctionY),
+        0
+      ) / ordered.length;
+      const longestChildStub = Math.max(0, averageGap) / 4;
+      const shortestChildStub = Math.max(2, longestChildStub / 3.5);
+      const stubStep =
+        ordered.length > 1
+          ? Math.min(4, (longestChildStub - shortestChildStub) / (ordered.length - 1))
+          : 0;
+
+      ordered.forEach((descriptor, index) => {
+        const childStubLength = longestChildStub - index * stubStep;
+        const branchY = descriptor.endY - childStubLength;
+        descriptor.path =
+          Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
+            ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${branchY} M ${descriptor.endX} ${descriptor.endY} V ${branchY}`
+            : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${branchY} M ${descriptor.endX} ${descriptor.endY} V ${branchY} M ${descriptor.junctionX} ${branchY} H ${descriptor.endX}`;
+      });
+    });
+
+    const nextEdges = [...descriptorById.values()].map((descriptor) => ({
+      id: descriptor.id,
+      path: descriptor.path,
+    }));
 
     setEdges(nextEdges);
     setSize({ width: container.scrollWidth, height: container.scrollHeight });
