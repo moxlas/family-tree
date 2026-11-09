@@ -296,6 +296,11 @@ const translations = {
     'settings.savingPreferences': 'Saving preferences…',
     'settings.bloodlineEnabledNotice': 'Bloodline-only tree enabled.',
     'settings.spouseModeEnabledNotice': 'Separate spouse cards enabled.',
+    'settings.showFormerSpouses': 'Show former spouses',
+    'settings.showFormerSpousesHint':
+      'When off, ex-spouses are hidden and children stay connected to the current parent.',
+    'settings.showFormerSpousesNotice': 'Former spouses are shown.',
+    'settings.hideFormerSpousesNotice': 'Former spouses are hidden.',
     'settings.accountTitle': 'Account',
     'settings.memberSince': 'Member since',
     'settings.privacy': 'Privacy',
@@ -630,6 +635,11 @@ const translations = {
     'settings.bloodlineEnabledNotice': 'Įjungtas tik kraujo linijos medis.',
     'settings.spouseModeEnabledNotice':
       'Įjungtos atskiros sutuoktinių kortelės.',
+    'settings.showFormerSpouses': 'Rodyti ištisusius santykius',
+    'settings.showFormerSpousesHint':
+      'Kai išjungta, ištisusi santykiuose yra pasmerkti ir vaikai lieka susieti su dabartiniu tėvu.',
+    'settings.showFormerSpousesNotice': 'Ištisusi santykiuose rodomi.',
+    'settings.hideFormerSpousesNotice': 'Ištisusi santykiuose nerydomi.',
     'settings.accountTitle': 'Paskyra',
     'settings.memberSince': 'Narys nuo',
     'settings.privacy': 'Privatumas',

@@ -26,6 +26,7 @@ function publicUser(user) {
     createdAt: user.createdAt,
     settings: {
       bloodlineOnly: Boolean(user.settings?.bloodlineOnly),
+      showFormerSpouses: user.settings?.showFormerSpouses !== false,
     },
   };
 }
@@ -113,10 +114,14 @@ router.put('/profile', authenticate, async (req, res) => {
 });
 
 router.put('/settings', authenticate, async (req, res) => {
-  req.user.settings = {
-    ...req.user.settings,
+  const settings = {
+    ...(req.user.settings || {}),
     bloodlineOnly: Boolean(req.body.bloodlineOnly),
   };
+  if (req.body.showFormerSpouses !== undefined) {
+    settings.showFormerSpouses = Boolean(req.body.showFormerSpouses);
+  }
+  req.user.settings = settings;
   await req.user.save();
 
   return res.json({ user: publicUser(req.user) });

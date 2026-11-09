@@ -26,6 +26,10 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
+      showFormerSpouses: {
+        type: Boolean,
+        default: true,
+      },
     },
   },
   { timestamps: true }

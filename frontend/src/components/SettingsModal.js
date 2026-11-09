@@ -23,6 +23,9 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
   const [bloodlineOnly, setBloodlineOnly] = useState(
     Boolean(user.settings?.bloodlineOnly)
   );
+  const [showFormerSpouses, setShowFormerSpouses] = useState(
+    user.settings?.showFormerSpouses !== false
+  );
   const [profileError, setProfileError] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -97,6 +100,36 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
       );
     } catch (requestError) {
       setBloodlineOnly(previousValue);
+      setSettingsError(
+        translateApiError(requestError, 'errors.saveSettings')
+      );
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const toggleFormerSpouses = async (event) => {
+    const nextValue = event.target.checked;
+    const previousValue = showFormerSpouses;
+
+    setShowFormerSpouses(nextValue);
+    setSettingsError('');
+    setNotice('');
+    setSavingSettings(true);
+
+    try {
+      const response = await api.put('/auth/settings', {
+        bloodlineOnly,
+        showFormerSpouses: nextValue,
+      });
+      onUserUpdate(response.data.user);
+      setNotice(
+        nextValue
+          ? t('settings.showFormerSpousesNotice')
+          : t('settings.hideFormerSpousesNotice')
+      );
+    } catch (requestError) {
+      setShowFormerSpouses(previousValue);
       setSettingsError(
         translateApiError(requestError, 'errors.saveSettings')
       );
@@ -225,6 +258,30 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
                 checked={bloodlineOnly}
                 disabled={savingSettings}
                 onChange={toggleBloodlineOnly}
+                type="checkbox"
+              />
+              <span className="switch-track" aria-hidden="true">
+                <span className="switch-thumb" />
+              </span>
+            </label>
+          </div>
+
+          <div className="toggle-row">
+            <div className="toggle-copy">
+              <span className="toggle-title" id="former-spouses-toggle-label">
+                {t('settings.showFormerSpouses')}
+              </span>
+              <span className="toggle-hint" id="former-spouses-toggle-hint">
+                {t('settings.showFormerSpousesHint')}
+              </span>
+            </div>
+            <label className="switch">
+              <input
+                aria-describedby="former-spouses-toggle-hint"
+                aria-labelledby="former-spouses-toggle-label"
+                checked={showFormerSpouses}
+                disabled={savingSettings}
+                onChange={toggleFormerSpouses}
                 type="checkbox"
               />
               <span className="switch-track" aria-hidden="true">

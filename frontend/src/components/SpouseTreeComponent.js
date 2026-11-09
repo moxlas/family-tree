@@ -10,7 +10,7 @@ import React, {
 import { useI18n } from '../i18n';
 import PersonCard from './PersonCard';
 
-function buildScene(people, families) {
+export function buildScene(people, families, showFormerSpouses = true) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
   const personUnits = new Map(); // personId -> [unitIndex, ...]
@@ -44,13 +44,21 @@ function buildScene(people, families) {
 
       if (uniqueMembers.length === 0) return;
 
+      const status = family.status || 'current';
+      const isFormer =
+        status === 'former' ||
+        uniqueMembers.some((m) => m.spouseStatus === 'former');
+
+      // Ex-spouses can be hidden through the user preferences.
+      if (isFormer && !showFormerSpouses) return;
+
       const unitIndex = units.length;
       familyUnitIndex.set(String(family.id), unitIndex);
       units.push({
         id: `family-${family.id}`,
         members: uniqueMembers,
         familyId: family.id,
-        status: family.status || 'current',
+        status: isFormer ? 'former' : 'current',
         marriageDate: family.marriageDate || '',
         divorceDate: family.divorceDate || '',
         children: family.children || [],
@@ -84,13 +92,17 @@ function buildScene(people, families) {
             u.members.some((m) => String(m.id) === pid) &&
             u.members.some((m) => String(m.id) === String(spouse.id))
         );
-        if (!alreadyPaired) {
+        const status =
+          person.spouseStatus === 'former' || spouse.spouseStatus === 'former'
+            ? 'former'
+            : 'current';
+        if (!alreadyPaired && (status !== 'former' || showFormerSpouses)) {
           const unitIndex = units.length;
           units.push({
             id: `legacy-${pid}`,
             members: [person, spouse],
             familyId: null,
-            status: person.spouseStatus || 'current',
+            status,
             marriageDate: '',
             divorceDate: '',
             children: [],
@@ -167,6 +179,30 @@ function buildScene(people, families) {
     });
   });
 
+  // Spouse / ex-spouse links: a card without parent cards that belongs to a
+  // marriage (current or former) is placed in the generation of its spouse or
+  // ex-spouse instead of always falling back to the root generation.
+  const unitPartners = units.map(() => new Set());
+
+  people.forEach((person) => {
+    const pid = String(person.id);
+    const spouseId = person.spouseId ? String(person.spouseId) : null;
+    if (!spouseId) return;
+
+    const spouse = byId.get(spouseId);
+    if (!spouse) return;
+
+    const ownUnits = personUnits.get(pid) || [];
+    const partnerUnits = personUnits.get(String(spouse.id)) || [];
+    partnerUnits.forEach((partnerUnitIndex) => {
+      ownUnits.forEach((ownUnitIndex) => {
+        // Couple members sharing one unit are already in the same generation.
+        if (ownUnitIndex === partnerUnitIndex) return;
+        unitPartners[ownUnitIndex].add(partnerUnitIndex);
+      });
+    });
+  });
+
   // 5. Compute depths
   const unitParents = units.map((u) => [...(u.parentUnits || [])]);
   const depths = new Array(units.length).fill(0);
@@ -180,6 +216,9 @@ function buildScene(people, families) {
     let depth = 0;
     for (const parentIndex of unitParents[unitIndex]) {
       depth = Math.max(depth, resolveDepth(parentIndex) + 1);
+    }
+    for (const partnerIndex of unitPartners[unitIndex]) {
+      depth = Math.max(depth, resolveDepth(partnerIndex));
     }
     visiting.delete(unitIndex);
     resolved[unitIndex] = true;
@@ -233,17 +272,27 @@ export default function SpouseTreeComponent({
   onEdit,
   onView,
   people,
+  showFormerSpouses = true,
   suppressClickRef,
   zoom = 1,
 }) {
   const { t } = useI18n();
-  const scene = useMemo(() => buildScene(people, families), [people, families]);
+  const scene = useMemo(
+    () => buildScene(people, families, showFormerSpouses),
+    [people, families, showFormerSpouses]
+  );
 
   const containerRef = useRef(null);
   const cardRefs = useRef(new Map());
   const cardRefCallbacks = useRef(new Map());
+  const heartRefs = useRef(new Map());
   const [edges, setEdges] = useState([]);
   const [size, setSize] = useState({ width: 0, height: 0 });
+
+  const setHeartRef = useCallback((key, node) => {
+    if (node) heartRefs.current.set(key, node);
+    else heartRefs.current.delete(key);
+  }, []);
 
   const registerCard = useCallback((personId, node) => {
     const key = String(personId);
@@ -270,35 +319,12 @@ export default function SpouseTreeComponent({
     const containerRect = container.getBoundingClientRect();
     const nextEdges = [];
 
-    scene.units.forEach((unit, unitIndex) => {
-      // Draw edges from this unit to its child units
-      // Find child units whose parentUnits include this unit
-    });
-
-    // Draw parent-child edges
-    people.forEach((person) => {
-      // For each person, if they have a parentId, draw edge from parent unit to person's unit
-    });
-
-    // Simpler: iterate units, for each unit with parentUnits, draw edges from each parent unit's cards to this unit's cards
     scene.units.forEach((unit, childUnitIndex) => {
-      const parentUnitIndices = scene.units[childUnitIndex].parentUnits
-        ? [...scene.units[childUnitIndex].parentUnits]
-        : [];
-      // parentUnits stored on unit during build; but we stored on units[cu].parentUnits. Let's recompute.
-    });
+      const childUnit = scene.units[childUnitIndex];
+      const parentUnitIndices = childUnit.parentUnits || [];
 
-    // Actually, let's recompute parent relationships from the scene
-    // We stored parentUnits on units during buildScene. Access via scene.units[i].parentUnits
-    scene.units.forEach((childUnit, childIndex) => {
-      const parents = childUnit.parentUnits ? [...childUnit.parentUnits] : [];
-      parents.forEach((parentIndex) => {
+      parentUnitIndices.forEach((parentIndex) => {
         const parentUnit = scene.units[parentIndex];
-        const childUnit = scene.units[childIndex];
-        if (!parentUnit || !childUnit) return;
-
-        // Draw a line from each parent card to each child card? 
-        // For combined: horizontal bar between parents, vertical to child
         const parentNodes = parentUnit.members
           .map((m) => cardRefs.current.get(String(m.id)))
           .filter(Boolean);
@@ -313,33 +339,33 @@ export default function SpouseTreeComponent({
           (childRect.left - containerRect.left + childRect.width / 2) / scale;
         const endY = (childRect.top - containerRect.top) / scale;
 
-        if (parentNodes.length >= 2) {
-          const rects = parentNodes.map((n) => n.getBoundingClientRect());
-          const xs = rects.map(
-            (r) => (r.left - containerRect.left + r.width / 2) / scale
-          );
-          const ys = rects.map(
-            (r) => (r.bottom - containerRect.top) / scale
-          );
-          const x1 = xs[0];
-          const x2 = xs[xs.length - 1];
-          const yBar = Math.max(...ys);
-          const midX = (x1 + x2) / 2;
-          nextEdges.push({
-            id: `unit-${parentIndex}-${childIndex}`,
-            path: `M ${x1} ${yBar} H ${x2} M ${midX} ${yBar} V ${endY} H ${endX}`,
-          });
-        } else {
-          const parentRect = parentNodes[0].getBoundingClientRect();
-          const startX =
-            (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
-          const startY = (parentRect.bottom - containerRect.top) / scale;
-          const middleY = startY + Math.max(16, (endY - startY) / 2);
-          nextEdges.push({
-            id: `unit-${parentIndex}-${childIndex}`,
-            path: `M ${startX} ${startY} V ${middleY} H ${endX} V ${endY}`,
-          });
+        const parentNode = parentNodes[0];
+        const parentRect = parentNode.getBoundingClientRect();
+        const startX =
+          (parentRect.left - containerRect.left + parentRect.width / 2) / scale;
+        const startY = (parentRect.bottom - containerRect.top) / scale;
+
+        // Couple units connect through the heart between the spouses;
+        // single cards connect straight from the card itself. The path is a
+        // single clean vertical drop into the child card - no extra lines.
+        let dropX = startX;
+        let dropY = startY;
+        if (parentUnit.members.length > 1) {
+          const heartNode = heartRefs.current.get(`heart-${parentUnit.id}`);
+          if (heartNode) {
+            const heartRect = heartNode.getBoundingClientRect();
+            dropX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
+            dropY = heartRect.top - containerRect.top;
+          }
         }
+
+        let path = `M ${dropX} ${dropY} V ${endY}`;
+        if (endX !== dropX) path += ` H ${endX}`;
+
+        nextEdges.push({
+          id: `edge-${parentIndex}-${childUnitIndex}`,
+          path,
+        });
       });
     });
 
@@ -390,7 +416,10 @@ export default function SpouseTreeComponent({
                   <Fragment key={member.id}>
                     {memberIndex > 0 && (
                       <span className="spouse-link" aria-hidden="true">
-                        <span className="spouse-link-heart">
+                        <span
+                          className="spouse-link-heart"
+                          ref={(node) => setHeartRef(`heart-${unit.id}`, node)}
+                        >
                           {unit.status === 'former' ? '💔' : '♥'}
                         </span>
                       </span>

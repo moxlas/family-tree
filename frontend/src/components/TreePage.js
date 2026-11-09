@@ -57,6 +57,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const translateErrorRef = useRef(translateApiError);
   const bloodlineOnly = Boolean(user.settings?.bloodlineOnly);
+  const showFormerSpouses = user.settings?.showFormerSpouses !== false;
   const scrollRef = useRef(null);
   const dragState = useRef({
     active: false,
@@ -810,6 +811,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               ) : (
                 <SpouseTreeComponent
                   families={families}
+                  showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}
