@@ -129,6 +129,56 @@ async function retireCurrentMarriages(person, keepSpouseId) {
   }
 }
 
+async function syncPreviousSpouses(person, previousSpouseIds, ownerId, treeId) {
+  if (!Array.isArray(previousSpouseIds)) return 0;
+
+  let created = 0;
+  const seen = new Set();
+
+  for (const rawId of previousSpouseIds) {
+    if (rawId == null || rawId === '') continue;
+    if (!mongoose.isValidObjectId(rawId)) continue;
+
+    const partnerId = String(rawId);
+    if (partnerId === String(person._id)) continue;
+    if (person.spouseId && String(person.spouseId) === partnerId) continue;
+    if (seen.has(partnerId)) continue;
+    seen.add(partnerId);
+
+    const partner = await Person.findOne({
+      _id: partnerId,
+      owner: ownerId,
+      tree: treeId,
+    });
+    if (!partner) continue;
+
+    const existing = await Family.findOne({
+      owner: ownerId,
+      tree: treeId,
+      $or: [
+        { husband: person._id, wife: partner._id },
+        { husband: partner._id, wife: person._id },
+      ],
+    });
+    if (existing) continue;
+
+    const personIsFemale = person.gender === 'female';
+    await Family.create({
+      owner: ownerId,
+      tree: treeId,
+      husband: personIsFemale ? partner._id : person._id,
+      wife: personIsFemale ? person._id : partner._id,
+      status: 'former',
+      marriageDate: '',
+      divorceDate: '',
+      notes: '',
+    });
+    created += 1;
+  }
+
+  return created;
+}
+
 async function detachSpouse(person) {
   if (!person.spouseId) return;
 
@@ -329,6 +379,13 @@ router.post('/', async (req, res) => {
     await attachSpouse(person, spouse);
   }
 
+  await syncPreviousSpouses(
+    person,
+    req.body.previousSpouseIds,
+    req.user.id,
+    tree._id
+  );
+
   return res.status(201).json(person);
 });
 
@@ -523,6 +580,13 @@ router.put('/:id', async (req, res) => {
     await person.save();
     await syncSpouseLabels(person);
   }
+
+  await syncPreviousSpouses(
+    person,
+    req.body.previousSpouseIds,
+    req.user.id,
+    tree._id
+  );
 
   return res.json(person);
 });

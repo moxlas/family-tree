@@ -64,6 +64,13 @@ function readEventDate(node, tag) {
   return cleanText(date?.value, 40);
 }
 
+function readFamilyEvent(node, tags) {
+  const event = node.children.find((child) => tags.includes(child.tag));
+  if (!event) return { present: false, date: '' };
+  const date = event.children.find((child) => child.tag === 'DATE');
+  return { present: true, date: cleanText(date?.value, 40) };
+}
+
 function readNotes(node, sharedNotes) {
   const notes = node.children
     .filter((child) => child.tag === 'NOTE')
@@ -249,11 +256,17 @@ export function parseGedcom(input, language = 'en') {
 
     if (!knownHusband && !knownWife && !knownChildren.length) continue;
 
+    const marriage = readFamilyEvent(record, ['MARR', 'MARRIAGE']);
+    const divorce = readFamilyEvent(record, ['DIV', 'DIVORCE']);
+
     families.push({
       key,
       husband: knownHusband,
       wife: knownWife,
       children: knownChildren,
+      status: divorce.present ? 'former' : 'current',
+      marriageDate: marriage.date,
+      divorceDate: divorce.date,
     });
   }
 
@@ -378,7 +391,14 @@ export function buildGedcom(people, treeName, families = []) {
       if (husband) covered.add(String(husband.id));
       if (wife) covered.add(String(wife.id));
 
-      exportFamilies.push({ husband, wife, children });
+      exportFamilies.push({
+        husband,
+        wife,
+        children,
+        status: family.status === 'former' ? 'former' : 'current',
+        marriageDate: family.marriageDate || '',
+        divorceDate: family.divorceDate || '',
+      });
     });
 
     // Preserve people who are not part of any stored family.
@@ -403,6 +423,9 @@ export function buildGedcom(people, treeName, families = []) {
         husband: parentIsFemale ? null : parent,
         wife: parentIsFemale ? parent : null,
         children,
+        status: 'current',
+        marriageDate: '',
+        divorceDate: '',
       });
     }
   } else {
@@ -410,6 +433,9 @@ export function buildGedcom(people, treeName, families = []) {
       husband,
       wife,
       children: [],
+      status: 'current',
+      marriageDate: '',
+      divorceDate: '',
     }));
 
     const coupleByMember = new Map();
@@ -455,6 +481,9 @@ export function buildGedcom(people, treeName, families = []) {
         husband: parentIsFemale ? null : parent,
         wife: parentIsFemale ? parent : null,
         children,
+        status: 'current',
+        marriageDate: '',
+        divorceDate: '',
       });
     }
   }
@@ -524,6 +553,23 @@ export function buildGedcom(people, treeName, families = []) {
 
     for (const child of family.children) {
       lines.push(`1 CHIL ${xrefById.get(String(child.id))}`);
+    }
+
+    if (family.marriageDate) {
+      lines.push('1 MARR');
+      lines.push(`2 DATE ${cleanLine(family.marriageDate, 40)}`);
+    }
+
+    const isFormer =
+      family.status === 'former' || Boolean(family.divorceDate);
+
+    if (isFormer) {
+      if (family.divorceDate) {
+        lines.push('1 DIV');
+        lines.push(`2 DATE ${cleanLine(family.divorceDate, 40)}`);
+      } else {
+        lines.push('1 DIV Y');
+      }
     }
   });
 

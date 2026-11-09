@@ -147,13 +147,22 @@ const translations = {
     'modal.noLinkedSpouse': 'No linked spouse',
     'modal.linkedSpouseHint':
       'Link an existing person to show them as a separate connected card.',
+    'modal.currentSpouse': 'Current spouse or partner',
+    'modal.noCurrentSpouse': 'No current spouse or partner',
+    'modal.currentSpouseHint':
+      'Choose the person currently married to or partnered with this person.',
+    'modal.previousSpouses': 'Previous spouses or partners',
+    'modal.previousSpousesHint':
+      'Hold Ctrl or Cmd to select several. Previous partners are shown with a broken heart and dashed connection.',
+    'modal.previousSpousesEmpty':
+      'No other people in the tree can be marked as previous partners yet.',
     'modal.spouseStatus': 'Relationship status',
     'modal.spouseStatusCurrent': 'Current spouse or partner',
     'modal.spouseStatusFormer': 'Former spouse or partner',
     'modal.spouse': 'Spouse or partner name (optional)',
     'modal.spousePlaceholder': 'Name shown beside this person',
     'modal.spouseHint':
-      'Used in bloodline view when no spouse is linked above.',
+      'Only used when no spouse is linked in the tree; otherwise the linked spouse supplies the name.',
     'modal.notes': 'Notes and memories',
     'modal.notesPlaceholder':
       'A story, occupation, place, or anything worth remembering…',
@@ -485,13 +494,22 @@ const translations = {
     'modal.noLinkedSpouse': 'Nėra susieto sutuoktinio (-ės)',
     'modal.linkedSpouseHint':
       'Susiekite esamą asmenį, kad jis būtų rodomas atskira sujungta kortele.',
+    'modal.currentSpouse': 'Dabartinis sutuoktinis (-ė) arba partneris (-ė)',
+    'modal.noCurrentSpouse': 'Nėra dabartinio sutuoktinio (-ės) ar partnerio (-ės)',
+    'modal.currentSpouseHint':
+      'Pasirinkite asmenį, su kuriuo šis asmuo šiuo metu susituokęs (-usi) arba partnerystėje.',
+    'modal.previousSpouses': 'Buvę sutuoktiniai (-ės) arba partneriai (-ės)',
+    'modal.previousSpousesHint':
+      'Laikykite Ctrl arba Cmd, kad pasirinktumėte kelis. Buvę partneriai rodomi su nulaužta širdimi ir brūkšnine linija.',
+    'modal.previousSpousesEmpty':
+      'Medyje dar nėra kitų žmonių, kuriuos būtų galima pažymėti kaip buvusius partnerius.',
     'modal.spouseStatus': 'Ryšio būsena',
     'modal.spouseStatusCurrent': 'Dabartinis sutuoktinis (-ė) arba partneris (-ė)',
     'modal.spouseStatusFormer': 'Buvęs sutuoktinis (-ė) arba partneris (-ė)',
     'modal.spouse': 'Sutuoktinio (-ės) arba partnerio (-ės) vardas (neprivaloma)',
     'modal.spousePlaceholder': 'Vardas rodomas prie šio asmens',
     'modal.spouseHint':
-      'Naudojama kraujo linijos vaizde, kai viršuje nesusietas sutuoktinis (-ė).',
+      'Naudojama tik kai medyje nesusietas sutuoktinis (-ė); kitu atveju vardą pateikia susietas sutuoktinis (-ė).',
     'modal.notes': 'Užrašai ir prisiminimai',
     'modal.notesPlaceholder':
       'Istorija, profesija, vieta ar bet kas, ką verta prisiminti…',

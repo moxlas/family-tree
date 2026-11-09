@@ -846,6 +846,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               ? `${modal.anchorPerson.firstName} ${modal.anchorPerson.lastName}`.trim()
               : ''
           }
+          families={families}
           initialParentId={modal.parentId}
           initialSpouseId={modal.spouseId}
           mode={modal.mode}

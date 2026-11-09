@@ -73,6 +73,9 @@ function sanitizeFamily(raw, index) {
     husband: cleanText(raw.husband, 80),
     wife: cleanText(raw.wife, 80),
     children,
+    status: raw.status === 'former' ? 'former' : 'current',
+    marriageDate: cleanText(raw.marriageDate, 40),
+    divorceDate: cleanText(raw.divorceDate, 40),
   };
 }
 
@@ -298,6 +301,9 @@ async function importGedcom({ ownerId, tree, body }) {
         husband: husbandPerson?._id || null,
         wife: wifePerson?._id || null,
         children: childIds,
+        status: family.status,
+        marriageDate: family.marriageDate,
+        divorceDate: family.divorceDate,
       });
     }
 
@@ -317,7 +323,7 @@ async function importGedcom({ ownerId, tree, body }) {
       if (!keyMap.has(childKey)) unresolvedReferences.add(childKey);
     }
 
-    if (parents.length >= 2) {
+    if (parents.length >= 2 && family.status === 'current') {
       const [first, second] = parents;
       const firstSpouse = first.spouseId ? String(first.spouseId) : '';
       const secondSpouse = second.spouseId ? String(second.spouseId) : '';
@@ -335,10 +341,12 @@ async function importGedcom({ ownerId, tree, body }) {
           applyPatch(first, {
             spouseId: second._id,
             spouseName: fullName(second),
+            spouseStatus: 'current',
           });
           applyPatch(second, {
             spouseId: first._id,
             spouseName: fullName(first),
+            spouseStatus: 'current',
           });
           spouseLinks += 1;
         }
