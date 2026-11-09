@@ -218,6 +218,11 @@ router.post('/', async (req, res) => {
     req.user.id,
     tree._id
   );
+  const secondParentId = await resolveParent(
+    req.body.secondParentId,
+    req.user.id,
+    tree._id
+  );
   const spouse = await resolveSpouse(
     req.body.spouseId,
     req.user.id,
@@ -229,6 +234,7 @@ router.post('/', async (req, res) => {
     owner: req.user.id,
     tree: tree._id,
     parentId,
+    secondParentId,
     spouseId: null,
   });
 
@@ -400,6 +406,15 @@ router.put('/:id', async (req, res) => {
   if ('parentId' in req.body) {
     person.parentId = await resolveParent(
       req.body.parentId,
+      req.user.id,
+      tree._id,
+      person.id
+    );
+  }
+
+  if ('secondParentId' in req.body) {
+    person.secondParentId = await resolveParent(
+      req.body.secondParentId,
       req.user.id,
       tree._id,
       person.id

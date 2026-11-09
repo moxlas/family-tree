@@ -25,6 +25,17 @@ app.use(
 // Vercel caps request bodies at 4.5 MB, so keep a little headroom.
 app.use(express.json({ limit: '4mb' }));
 
+// Authenticated API responses must never be cached by the browser.
+app.use('/api', (req, res, next) => {
+  res.set(
+    'Cache-Control',
+    'no-store, no-cache, must-revalidate, private'
+  );
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 app.use(async (req, res, next) => {
   try {
     await connectDB();

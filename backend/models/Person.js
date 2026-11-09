@@ -68,6 +68,12 @@ const personSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+  secondParentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Person',
+    default: null,
+    index: true,
+  },
   },
   { timestamps: true }
 );

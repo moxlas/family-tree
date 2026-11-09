@@ -192,16 +192,33 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       visited.add(spouse.id);
       secondaryIds.add(spouse.id);
       remap.set(spouse.id, person.id);
+
+      // If the primary person has no parent but the spouse does, keep the
+      // couple in the spouse's generation instead of making it a root.
+      if (!person.parentId && spouse.parentId) {
+        remap.set(`parent:${person.id}`, String(spouse.parentId));
+      }
     });
 
     return people
       .filter((person) => !secondaryIds.has(person.id))
       .map((person) => {
-        const parentId = person.parentId ? String(person.parentId) : null;
+        let parentId = person.parentId ? String(person.parentId) : null;
+
+        if (!parentId && remap.has(`parent:${person.id}`)) {
+          const spouseParentId = remap.get(`parent:${person.id}`);
+          parentId = remap.has(spouseParentId)
+            ? remap.get(spouseParentId)
+            : spouseParentId;
+        }
+
         if (parentId && remap.has(parentId)) {
           return { ...person, parentId: remap.get(parentId) };
         }
-        return person;
+
+        return parentId === person.parentId
+          ? person
+          : { ...person, parentId };
       });
   }, [people]);
 

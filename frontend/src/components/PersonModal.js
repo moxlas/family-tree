@@ -16,6 +16,7 @@ function initialState(person, initialParentId, initialSpouseId) {
     spouseName: person?.spouseName || '',
     notes: person?.notes || '',
     parentId: initialParentId || '',
+    secondParentId: person?.secondParentId ? String(person.secondParentId) : '',
   };
 }
 
@@ -197,6 +198,24 @@ export default function PersonModal({
                   </option>
                 ))}
               </select>
+            </label>
+            <label>
+              <span>{t('modal.secondParent')}</span>
+              <select
+                name="secondParentId"
+                onChange={update}
+                value={form.secondParentId}
+              >
+                <option value="">{t('modal.noSecondParent')}</option>
+                {parentOptions
+                  .filter((entry) => entry.id !== form.parentId)
+                  .map((entry) => (
+                    <option key={entry.id} value={entry.id}>
+                      {`${entry.firstName} ${entry.lastName}`.trim()}
+                    </option>
+                  ))}
+              </select>
+              <small className="field-hint">{t('modal.secondParentHint')}</small>
             </label>
           </div>
 

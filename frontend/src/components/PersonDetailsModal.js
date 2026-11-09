@@ -33,6 +33,9 @@ export default function PersonDetailsModal({
 
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
+  const secondParent = person.secondParentId
+    ? byId.get(String(person.secondParentId))
+    : null;
 
   const relatedFamilies = (families || []).filter(
     (family) =>
@@ -167,6 +170,12 @@ export default function PersonDetailsModal({
             <div>
               <dt>{t('details.parent')}</dt>
               <dd>{parentNames.join(', ')}</dd>
+            </div>
+          )}
+          {secondParent && (
+            <div>
+              <dt>{t('details.secondParent')}</dt>
+              <dd>{`${secondParent.firstName} ${secondParent.lastName}`.trim()}</dd>
             </div>
           )}
           {childNames.length > 0 && (
