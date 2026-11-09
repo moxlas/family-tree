@@ -809,6 +809,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 />
               ) : (
                 <SpouseTreeComponent
+                  families={families}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}

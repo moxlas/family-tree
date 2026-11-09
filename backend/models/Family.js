@@ -30,11 +30,36 @@ const familySchema = new mongoose.Schema(
         ref: 'Person',
       },
     ],
+    status: {
+      type: String,
+      enum: ['current', 'former'],
+      default: 'current',
+    },
+    marriageDate: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: '',
+    },
+    divorceDate: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: '',
+    },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: '',
+    },
   },
   { timestamps: true }
 );
 
 familySchema.index({ owner: 1, tree: 1 });
+familySchema.index({ owner: 1, tree: 1, husband: 1 });
+familySchema.index({ owner: 1, tree: 1, wife: 1 });
 
 familySchema.set('toJSON', {
   transform: (_document, result) => {

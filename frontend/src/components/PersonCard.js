@@ -19,10 +19,12 @@ export default function PersonCard({
   onView,
   person,
   showSpouseName = true,
+  spouseStatus,
   suppressClickRef,
 }) {
   const { t } = useI18n();
   const fullName = `${person.firstName} ${person.lastName}`.trim();
+  const effectiveSpouseStatus = spouseStatus || person.spouseStatus || 'current';
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
@@ -107,7 +109,7 @@ export default function PersonCard({
               className="person-spouse"
             >
               <span aria-hidden="true">
-                {person.spouseStatus === 'former' ? '💔' : '♥'}
+                {effectiveSpouseStatus === 'former' ? '💔' : '♥'}
               </span>{' '}
               {person.spouseName}
             </p>
