@@ -1428,20 +1428,26 @@ export default function SpouseTreeComponent({
         const heartGroup = `p${descriptor.parentIndex}:${Math.round(
           descriptor.junctionX
         )}`;
-        segments.push({
-          gapDepth: descriptor.parentDepth,
-          group: heartGroup,
-          x1: descriptor.junctionX,
-          x2: channelX,
-        });
-        segments.push({
-          gapDepth: descriptor.childDepth - 1,
-          group: `e${descriptor.id}`,
-          x1: channelX,
-          x2: descriptor.endX,
-        });
+        if (Math.abs(channelX - descriptor.junctionX) >= 1) {
+          segments.push({
+            gapDepth: descriptor.parentDepth,
+            group: heartGroup,
+            x1: descriptor.junctionX,
+            x2: channelX,
+          });
+        }
+        if (Math.abs(descriptor.endX - channelX) >= 1) {
+          segments.push({
+            gapDepth: descriptor.childDepth - 1,
+            group: `e${descriptor.id}`,
+            x1: channelX,
+            x2: descriptor.endX,
+          });
+        }
         return;
       }
+
+      if (Math.abs(descriptor.endX - descriptor.junctionX) < 1) return;
 
       segments.push({
         gapDepth: descriptor.parentDepth,
@@ -1562,7 +1568,7 @@ export default function SpouseTreeComponent({
         })
         .filter(Boolean);
       if (measuredHeights.length) {
-        const lanes = laneCountByGap.get(depth) || 1;
+        const lanes = Math.min(laneCountByGap.get(depth) || 1, 4);
         measuredRowHeights[depth] = Math.max(
           measuredRowHeights[depth] || 0,
           ...measuredHeights
