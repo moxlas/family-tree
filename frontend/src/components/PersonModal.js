@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { normalizeDateValue } from '../dates';
 import { personDeceasedLabel, useI18n } from '../i18n';
+import DateField from './DateField';
 
 function previousSpouseIdsForPerson(person, families) {
   if (!person) return [];
@@ -111,6 +113,10 @@ export default function PersonModal({
     }));
   };
 
+  const setField = (name, value) => {
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
   const updateSpouse = (event) => {
     const nextSpouseId = event.target.value;
 
@@ -145,6 +151,8 @@ export default function PersonModal({
     try {
       await onSubmit({
         ...form,
+        birthDate: normalizeDateValue(form.birthDate),
+        deathDate: normalizeDateValue(form.deathDate),
         parentId: form.parentId || null,
         spouseId: form.spouseId || null,
         spouseStatus: form.spouseId ? 'current' : form.spouseStatus,
@@ -289,25 +297,28 @@ export default function PersonModal({
             <small className="field-hint">{t('modal.previousNameHint')}</small>
           </label>
 
-          <div className="form-grid">
-            <label>
-              <span>{t('modal.birth')}</span>
-              <input
-                name="birthDate"
-                onChange={update}
-                placeholder={t('modal.birthPlaceholder')}
-                value={form.birthDate}
-              />
-            </label>
-            <label>
-              <span>{t('modal.death')}</span>
-              <input
-                name="deathDate"
-                onChange={update}
-                placeholder={t('modal.deathPlaceholder')}
-                value={form.deathDate}
-              />
-            </label>
+          <div className="form-grid-block">
+            <div className="form-grid">
+              <label>
+                <span>{t('modal.birth')}</span>
+                <DateField
+                  name="birthDate"
+                  onChange={setField}
+                  placeholder={t('modal.birthPlaceholder')}
+                  value={form.birthDate}
+                />
+              </label>
+              <label>
+                <span>{t('modal.death')}</span>
+                <DateField
+                  name="deathDate"
+                  onChange={setField}
+                  placeholder={t('modal.deathPlaceholder')}
+                  value={form.deathDate}
+                />
+              </label>
+            </div>
+            <small className="field-hint">{t('modal.dateHint')}</small>
           </div>
 
           <label>

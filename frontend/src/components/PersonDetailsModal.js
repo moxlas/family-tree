@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { formatDateForDisplay } from '../dates';
 import { personDeceasedLabel, useI18n } from '../i18n';
 
 function genderLabel(t, gender) {
@@ -15,7 +16,7 @@ export default function PersonDetailsModal({
   people,
   person,
 }) {
-  const { t } = useI18n();
+  const { language, t } = useI18n();
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -140,11 +141,18 @@ export default function PersonDetailsModal({
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
-    life = `${person.birthDate} – ${person.deathDate}`;
+    life = `${formatDateForDisplay(
+      person.birthDate,
+      language
+    )} – ${formatDateForDisplay(person.deathDate, language)}`;
   } else if (person.birthDate) {
-    life = t('person.born', { date: person.birthDate });
+    life = t('person.born', {
+      date: formatDateForDisplay(person.birthDate, language),
+    });
   } else if (person.deathDate) {
-    life = t('person.died', { date: person.deathDate });
+    life = t('person.died', {
+      date: formatDateForDisplay(person.deathDate, language),
+    });
   } else if (person.deceased) {
     life = personDeceasedLabel(t, person);
   }
@@ -204,7 +212,7 @@ export default function PersonDetailsModal({
           {person.birthDate && (
             <div>
               <dt>{t('details.birth')}</dt>
-              <dd>{person.birthDate}</dd>
+              <dd>{formatDateForDisplay(person.birthDate, language)}</dd>
             </div>
           )}
           {person.birthPlace && (
@@ -216,7 +224,7 @@ export default function PersonDetailsModal({
           {person.deathDate && (
             <div>
               <dt>{t('details.death')}</dt>
-              <dd>{person.deathDate}</dd>
+              <dd>{formatDateForDisplay(person.deathDate, language)}</dd>
             </div>
           )}
           {person.deceased && (

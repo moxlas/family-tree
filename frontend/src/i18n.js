@@ -19,6 +19,7 @@ const translations = {
     'common.logout': 'Log out',
     'common.save': 'Save',
     'common.delete': 'Delete',
+    'date.pick': 'Pick a date from the calendar',
 
     'auth.welcome': 'Welcome back',
     'auth.startStory': 'Start your family story',
@@ -157,11 +158,13 @@ const translations = {
     'modal.previousNameHint':
       'The name this person used before, such as a maiden name.',
     'modal.birth': 'Birth date or year',
-    'modal.birthPlaceholder': 'e.g. 1945 or 1945-06-12',
+    'modal.birthPlaceholder': 'e.g. 1945 or 16 JAN 1991',
     'modal.birthPlace': 'Birth place',
     'modal.birthPlacePlaceholder': 'e.g. Kaunas, Lithuania',
     'modal.death': 'Death date or year',
     'modal.deathPlaceholder': 'Leave empty if living',
+    'modal.dateHint':
+      'Type a year (1945), a month and year (JUN 1945) or a full date (16 JAN 1991), or pick one from the calendar.',
     'modal.deceased': 'Deceased',
     'modal.deceasedHint':
       'Mark this if the person has died, even when the date is unknown.',
@@ -398,6 +401,7 @@ const translations = {
     'common.logout': 'Atsijungti',
     'common.save': 'Išsaugoti',
     'common.delete': 'Ištrinti',
+    'date.pick': 'Pasirinkti datą iš kalendoriaus',
 
     'auth.welcome': 'Sveiki sugrįžę',
     'auth.startStory': 'Pradėkite savo šeimos istoriją',
@@ -539,11 +543,13 @@ const translations = {
     'modal.previousNameHint':
       'Vardas, kuriuo šis asmuo vadinosi anksčiau, pavyzdžiui, mergautinė pavardė.',
     'modal.birth': 'Gimimo data arba metai',
-    'modal.birthPlaceholder': 'pvz., 1945 arba 1945-06-12',
+    'modal.birthPlaceholder': 'pvz., 1945 arba 1991 m. sausio 16 d.',
     'modal.birthPlace': 'Gimimo vieta',
     'modal.birthPlacePlaceholder': 'pvz., Kaunas, Lietuva',
     'modal.death': 'Mirties data arba metai',
     'modal.deathPlaceholder': 'Palikite tuščią, jei asmuo gyvas',
+    'modal.dateHint':
+      'Įrašykite metus (1945), mėnesį ir metus (1945 m. birželis) arba pilną datą (1991 m. sausio 16 d.), arba pasirinkite kalendoriuje.',
     'modal.deceased': 'Miręs (-usi)',
     'modal.deceasedHint':
       'Pažymėkite, jei asmuo miręs, net kai data nežinoma.',

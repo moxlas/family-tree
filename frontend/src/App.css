@@ -1392,6 +1392,61 @@ textarea {
   grid-template-columns: 1fr 1fr;
 }
 
+.form-grid-block {
+  display: grid;
+  gap: 7px;
+}
+
+.date-field {
+  position: relative;
+}
+
+.date-field > input[type='text'] {
+  padding-right: 48px;
+}
+
+.date-picker-button {
+  align-items: center;
+  background: #f3f7f7;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: #526778;
+  cursor: pointer;
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+}
+
+.date-picker-button:hover {
+  background: #e8f1f1;
+  color: var(--ink);
+}
+
+.date-picker-button svg {
+  height: 17px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+  width: 17px;
+}
+
+.date-picker-native {
+  height: 1px;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  width: 1px;
+}
+
 .modal-actions {
   border-top: 1px solid var(--line);
   display: flex;
