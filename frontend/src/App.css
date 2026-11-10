@@ -906,7 +906,7 @@ textarea {
 .spouse-tree {
   display: flex;
   flex-direction: column;
-  gap: 56px;
+  gap: 92px;
   min-width: max-content;
   padding: 26px 34px 0;
   position: relative;

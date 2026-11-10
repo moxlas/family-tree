@@ -16,6 +16,7 @@ const SPOUSE_LINK_WIDTH = 36;
 const FORMER_LINK_WIDTH = 76;
 const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
+const MAX_ROUTING_LANES = 6;
 
 function pairKeyOf(firstId, secondId) {
   const first = String(firstId);
@@ -1475,7 +1476,6 @@ export default function SpouseTreeComponent({
     });
 
     const laneYByKey = new Map();
-    const laneCountByGap = new Map();
 
     gapGroups.forEach((groups, gapDepth) => {
       const list = [...groups.entries()].map(([group, interval]) => ({
@@ -1498,6 +1498,11 @@ export default function SpouseTreeComponent({
         } else {
           laneEnds[lane] = Math.max(laneEnds[lane], interval.right);
         }
+        if (lane >= MAX_ROUTING_LANES) {
+          // Extremely dense rows reuse the last lane instead of drawing lines
+          // outside the gap.
+          lane = MAX_ROUTING_LANES - 1;
+        }
         laneOf.set(interval.group, lane);
       });
 
@@ -1505,8 +1510,10 @@ export default function SpouseTreeComponent({
       const bottom = rowTops.get(gapDepth + 1);
       if (top == null || bottom == null || bottom <= top) return;
 
-      const laneCount = Math.max(1, laneEnds.length);
-      laneCountByGap.set(gapDepth, laneCount);
+      const laneCount = Math.max(
+        1,
+        Math.min(laneEnds.length, MAX_ROUTING_LANES)
+      );
       list.forEach((interval) => {
         const lane = laneOf.get(interval.group) || 0;
         laneYByKey.set(
@@ -1568,11 +1575,10 @@ export default function SpouseTreeComponent({
         })
         .filter(Boolean);
       if (measuredHeights.length) {
-        const lanes = Math.min(laneCountByGap.get(depth) || 1, 4);
         measuredRowHeights[depth] = Math.max(
           measuredRowHeights[depth] || 0,
           ...measuredHeights
-        ) + Math.max(0, lanes - 1) * 16;
+        );
       }
     });
 
