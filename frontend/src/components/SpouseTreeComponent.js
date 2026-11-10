@@ -10,6 +10,12 @@ import React, {
 import { useI18n } from '../i18n';
 import PersonCard from './PersonCard';
 
+// A previous marriage with children needs room for those children to hang
+// under their own heart instead of under the ex-partner's card.
+const SPOUSE_LINK_WIDTH = 36;
+const FORMER_LINK_WIDTH = 76;
+const FORMER_LINK_CHILDREN_WIDTH = 152;
+
 function pairKeyOf(firstId, secondId) {
   const first = String(firstId);
   const second = String(secondId);
@@ -315,6 +321,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
         firstId,
         secondId,
         status: record.status,
+        hasChildren: (record.children || []).length > 0,
         marriageDate: record.family.marriageDate || '',
         divorceDate: record.family.divorceDate || '',
       };
@@ -584,11 +591,12 @@ export function buildScene(people, families, showFormerSpouses = true) {
   });
 
 
-  // Place the descendant in the spouse pair at the same side as the
-  // linked parent where possible. This keeps the child card nearest the
-  // parent connection and avoids connectors targeting a spouse first.
+  // Place the descendant in a two-card spouse pair at the same side as the
+  // linked parent where possible. Longer marriage chains must keep their
+  // chain order, otherwise an ex-partner can end up between a couple and the
+  // children of the current marriage appear attached to the ex.
   units.forEach((childUnit) => {
-    if (!childUnit.parentUnits?.size || childUnit.members.length < 2) return;
+    if (!childUnit.parentUnits?.size || childUnit.members.length !== 2) return;
 
     const parentUnitIndex = [...childUnit.parentUnits][0];
     const parentUnit = units[parentUnitIndex];
@@ -719,12 +727,20 @@ export function buildScene(people, families, showFormerSpouses = true) {
   // are reserved bottom-up, so each parent is centred over its descendants
   // without any later shifting.
   const CARD_WIDTH = 232;
-  const SPOUSE_LINK_WIDTH = 36;
   const UNIT_GAP = 44;
   const COMPONENT_GAP = 140;
 
   units.forEach((unit) => {
-    unit.linkWidths = unit.members.slice(1).map(() => SPOUSE_LINK_WIDTH);
+    unit.linkWidths = unit.members.slice(1).map((member, index) => {
+      const previous = unit.members[index];
+      const relationship = unit.relationshipByPair?.get(
+        pairKeyOf(previous.id, member.id)
+      );
+      if (relationship?.status !== 'former') return SPOUSE_LINK_WIDTH;
+      return relationship.hasChildren
+        ? FORMER_LINK_CHILDREN_WIDTH
+        : FORMER_LINK_WIDTH;
+    });
   });
   const unitWidths = units.map(
     (unit) =>
@@ -1363,6 +1379,12 @@ export default function SpouseTreeComponent({
                         <span
                           aria-hidden="true"
                           className={`spouse-link${isFormerLink ? ' is-former' : ''}`}
+                          style={{
+                            width: `${
+                              unit.linkWidths?.[memberIndex - 1] ||
+                              SPOUSE_LINK_WIDTH
+                            }px`,
+                          }}
                         >
                           {relationship && (
                             <span

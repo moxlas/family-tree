@@ -144,10 +144,10 @@ function fullTreeKeep(people, families) {
 }
 
 // A person's branch is their own line, not their whole blood component:
-// ancestors (parents, grandparents, ...), their siblings, and their own
-// descendants (children, grandchildren, ...). Partners of those people are
-// added as spouse cards, but nobody else's line is pulled in - that is what
-// keeps the branch view different from the full tree.
+// ancestors (parents, grandparents, ...), their siblings with the siblings'
+// whole families (nieces, nephews, ...), and their own descendants. Partners
+// of those people are added as spouse cards, but nobody else's line is
+// pulled in - that is what keeps the branch view different from the full tree.
 function branchKeep(focusId, people, families) {
   const graph = buildGraph(people, families);
   const parents = new Map();
@@ -161,12 +161,19 @@ function branchKeep(focusId, people, families) {
   closure([focusId], parents).forEach((personId) => keep.add(personId));
   closure([focusId], graph.children).forEach((personId) => keep.add(personId));
 
-  // Siblings: the other children of the focused person's parents.
+  // Siblings and their descendants: the other children of the focused
+  // person's parents, with every niece, nephew and their families.
+  const siblingSeeds = [];
   (parents.get(focusId) || new Set()).forEach((parentId) => {
     (graph.children.get(parentId) || new Set()).forEach((siblingId) => {
+      if (siblingId === focusId) return;
       keep.add(siblingId);
+      siblingSeeds.push(siblingId);
     });
   });
+  closure(siblingSeeds, graph.children).forEach((personId) =>
+    keep.add(personId)
+  );
 
   [...keep].forEach((personId) => {
     (graph.partners.get(personId) || new Set()).forEach((partnerId) => {

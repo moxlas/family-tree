@@ -109,9 +109,21 @@ describe('branch views are narrower than the full tree', () => {
     expect(branch).toEqual(['1', '2', '3', '5', '6', '7', '8']);
   });
 
-  it('focusing a parent keeps their siblings but not the siblings children', () => {
+  it('focusing a parent keeps the siblings and their whole families', () => {
     const branch = ids(viewPeople(wider, widerFamilies, { focusId: '3' }));
-    expect(branch).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+    // Sibling 4, aunt 9 and cousin 10 come along with the sibling family.
+    expect(branch).toEqual([
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ]);
   });
 
   it('focusing the root keeps the whole line below them', () => {

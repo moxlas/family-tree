@@ -86,9 +86,23 @@ describe('buildScene generation placement', () => {
     );
     // Children are reserved as one block under the parent unit: the former
     // marriage's child on the left, the current marriage's child on the right.
-    expect(formerChildUnit.x).toBeCloseTo(johnUnits[0].x - 138, 0);
-    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 138, 0);
     expect(formerChildUnit.x).toBeLessThan(currentChildUnit.x);
+
+    // Each child sits nearest the heart of its own marriage, never the heart
+    // of the other marriage.
+    const unitLeft = johnUnits[0].x - johnUnits[0].width / 2;
+    const centerOf = (personId) => {
+      const index = johnUnits[0].members.findIndex((m) => m.id === personId);
+      return unitLeft + johnUnits[0].memberCenters[index];
+    };
+    const formerAnchor = (centerOf('1') + centerOf('2')) / 2;
+    const currentAnchor = (centerOf('1') + centerOf('3')) / 2;
+    expect(Math.abs(formerChildUnit.x - formerAnchor)).toBeLessThan(
+      Math.abs(formerChildUnit.x - currentAnchor)
+    );
+    expect(Math.abs(currentChildUnit.x - currentAnchor)).toBeLessThan(
+      Math.abs(currentChildUnit.x - formerAnchor)
+    );
   });
 
   it('keeps only one current marriage per person', () => {
@@ -138,8 +152,23 @@ describe('buildScene generation placement', () => {
     expect(order.indexOf('1')).toBeGreaterThan(0);
     expect(order.indexOf('1')).toBeLessThan(order.length - 1);
     expect(unit.memberCenters).toHaveLength(order.length);
-    // Compact links: ex-spouse connections are drawn behind the cards.
-    expect(unit.linkWidths.every((width) => width === 36)).toBe(true);
+    // Previous marriages are separated from their neighbour by a wider gap
+    // than a current marriage, so their children have room under the heart.
+    const widthFor = (firstId, secondId) => {
+      const relationship = unit.relationships.find(
+        (entry) =>
+          (entry.firstId === firstId && entry.secondId === secondId) ||
+          (entry.secondId === firstId && entry.firstId === secondId)
+      );
+      const index = Math.max(
+        order.indexOf(relationship.firstId),
+        order.indexOf(relationship.secondId)
+      );
+      return unit.linkWidths[index - 1];
+    };
+    expect(widthFor('1', '3')).toBe(36);
+    expect(widthFor('1', '2')).toBeGreaterThan(36);
+    expect(widthFor('1', '4')).toBeGreaterThan(36);
   });
 
   it('orders chained marriages so every marriage sits between neighbours', () => {
@@ -166,7 +195,36 @@ describe('buildScene generation placement', () => {
       );
       expect(gap).toBe(1);
     });
-    expect(unit.linkWidths.every((width) => width === 36)).toBe(true);
+    // Ex-marriages sit in wider gaps than the current marriage.
+    const currentIndex = Math.max(order.indexOf('2'), order.indexOf('3'));
+    expect(unit.linkWidths[currentIndex - 1]).toBe(36);
+    expect(unit.linkWidths.filter((width) => width > 36)).toHaveLength(2);
+  });
+
+  it('keeps the shared spouse in the middle of a chain under their parents', () => {
+    const people = [
+      person('5', { firstName: 'Grandpa', gender: 'male' }),
+      person('6', { firstName: 'Grandma', gender: 'female', spouseId: '5' }),
+      person('2', { firstName: 'Man', gender: 'male', parentId: '5' }),
+      person('1', { firstName: 'Ex', gender: 'female' }),
+      person('3', { firstName: 'Current', gender: 'female' }),
+      person('4', { firstName: 'ExKid', parentId: '2' }),
+      person('7', { firstName: 'CurrentKid', parentId: '2' }),
+    ];
+    const families = [
+      { id: 'f0', husband: '5', wife: '6', status: 'current', children: ['2'] },
+      { id: 'f1', husband: '2', wife: '1', status: 'former', children: ['4'] },
+      { id: 'f2', husband: '2', wife: '3', status: 'current', children: ['7'] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '2')
+    );
+
+    // Ex-partner on one side, current partner on the other, shared person
+    // between them: the current marriage must not sit across the ex card.
+    expect(unit.members.map((member) => member.id)).toEqual(['1', '2', '3']);
+    expect(unit.linkWidths[0]).toBeGreaterThan(unit.linkWidths[1]);
   });
 
   it('renders marriages where only one partner is in view', () => {
