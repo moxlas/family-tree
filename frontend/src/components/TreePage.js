@@ -369,20 +369,17 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       const deltaX =
         rect.left + rect.width / 2 - (viewport.left + viewport.width / 2);
       const deltaY =
-        rect.top + rect.height / 2 - (viewport.top + viewport.height / 2);
+        rect.top + rect.height / 2 - (window.innerHeight / 2);
 
       if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
         stable += 1;
       } else {
         stable = 0;
-        const windowX = window.scrollX;
-        const windowY = window.scrollY;
         card.scrollIntoView({
           behavior: 'auto',
           block: 'center',
           inline: 'center',
         });
-        window.scrollTo(windowX, windowY);
       }
 
       if (stable < 2 && attempts < 40) {
