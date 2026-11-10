@@ -98,6 +98,26 @@ const GEDCOM_MONTH_INDEX = new Map(
   MONTHS.map((month, index) => [month.gedcom, index])
 );
 
+const LT_MONTH_ACCUSATIVE = [
+  'sausį',
+  'vasarį',
+  'kovą',
+  'balandį',
+  'gegužę',
+  'birželį',
+  'liepą',
+  'rugpjūtį',
+  'rugsėjį',
+  'spalį',
+  'lapkritį',
+  'gruodį',
+];
+
+const LIFE_FULL_DATE_RE =
+  /\b(\d{1,2}) (JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) (\d{4})\b/g;
+const LIFE_MONTH_YEAR_RE =
+  /\b(JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC) (\d{4})\b/g;
+
 const QUALIFIERS = {
   ABT: 'ABT',
   ABOUT: 'ABT',
@@ -312,4 +332,27 @@ export function formatDateForDisplay(raw, language) {
     const index = monthIndex(token);
     return index == null ? token : MONTHS[index].abbr;
   });
+}
+
+// Read-only life dates on cards and details:
+//   full date      -> 1981/10/09
+//   month and year -> 2011m. gruodį
+export function formatLifeDateForDisplay(raw, language) {
+  if (!raw) return '';
+  const normalized = normalizeDateValue(raw);
+  if (language !== 'lt') return normalized;
+
+  return normalized
+    .replace(LIFE_FULL_DATE_RE, (match, day, month, year) => {
+      const index = GEDCOM_MONTH_INDEX.get(month);
+      if (index == null) return match;
+      return `${year}/${String(index + 1).padStart(2, '0')}/${String(
+        day
+      ).padStart(2, '0')}`;
+    })
+    .replace(LIFE_MONTH_YEAR_RE, (match, month, year) => {
+      const index = GEDCOM_MONTH_INDEX.get(month);
+      if (index == null) return match;
+      return `${year}m. ${LT_MONTH_ACCUSATIVE[index]}`;
+    });
 }

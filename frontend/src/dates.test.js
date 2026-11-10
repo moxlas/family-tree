@@ -1,6 +1,7 @@
 import {
   formatDateForDisplay,
   formatIsoDate,
+  formatLifeDateForDisplay,
   normalizeDateValue,
   toIsoDate,
 } from './dates';
@@ -49,6 +50,33 @@ describe('formatDateForDisplay', () => {
 
   it('leaves non-date text alone', () => {
     expect(formatDateForDisplay('spring 1991', 'lt')).toBe('spring 1991');
+  });
+});
+
+describe('formatLifeDateForDisplay', () => {
+  it('renders full Lithuanian dates as year/month/day', () => {
+    expect(formatLifeDateForDisplay('16 JAN 1991', 'lt')).toBe('1991/01/16');
+    expect(formatLifeDateForDisplay('9 OCT 1981', 'lt')).toBe('1981/10/09');
+  });
+
+  it('renders partial Lithuanian month dates in words', () => {
+    expect(formatLifeDateForDisplay('DEC 2011', 'lt')).toBe('2011m. gruodį');
+    expect(formatLifeDateForDisplay('OCT 2011', 'lt')).toBe('2011m. spalį');
+    expect(formatLifeDateForDisplay('JUN 1945', 'lt')).toBe('1945m. birželį');
+  });
+
+  it('formats dates inside qualifiers and ranges', () => {
+    expect(formatLifeDateForDisplay('ABT JUN 1945', 'lt')).toBe(
+      'ABT 1945m. birželį'
+    );
+    expect(
+      formatLifeDateForDisplay('BET JAN 1991 AND FEB 1992', 'lt')
+    ).toBe('BET 1991m. sausį AND 1992m. vasarį');
+  });
+
+  it('keeps English and year-only dates unchanged', () => {
+    expect(formatLifeDateForDisplay('16 JAN 1991', 'en')).toBe('16 JAN 1991');
+    expect(formatLifeDateForDisplay('1945', 'lt')).toBe('1945');
   });
 });
 

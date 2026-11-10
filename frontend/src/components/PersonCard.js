@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { formatDateForDisplay } from '../dates';
+import { formatLifeDateForDisplay } from '../dates';
 import { personDeceasedLabel, useI18n } from '../i18n';
 
 function initials(person) {
@@ -37,17 +37,17 @@ export default function PersonCard({
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
-    life = `${formatDateForDisplay(
+    life = `${formatLifeDateForDisplay(
       person.birthDate,
       language
-    )} – ${formatDateForDisplay(person.deathDate, language)}`;
+    )} – ${formatLifeDateForDisplay(person.deathDate, language)}`;
   } else if (person.birthDate) {
     life = t('person.born', {
-      date: formatDateForDisplay(person.birthDate, language),
+      date: formatLifeDateForDisplay(person.birthDate, language),
     });
   } else if (person.deathDate) {
     life = t('person.died', {
-      date: formatDateForDisplay(person.deathDate, language),
+      date: formatLifeDateForDisplay(person.deathDate, language),
     });
   } else if (person.deceased) {
     life = deceasedLabel;
