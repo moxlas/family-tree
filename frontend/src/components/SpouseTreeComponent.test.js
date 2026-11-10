@@ -373,4 +373,29 @@ describe('buildScene generation placement', () => {
       Math.abs(child.x - cardCenter('2'))
     );
   });
+
+  it('widens a current marriage gap by the number of children it carries', () => {
+    const people = [
+      person('1', { firstName: 'Father', gender: 'male' }),
+      person('2', { firstName: 'Mother', gender: 'female' }),
+      person('3', { firstName: 'ChildOne', parentId: '1' }),
+      person('4', { firstName: 'ChildTwo', parentId: '1' }),
+      person('5', { firstName: 'ChildThree', parentId: '1' }),
+    ];
+    const families = [
+      {
+        id: 'f1',
+        husband: '1',
+        wife: '2',
+        status: 'current',
+        children: ['3', '4', '5'],
+      },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '1')
+    );
+
+    expect(unit.linkWidths).toContain(112);
+  });
 });
