@@ -10,10 +10,27 @@ function addToMap(map, key, value) {
   map.get(id).add(target);
 }
 
+function pairKey(firstId, secondId) {
+  const first = String(firstId);
+  const second = String(secondId);
+  return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
+}
+
+function setSpouseFormer(map, firstId, secondId, former) {
+  const key = pairKey(firstId, secondId);
+  if (!map.has(key) || (!former && map.get(key))) {
+    map.set(key, former);
+  }
+}
+
 export function buildRelationshipGraph(people, families) {
   const parentsByChild = new Map();
   const childrenByParent = new Map();
   const spousesByPerson = new Map();
+  const spouseFormerByPair = new Map();
+  const byId = new Map(
+    (people || []).map((person) => [String(person.id), person])
+  );
 
   (people || []).forEach((person) => {
     const id = String(person.id);
@@ -24,12 +41,19 @@ export function buildRelationshipGraph(people, families) {
     if (person.spouseId) {
       addToMap(spousesByPerson, id, person.spouseId);
       addToMap(spousesByPerson, person.spouseId, id);
+      const spouse = byId.get(String(person.spouseId));
+      const former =
+        person.spouseStatus === 'former' || spouse?.spouseStatus === 'former';
+      setSpouseFormer(spouseFormerByPair, id, person.spouseId, former);
     }
   });
 
   (families || []).forEach((family) => {
     const parents = [family.husband, family.wife].filter(Boolean);
     const children = family.children || [];
+    const former =
+      family.status === 'former' ||
+      ['divorced', 'widowed', 'separated'].includes(family.relationshipStatus);
 
     parents.forEach((parentId) => {
       children.forEach((childId) => {
@@ -41,10 +65,16 @@ export function buildRelationshipGraph(people, families) {
     if (parents.length === 2) {
       addToMap(spousesByPerson, parents[0], parents[1]);
       addToMap(spousesByPerson, parents[1], parents[0]);
+      setSpouseFormer(spouseFormerByPair, parents[0], parents[1], former);
     }
   });
 
-  return { parentsByChild, childrenByParent, spousesByPerson };
+  return {
+    parentsByChild,
+    childrenByParent,
+    spouseFormerByPair,
+    spousesByPerson,
+  };
 }
 
 function findPath(referenceId, targetId, graph) {
@@ -67,13 +97,15 @@ function findPath(referenceId, targetId, graph) {
       neighbors.push([id, CHILD]);
     });
     (graph.spousesByPerson.get(current) || new Set()).forEach((id) => {
-      neighbors.push([id, SPOUSE]);
+      const former =
+        graph.spouseFormerByPair?.get(pairKey(current, id)) === true;
+      neighbors.push([id, SPOUSE, former]);
     });
 
-    for (const [nextId, edge] of neighbors) {
+    for (const [nextId, edge, former] of neighbors) {
       if (visited.has(nextId)) continue;
       visited.add(nextId);
-      previous.set(nextId, { from: current, edge });
+      previous.set(nextId, { from: current, edge, former: Boolean(former) });
       if (nextId === target) {
         queue.length = 0;
         break;
@@ -85,16 +117,18 @@ function findPath(referenceId, targetId, graph) {
   if (!visited.has(target)) return null;
 
   const steps = [];
+  const formerFlags = [];
   const nodes = [target];
   let cursor = target;
   while (cursor !== start) {
     const entry = previous.get(cursor);
     if (!entry) return null;
     steps.unshift(entry.edge);
+    formerFlags.unshift(entry.former);
     cursor = entry.from;
     nodes.unshift(cursor);
   }
-  return { nodes, steps };
+  return { formerFlags, nodes, steps };
 }
 
 function genderedKey(gender, maleKey, femaleKey, neutralKey) {
@@ -186,11 +220,19 @@ function descendantDescriptor(count, gender) {
   return { key: 'relation.descendant' };
 }
 
-function spouseKey(gender) {
+function spouseKey(gender, former = false) {
+  if (former) {
+    return genderedKey(
+      gender,
+      'relation.exHusband',
+      'relation.exWife',
+      'relation.exPartner'
+    );
+  }
   return genderedKey(gender, 'relation.husband', 'relation.wife', 'relation.partner');
 }
 
-function describeSteps(steps, context, nodes) {
+function describeSteps(steps, context, nodes, formerFlags = []) {
   const { byId, graph, referenceId } = context;
   const targetId = nodes[nodes.length - 1];
   const target = byId.get(String(targetId));
@@ -199,19 +241,21 @@ function describeSteps(steps, context, nodes) {
   if (!steps || !steps.length) return { key: 'relation.self' };
 
   if (steps.length === 1 && steps[0] === SPOUSE) {
-    return { key: spouseKey(gender) };
+    return { key: spouseKey(gender, Boolean(formerFlags[0])) };
   }
 
   if (steps[steps.length - 1] === SPOUSE) {
     const base = describeSteps(
       steps.slice(0, -1),
       context,
-      nodes.slice(0, -1)
+      nodes.slice(0, -1),
+      formerFlags.slice(0, -1)
     );
     if (base && base.key !== 'relation.self' && base.key !== 'relation.relative') {
       return {
         key: 'relation.spouseOf',
         relation: base,
+        spouseFormer: Boolean(formerFlags[formerFlags.length - 1]),
         spouseGender: gender,
       };
     }
@@ -361,7 +405,7 @@ export function describeRelationship({
     byId: new Map((people || []).map((entry) => [String(entry.id), entry])),
     graph,
     referenceId,
-  }, path.nodes);
+  }, path.nodes, path.formerFlags);
 }
 
 export function formatRelationship(descriptor, t, language = 'en') {
@@ -369,7 +413,7 @@ export function formatRelationship(descriptor, t, language = 'en') {
 
   if (descriptor.key === 'relation.spouseOf') {
     const relation = formatRelationship(descriptor.relation, t, language);
-    let spouse = t(spouseKey(descriptor.spouseGender));
+    let spouse = t(spouseKey(descriptor.spouseGender, descriptor.spouseFormer));
     if (language === 'en' && spouse) {
       spouse = spouse.charAt(0).toLowerCase() + spouse.slice(1);
     }

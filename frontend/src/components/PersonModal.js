@@ -575,16 +575,10 @@ export default function PersonModal({
   const currentPartnerId = String(
     form.currentRelationship.partnerId || ''
   );
-  const previousPartnerIds = new Set(
-    form.previousRelationships
-      .map((block) => String(block.partnerId || ''))
-      .filter(Boolean)
-  );
 
   const spouseOptions = sortPeopleByName(
     people.filter((entry) => {
       if (entry.id === person?.id) return false;
-      if (previousPartnerIds.has(String(entry.id))) return false;
       if (String(entry.id) === currentPartnerId) return true;
       if (!entry.spouseId) return true;
       return String(entry.spouseId) === String(person?.id);
@@ -631,7 +625,16 @@ export default function PersonModal({
   const endLabel = (status) =>
     status === 'separated' ? t('modal.separationDate') : t('modal.divorceDate');
 
-  const statusLabel = (status) => t(`relationship.${status}`);
+  const statusLabel = (status) => {
+    if (status === 'widowed') {
+      return t(
+        form.gender === 'female'
+          ? 'relationship.widowedFemale'
+          : 'relationship.widowed'
+      );
+    }
+    return t(`relationship.${status}`);
+  };
 
   const title =
     mode === 'edit'

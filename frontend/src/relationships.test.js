@@ -20,6 +20,7 @@ const people = [
   person('W', 'female'),
   person('SWF', 'male'),
   person('SWM', 'female'),
+  person('EXW', 'female'),
 ];
 
 const families = [
@@ -31,6 +32,14 @@ const families = [
   { id: 'f6', husband: 'C', wife: null, children: ['CS'] },
   { id: 'f7', husband: 'R', wife: 'W', children: [] },
   { id: 'f8', husband: 'SWF', wife: 'SWM', children: ['W'] },
+  {
+    id: 'f9',
+    husband: 'R',
+    wife: 'EXW',
+    status: 'former',
+    relationshipStatus: 'divorced',
+    children: [],
+  },
 ];
 
 function relation(targetId) {
@@ -52,6 +61,8 @@ const labels = {
   'relation.cousinSon': 'Son of a cousin',
   'relation.wife': 'Wife',
   'relation.husband': 'Husband',
+  'relation.exWife': 'Ex-wife',
+  'relation.exHusband': 'Ex-husband',
   'relation.fatherInLaw': 'Father-in-law',
   'relation.grandfather': 'Grandfather',
   'relation.spouseOf': '{{relation}}’s {{spouse}}',
@@ -84,11 +95,24 @@ describe('describeRelationship', () => {
     expect(relation('SWF').key).toBe('relation.fatherInLaw');
   });
 
+  it('distinguishes ex-wives and ex-husbands', () => {
+    expect(relation('EXW').key).toBe('relation.exWife');
+    expect(
+      describeRelationship({
+        families,
+        people,
+        referenceId: 'EXW',
+        targetId: 'R',
+      }).key
+    ).toBe('relation.exHusband');
+  });
+
   it('builds a descriptive spouse-of-relative label', () => {
     const descriptor = relation('HSH');
     expect(descriptor).toEqual({
       key: 'relation.spouseOf',
       relation: { key: 'relation.halfSister' },
+      spouseFormer: false,
       spouseGender: 'male',
     });
     expect(formatRelationship(descriptor, t, 'en')).toBe(
