@@ -73,17 +73,9 @@ function readEventPlace(node, tag) {
 }
 
 // A second NAME structure is how GEDCOM carries a maiden or former name.
-// Only its surname is stored in the app.
-function readAlternateName(node) {
-  const nameNodes = node.children.filter((child) => child.tag === 'NAME');
-  if (nameNodes.length < 2) return '';
-
-  const preferred = nameNodes.slice(1).find((nameNode) => {
-    const type = nameNode.children.find((child) => child.tag === 'TYPE')?.value;
-    return /maiden|birth|aka|nick/i.test(type || '');
-  });
-
-  const nameNode = preferred || nameNodes[1];
+// Only its surname is stored in the app. MyHeritage files instead put the
+// married/alternate surname in a _MARNM child of the primary NAME.
+function surnameFromNameNode(nameNode, fallbackFirstName = '') {
   const surnameNode = nameNode.children.find((child) => child.tag === 'SURN');
   if (surnameNode?.value) {
     return cleanText(surnameNode.value, 160);
@@ -97,15 +89,34 @@ function readAlternateName(node) {
 
   // Files without the slash structure may store "Given Surname". Drop the
   // given name when it matches the person's primary first name.
-  const { firstName } = readName(node);
   if (
-    firstName &&
-    raw.toLowerCase().startsWith(`${firstName.toLowerCase()} `)
+    fallbackFirstName &&
+    raw.toLowerCase().startsWith(`${fallbackFirstName.toLowerCase()} `)
   ) {
-    return cleanText(raw.slice(firstName.length + 1), 160);
+    return cleanText(raw.slice(fallbackFirstName.length + 1), 160);
   }
 
   return cleanText(raw, 160);
+}
+
+function readAlternateName(node) {
+  const nameNodes = node.children.filter((child) => child.tag === 'NAME');
+  if (!nameNodes.length) return '';
+
+  const preferred = nameNodes.slice(1).find((nameNode) => {
+    const type = nameNode.children.find((child) => child.tag === 'TYPE')?.value;
+    return /maiden|birth|aka|nick/i.test(type || '');
+  });
+
+  const { firstName } = readName(node);
+  if (preferred) return surnameFromNameNode(preferred, firstName);
+  if (nameNodes[1]) return surnameFromNameNode(nameNodes[1], firstName);
+
+  const marriedName =
+    nameNodes[0].children.find((child) => /^_?MARNM$/i.test(child.tag)) ||
+    node.children.find((child) => /^_?MARNM$/i.test(child.tag));
+
+  return cleanText(marriedName?.value, 160);
 }
 
 // Existing records may still hold a full alternate name. The field now means

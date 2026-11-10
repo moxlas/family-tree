@@ -281,4 +281,37 @@ describe('GEDCOM spouse connection round-trip', () => {
     const parsed = parseGedcom(text, 'en');
     expect(parsed.individuals[0].previousName).toBe('Strumskytė');
   });
+
+  it('reads a MyHeritage alternate surname from _MARNM', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 5.5.1',
+      '1 CHAR UTF-8',
+      '0 @I1@ INDI',
+      '1 NAME Dovilė /Jasinevičiūtė/',
+      '2 GIVN Dovilė',
+      '2 SURN Jasinevičiūtė',
+      '2 _MARNM Šiukščiuvienė',
+      '1 SEX F',
+      '0 @I2@ INDI',
+      '1 NAME Sofija //',
+      '2 GIVN Sofija',
+      '2 _MARNM Strumskienė',
+      '1 SEX F',
+      '0 TRLR',
+    ].join('\n');
+
+    const parsed = parseGedcom(text, 'en');
+    const dovile = parsed.individuals.find(
+      (entry) => entry.firstName === 'Dovilė'
+    );
+    const sofija = parsed.individuals.find(
+      (entry) => entry.firstName === 'Sofija'
+    );
+
+    expect(dovile.lastName).toBe('Jasinevičiūtė');
+    expect(dovile.previousName).toBe('Šiukščiuvienė');
+    expect(sofija.previousName).toBe('Strumskienė');
+  });
 });
