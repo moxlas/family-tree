@@ -339,12 +339,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   }, [bloodlineOnly]);
 
   // Put the focused card in the middle of the tree viewport once the branch
-  // has rendered, so nobody has to scroll around to find the person.
+  // has rendered, so nobody has to scroll around to find the person. The
+  // branch lays out in a few passes, so keep re-centring until the card stays
+  // put for a frame.
   useEffect(() => {
     if (!focusId) return undefined;
 
     let frame = 0;
     let attempts = 0;
+    let stable = 0;
     let cancelled = false;
 
     const centre = () => {
@@ -357,20 +360,34 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       );
 
       if (!scroll || !card) {
-        if (attempts < 20) {
-          frame = window.requestAnimationFrame(centre);
-        }
+        if (attempts < 40) frame = window.requestAnimationFrame(centre);
         return;
       }
 
-      const windowX = window.scrollX;
-      const windowY = window.scrollY;
-      card.scrollIntoView({
-        behavior: 'auto',
-        block: 'center',
-        inline: 'center',
-      });
-      window.scrollTo(windowX, windowY);
+      const viewport = scroll.getBoundingClientRect();
+      const rect = card.getBoundingClientRect();
+      const deltaX =
+        rect.left + rect.width / 2 - (viewport.left + viewport.width / 2);
+      const deltaY =
+        rect.top + rect.height / 2 - (viewport.top + viewport.height / 2);
+
+      if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
+        stable += 1;
+      } else {
+        stable = 0;
+        const windowX = window.scrollX;
+        const windowY = window.scrollY;
+        card.scrollIntoView({
+          behavior: 'auto',
+          block: 'center',
+          inline: 'center',
+        });
+        window.scrollTo(windowX, windowY);
+      }
+
+      if (stable < 2 && attempts < 40) {
+        frame = window.requestAnimationFrame(centre);
+      }
     };
 
     frame = window.requestAnimationFrame(centre);

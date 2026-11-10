@@ -1686,7 +1686,13 @@ export default function SpouseTreeComponent({
       setRowHeights(measuredRowHeights);
     }
 
-    setSize({ width: container.scrollWidth, height: container.scrollHeight });
+    // The SVG sizes itself from the container's own box, never from its own
+    // scroll extent. Using scrollWidth/scrollHeight here made a wide tree's
+    // SVG keep the container stretched after switching to a narrow branch.
+    setSize({
+      width: container.clientWidth,
+      height: container.clientHeight,
+    });
   }, [rowHeights, scene, zoom]);
 
   useLayoutEffect(() => {
