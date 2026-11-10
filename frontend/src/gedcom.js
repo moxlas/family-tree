@@ -73,6 +73,7 @@ function readEventPlace(node, tag) {
 }
 
 // A second NAME structure is how GEDCOM carries a maiden or former name.
+// Only its surname is stored in the app.
 function readAlternateName(node) {
   const nameNodes = node.children.filter((child) => child.tag === 'NAME');
   if (nameNodes.length < 2) return '';
@@ -83,10 +84,45 @@ function readAlternateName(node) {
   });
 
   const nameNode = preferred || nameNodes[1];
-  return cleanText(nameNode.value, 160)
-    .replace(/\//g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  const surnameNode = nameNode.children.find((child) => child.tag === 'SURN');
+  if (surnameNode?.value) {
+    return cleanText(surnameNode.value, 160);
+  }
+
+  const raw = cleanText(nameNode.value, 200).replace(/\s+/g, ' ');
+  const slashMatch = raw.match(/\/(.*?)\//);
+  if (slashMatch) {
+    return cleanText(slashMatch[1], 160);
+  }
+
+  // Files without the slash structure may store "Given Surname". Drop the
+  // given name when it matches the person's primary first name.
+  const { firstName } = readName(node);
+  if (
+    firstName &&
+    raw.toLowerCase().startsWith(`${firstName.toLowerCase()} `)
+  ) {
+    return cleanText(raw.slice(firstName.length + 1), 160);
+  }
+
+  return cleanText(raw, 160);
+}
+
+// Existing records may still hold a full alternate name. The field now means
+// the previous surname, so strip a leading copy of the person's first name.
+export function previousSurnameFor(person) {
+  const value = cleanText(person?.previousName, 160).replace(/\s+/g, ' ');
+  if (!value) return '';
+
+  const firstName = cleanText(person?.firstName, 80);
+  if (!firstName) return value;
+
+  const prefix = `${firstName} `;
+  if (value.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return value.slice(prefix.length).trim();
+  }
+
+  return value;
 }
 
 function readFamilyEvent(node, tags) {
@@ -556,17 +592,15 @@ export function buildGedcom(people, treeName, families = []) {
     if (lastName) lines.push(`1 SURN ${lastName}`);
 
     if (person.previousName) {
-      const value = cleanLine(person.previousName, 160);
-      const parts = value.split(' ').filter(Boolean);
-
-      if (parts.length > 1) {
-        const surname = parts.pop();
-        lines.push(`1 NAME ${parts.join(' ')} /${surname}/`);
-      } else {
-        lines.push(`1 NAME ${value}`);
+      const previousSurname = previousSurnameFor({ firstName, previousName: person.previousName });
+      if (previousSurname) {
+        const value = firstName
+          ? `${firstName} /${previousSurname}/`
+          : `/${previousSurname}/`;
+        lines.push(`1 NAME ${cleanLine(value, 200)}`);
+        lines.push('2 TYPE maiden');
+        lines.push(`2 SURN ${cleanLine(previousSurname, 80)}`);
       }
-
-      lines.push('2 TYPE maiden');
     }
 
     if (person.gender === 'male') lines.push('1 SEX M');

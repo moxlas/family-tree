@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { normalizeDateValue } from '../dates';
+import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import DateField from './DateField';
 
@@ -41,7 +42,7 @@ function initialState(
   return {
     firstName: person?.firstName || '',
     lastName: person?.lastName || '',
-    previousName: person?.previousName || '',
+    previousName: previousSurnameFor(person),
     gender: person?.gender || 'unknown',
     birthDate: person?.birthDate || '',
     birthPlace: person?.birthPlace || '',

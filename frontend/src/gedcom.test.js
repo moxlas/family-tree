@@ -178,7 +178,7 @@ describe('GEDCOM spouse connection round-trip', () => {
         gender: 'female',
         birthDate: '1940',
         birthPlace: 'Kaunas, Lithuania',
-        previousName: 'Birutė Strumskytė',
+        previousName: 'Strumskytė',
       }),
       person('2', { firstName: 'Adam', gender: 'male' }),
     ];
@@ -186,6 +186,7 @@ describe('GEDCOM spouse connection round-trip', () => {
     const text = buildGedcom(peopleWithDetails, 'Names test', []);
     expect(text).toContain('1 NAME Birutė /Strumskytė/');
     expect(text).toContain('2 TYPE maiden');
+    expect(text).toContain('2 SURN Strumskytė');
     expect(text).toContain('2 PLAC Kaunas, Lithuania');
 
     const parsed = parseGedcom(text, 'en');
@@ -193,7 +194,7 @@ describe('GEDCOM spouse connection round-trip', () => {
       (entry) => entry.firstName === 'Birutė'
     );
 
-    expect(birute.previousName).toBe('Birutė Strumskytė');
+    expect(birute.previousName).toBe('Strumskytė');
     expect(birute.birthPlace).toBe('Kaunas, Lithuania');
     expect(parsed.individuals.find((entry) => entry.firstName === 'Adam').previousName).toBe('');
   });
@@ -218,7 +219,7 @@ describe('GEDCOM spouse connection round-trip', () => {
     const parsed = parseGedcom(text, 'en');
     expect(parsed.individuals[0].firstName).toBe('Birutė');
     expect(parsed.individuals[0].lastName).toBe('Mikėnienė');
-    expect(parsed.individuals[0].previousName).toBe('Birutė Strumskytė');
+    expect(parsed.individuals[0].previousName).toBe('Strumskytė');
     expect(parsed.individuals[0].birthPlace).toBe('Kaunas');
   });
 
@@ -246,5 +247,38 @@ describe('GEDCOM spouse connection round-trip', () => {
     expect(parsed.individuals[0].notes).toBe('Line one\nLine two');
     expect(parsed.individuals[1].notes).toBe('Second person note');
     expect(parsed.families[0].notes).toBe('Shared family note');
+  });
+
+  it('exports a legacy full previous name as just its surname', () => {
+    const legacyPeople = [
+      person('1', {
+        firstName: 'Birutė',
+        lastName: 'Mikėnienė',
+        gender: 'female',
+        previousName: 'Birutė Strumskytė',
+      }),
+    ];
+
+    const text = buildGedcom(legacyPeople, 'Legacy name test', []);
+    expect(text).toContain('1 NAME Birutė /Strumskytė/');
+    expect(text).not.toContain('1 NAME Birutė Strumskytė');
+  });
+
+  it('reads a previous surname from a SURN child', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 5.5.1',
+      '1 CHAR UTF-8',
+      '0 @I1@ INDI',
+      '1 NAME Birutė /Mikėnienė/',
+      '1 NAME /Strumskytė/',
+      '2 TYPE maiden',
+      '2 SURN Strumskytė',
+      '0 TRLR',
+    ].join('\n');
+
+    const parsed = parseGedcom(text, 'en');
+    expect(parsed.individuals[0].previousName).toBe('Strumskytė');
   });
 });

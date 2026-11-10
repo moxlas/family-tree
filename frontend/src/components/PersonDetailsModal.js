@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { formatDateForDisplay } from '../dates';
+import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 
 function genderLabel(t, gender) {
@@ -33,6 +34,7 @@ export default function PersonDetailsModal({
   if (!person) return null;
 
   const fullName = `${person.firstName} ${person.lastName}`.trim();
+  const previousSurname = previousSurnameFor(person);
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
 
   const relatedFamilies = (families || []).filter(
@@ -207,10 +209,10 @@ export default function PersonDetailsModal({
             <dt>{t('details.gender')}</dt>
             <dd>{genderLabel(t, person.gender)}</dd>
           </div>
-          {person.previousName && (
+          {previousSurname && (
             <div>
               <dt>{t('details.previousName')}</dt>
-              <dd>{person.previousName}</dd>
+              <dd>{previousSurname}</dd>
             </div>
           )}
           {(person.birthDate || person.birthPlace) && (
