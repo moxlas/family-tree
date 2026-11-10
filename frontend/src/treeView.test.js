@@ -101,7 +101,8 @@ const widerFamilies = [
   { id: 'w4', husband: '4', wife: '9', status: 'current', children: ['10'] },
 ];
 
-describe('branch views are narrower than the full tree', () => {  it('focusing a grandchild leaves out the uncle and cousin lines', () => {
+describe('branch views follow the whole bloodline', () => {
+  it('focusing a grandchild includes uncles, aunts and cousins', () => {
     expect(ids(viewPeople(wider, widerFamilies))).toEqual([
       '1',
       '10',
@@ -116,9 +117,20 @@ describe('branch views are narrower than the full tree', () => {  it('focusing a
     ]);
 
     const branch = ids(viewPeople(wider, widerFamilies, { focusId: '6' }));
-    // Ancestors 3 & 5, grandparents 1 & 2, child 8, partner 7. No uncle 4,
-    // aunt 9 or cousin 10.
-    expect(branch).toEqual(['1', '2', '3', '5', '6', '7', '8']);
+    // Ancestors 3 & 5 and grandparents 1 & 2 bring in uncle 4, aunt 9 and
+    // cousin 10 along with the focus's own child 8 and partner 7.
+    expect(branch).toEqual([
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ]);
   });
 
   it('focusing a parent keeps the siblings and their whole families', () => {
@@ -152,6 +164,82 @@ describe('branch views are narrower than the full tree', () => {  it('focusing a
       '8',
       '9',
     ]);
+  });
+
+  it('does not pull unrelated families into a branch', () => {
+    const extra = [...wider, person('20'), person('21', { parentId: '20' })];
+    const branch = ids(viewPeople(extra, widerFamilies, { focusId: '6' }));
+
+    expect(branch).not.toContain('20');
+    expect(branch).not.toContain('21');
+  });
+});
+
+// Four generations: 20 & 21 have children 1 and 22; 1 & 2 have 3 and 4;
+// 3 & 5 have focus 6; 22 & 23 have 24. The branch of 6 must reach the
+// great-grandparents and the great-uncle's line too.
+const deepPeople = [
+  person('20', { spouseId: '21' }),
+  person('21', { spouseId: '20' }),
+  person('1', { parentId: '20', spouseId: '2' }),
+  person('2', { spouseId: '1' }),
+  person('22', { parentId: '20', spouseId: '23' }),
+  person('23', { spouseId: '22' }),
+  person('3', { parentId: '1', spouseId: '5' }),
+  person('4', { parentId: '1', spouseId: '9' }),
+  person('5', { spouseId: '3' }),
+  person('6', { parentId: '3', spouseId: '7' }),
+  person('7', { spouseId: '6' }),
+  person('9', { spouseId: '4' }),
+  person('24', { parentId: '22' }),
+];
+
+const deepFamilies = [
+  { id: 'd1', husband: '20', wife: '21', status: 'current', children: ['1', '22'] },
+  { id: 'd2', husband: '1', wife: '2', status: 'current', children: ['3', '4'] },
+  { id: 'd3', husband: '22', wife: '23', status: 'current', children: ['24'] },
+  { id: 'd4', husband: '3', wife: '5', status: 'current', children: ['6'] },
+  { id: 'd5', husband: '4', wife: '9', status: 'current', children: [] },
+  { id: 'd6', husband: '6', wife: '7', status: 'current', children: [] },
+];
+
+describe('branch ancestors at every depth', () => {
+  it('includes great-grandparents and their other descendant lines', () => {
+    const branch = ids(viewPeople(deepPeople, deepFamilies, { focusId: '6' }));
+
+    expect(branch).toEqual([
+      '1',
+      '2',
+      '20',
+      '21',
+      '22',
+      '23',
+      '24',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '9',
+    ]);
+  });
+
+  it('still leaves out the spouse own parents and their other children', () => {
+    const withInLaws = [
+      ...deepPeople.map((entry) =>
+        entry.id === '7' ? { ...entry, parentId: '30' } : entry
+      ),
+      person('30', { spouseId: '31' }),
+      person('31', { spouseId: '30' }),
+      person('32', { parentId: '30' }),
+    ];
+    const branch = ids(
+      viewPeople(withInLaws, deepFamilies, { focusId: '6' })
+    );
+
+    expect(branch).not.toContain('30');
+    expect(branch).not.toContain('31');
+    expect(branch).not.toContain('32');
   });
 });
 

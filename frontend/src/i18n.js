@@ -354,7 +354,7 @@ const translations = {
     'branch.focusAria': 'Show only the branch of {{name}}',
     'branch.focusBanner': 'Showing the branch of {{name}}',
     'branch.focusHint':
-      'This view shows their ancestors, siblings and descendants, with their families.',
+      'This view shows their whole bloodline — ancestors, uncles, aunts, cousins and descendants — with their spouses.',
     'branch.fullTreeNote':
       'A spouse’s own parents and family appear in their branch — open it with ◎.',
     'branch.backToFull': 'Back to full tree',
@@ -745,7 +745,7 @@ const translations = {
     'branch.focusAria': 'Rodyti tik {{name}} šaką',
     'branch.focusBanner': 'Rodoma {{name}} šaka',
     'branch.focusHint':
-      'Čia rodomi jų protėviai, broliai ir seserys bei palikuonys su savo šeimomis.',
+      'Čia rodoma visa jų kraujo linija — protėviai, dėdės, tetos, pusbroliai ir pusseserės bei palikuonys — su sutuoktiniais.',
     'branch.fullTreeNote':
       'Sutuoktinio tėvai ir šeima rodomi jo šakoje — atidarykite ją mygtuku „◎“.',
     'branch.backToFull': 'Grįžti prie viso medžio',

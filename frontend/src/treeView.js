@@ -65,6 +65,25 @@ function reverseEdges(edges) {
   return reversed;
 }
 
+// Everyone connected to a person by blood: every ancestor at any depth and
+// every descendant of those ancestors (siblings, uncles, aunts, cousins,
+// nieces, nephews and their children). Spouses of all blood relatives are
+// added as separate cards, but a spouse's own family is not.
+function bloodlineKeep(personId, graph) {
+  const parents = reverseEdges(graph.children);
+  const ancestors = closure([personId], parents);
+  const bloodline = closure([...ancestors], graph.children);
+  const keep = new Set([...ancestors, ...bloodline]);
+
+  [...keep].forEach((id) => {
+    (graph.partners.get(id) || new Set()).forEach((partnerId) => {
+      keep.add(partnerId);
+    });
+  });
+
+  return keep;
+}
+
 // Parent-child components: everyone linked by blood or adoption. A spouse
 // who married in starts their own component unless they descend from the
 // same family, which is exactly what we need to tell in-laws apart.
@@ -151,23 +170,12 @@ function fullTreeKeep(people, families) {
   return keep;
 }
 
-// The main tree follows one home person: their ancestors, every descendant
-// of those ancestors (siblings, cousins, nieces and nephews) and the spouse
-// cards of the bloodline. A spouse's own parents and siblings are an in-law
-// branch and are only shown in that person's branch view.
+// The main tree follows one home person's whole bloodline, with the spouse
+// cards of every blood relative. A spouse's own parents and siblings are an
+// in-law branch and are only shown in that person's branch view.
 function homeTreeKeep(homeId, people, families) {
   const graph = buildGraph(people, families);
-  const parents = reverseEdges(graph.children);
-  const ancestors = closure([homeId], parents);
-  const bloodline = closure([...ancestors], graph.children);
-
-  const keep = new Set([...ancestors, ...bloodline]);
-
-  [...keep].forEach((personId) => {
-    (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
-      keep.add(partnerId);
-    });
-  });
+  const keep = bloodlineKeep(homeId, graph);
 
   // A family with no marriage link to the home person's component is its own
   // tree. In-law families of a spouse are not: they stay in that spouse's
@@ -189,44 +197,14 @@ function homeTreeKeep(homeId, people, families) {
   return keep;
 }
 
-// A person's branch: their ancestors, their siblings with the siblings'
-// whole families (nieces, nephews, ...), and their own descendants. Partners
-// of those people are added as spouse cards, but nobody else's line is
-// pulled in - that is what keeps the branch view different from the full tree.
+// A person's branch follows the whole bloodline: every ancestor at any depth
+// (parents, grandparents, great-grandparents...) and every descendant of
+// those ancestors, which brings in uncles, aunts, cousins and their families.
+// Spouses of the blood relatives are shown as their own cards; a spouse's own
+// family and unrelated trees stay out.
 function branchKeep(focusId, people, families) {
   const graph = buildGraph(people, families);
-  const parents = new Map();
-
-  graph.children.forEach((childrenIds, parentId) => {
-    childrenIds.forEach((childId) => addEdge(parents, childId, parentId));
-  });
-
-  const keep = new Set([focusId]);
-
-  closure([focusId], parents).forEach((personId) => keep.add(personId));
-  closure([focusId], graph.children).forEach((personId) => keep.add(personId));
-
-  // Siblings and their descendants: the other children of the focused
-  // person's parents, with every niece, nephew and their families.
-  const siblingSeeds = [];
-  (parents.get(focusId) || new Set()).forEach((parentId) => {
-    (graph.children.get(parentId) || new Set()).forEach((siblingId) => {
-      if (siblingId === focusId) return;
-      keep.add(siblingId);
-      siblingSeeds.push(siblingId);
-    });
-  });
-  closure(siblingSeeds, graph.children).forEach((personId) =>
-    keep.add(personId)
-  );
-
-  [...keep].forEach((personId) => {
-    (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
-      keep.add(partnerId);
-    });
-  });
-
-  return keep;
+  return bloodlineKeep(focusId, graph);
 }
 
 function filterToKeep(list, marriages, keep) {
