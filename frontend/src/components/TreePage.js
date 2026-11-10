@@ -884,7 +884,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 </button>
               </div>
             </div>
-            {focusedPerson && (
+            {!bloodlineOnly && focusedPerson && (
               <div className="focus-banner" role="status">
                 <span>
                   {t('branch.focusBanner', {
