@@ -33,9 +33,6 @@ export default function PersonDetailsModal({
 
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
-  const secondParent = person.secondParentId
-    ? byId.get(String(person.secondParentId))
-    : null;
 
   const relatedFamilies = (families || []).filter(
     (family) =>
@@ -198,10 +195,22 @@ export default function PersonDetailsModal({
             <dt>{t('details.gender')}</dt>
             <dd>{genderLabel(t, person.gender)}</dd>
           </div>
+          {person.previousName && (
+            <div>
+              <dt>{t('details.previousName')}</dt>
+              <dd>{person.previousName}</dd>
+            </div>
+          )}
           {person.birthDate && (
             <div>
               <dt>{t('details.birth')}</dt>
               <dd>{person.birthDate}</dd>
+            </div>
+          )}
+          {person.birthPlace && (
+            <div>
+              <dt>{t('details.birthPlace')}</dt>
+              <dd>{person.birthPlace}</dd>
             </div>
           )}
           {person.deathDate && (
@@ -234,12 +243,6 @@ export default function PersonDetailsModal({
             <div>
               <dt>{t('details.parent')}</dt>
               <dd>{parentNames.join(', ')}</dd>
-            </div>
-          )}
-          {secondParent && (
-            <div>
-              <dt>{t('details.secondParent')}</dt>
-              <dd>{`${secondParent.firstName} ${secondParent.lastName}`.trim()}</dd>
             </div>
           )}
           {childNames.length > 0 && (

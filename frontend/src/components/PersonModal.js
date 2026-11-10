@@ -40,8 +40,10 @@ function initialState(
   return {
     firstName: person?.firstName || '',
     lastName: person?.lastName || '',
+    previousName: person?.previousName || '',
     gender: person?.gender || 'unknown',
     birthDate: person?.birthDate || '',
+    birthPlace: person?.birthPlace || '',
     deathDate: person?.deathDate || '',
     deceased: Boolean(person?.deceased),
     spouseId: legacyFormerSpouse
@@ -56,7 +58,6 @@ function initialState(
     previousSpouseIds,
     notes: person?.notes || '',
     parentId: initialParentId || '',
-    secondParentId: person?.secondParentId ? String(person.secondParentId) : '',
   };
 }
 
@@ -173,12 +174,6 @@ export default function PersonModal({
     if (!entry.spouseId) return true;
     return String(entry.spouseId) === String(person?.id);
   });
-  const linkedSpouse = form.spouseId
-    ? people.find((entry) => String(entry.id) === String(form.spouseId))
-    : null;
-  const linkedSpouseName = linkedSpouse
-    ? `${linkedSpouse.firstName} ${linkedSpouse.lastName}`.trim()
-    : '';
   const previousSpouseOptions = people.filter(
     (entry) =>
       entry.id !== person?.id &&
@@ -281,25 +276,18 @@ export default function PersonModal({
                 ))}
               </select>
             </label>
-            <label>
-              <span>{t('modal.secondParent')}</span>
-              <select
-                name="secondParentId"
-                onChange={update}
-                value={form.secondParentId}
-              >
-                <option value="">{t('modal.noSecondParent')}</option>
-                {parentOptions
-                  .filter((entry) => entry.id !== form.parentId)
-                  .map((entry) => (
-                    <option key={entry.id} value={entry.id}>
-                      {`${entry.firstName} ${entry.lastName}`.trim()}
-                    </option>
-                  ))}
-              </select>
-              <small className="field-hint">{t('modal.secondParentHint')}</small>
-            </label>
           </div>
+
+          <label>
+            <span>{t('modal.previousName')}</span>
+            <input
+              name="previousName"
+              onChange={update}
+              placeholder={t('modal.previousNamePlaceholder')}
+              value={form.previousName}
+            />
+            <small className="field-hint">{t('modal.previousNameHint')}</small>
+          </label>
 
           <div className="form-grid">
             <label>
@@ -321,6 +309,16 @@ export default function PersonModal({
               />
             </label>
           </div>
+
+          <label>
+            <span>{t('modal.birthPlace')}</span>
+            <input
+              name="birthPlace"
+              onChange={update}
+              placeholder={t('modal.birthPlacePlaceholder')}
+              value={form.birthPlace}
+            />
+          </label>
 
           <label className="checkbox-row">
             <input
@@ -372,17 +370,18 @@ export default function PersonModal({
             </small>
           </label>
 
-          <label>
-            <span>{t('modal.spouse')}</span>
-            <input
-              disabled={Boolean(form.spouseId)}
-              name="spouseName"
-              onChange={update}
-              placeholder={t('modal.spousePlaceholder')}
-              value={form.spouseId ? linkedSpouseName : form.spouseName}
-            />
-            <small className="field-hint">{t('modal.spouseHint')}</small>
-          </label>
+          {!form.spouseId && (
+            <label>
+              <span>{t('modal.spouse')}</span>
+              <input
+                name="spouseName"
+                onChange={update}
+                placeholder={t('modal.spousePlaceholder')}
+                value={form.spouseName}
+              />
+              <small className="field-hint">{t('modal.spouseHint')}</small>
+            </label>
+          )}
 
           <label>
             <span>{t('modal.notes')}</span>

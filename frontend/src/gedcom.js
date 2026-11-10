@@ -64,6 +64,31 @@ function readEventDate(node, tag) {
   return cleanText(date?.value, 40);
 }
 
+function readEventPlace(node, tag) {
+  const event = node.children.find((child) => child.tag === tag);
+  if (!event) return '';
+
+  const place = event.children.find((child) => child.tag === 'PLAC');
+  return cleanText(place?.value, 160);
+}
+
+// A second NAME structure is how GEDCOM carries a maiden or former name.
+function readAlternateName(node) {
+  const nameNodes = node.children.filter((child) => child.tag === 'NAME');
+  if (nameNodes.length < 2) return '';
+
+  const preferred = nameNodes.slice(1).find((nameNode) => {
+    const type = nameNode.children.find((child) => child.tag === 'TYPE')?.value;
+    return /maiden|birth|aka|nick/i.test(type || '');
+  });
+
+  const nameNode = preferred || nameNodes[1];
+  return cleanText(nameNode.value, 160)
+    .replace(/\//g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function readFamilyEvent(node, tags) {
   const event = node.children.find((child) => tags.includes(child.tag));
   if (!event) return { present: false, date: '' };
@@ -213,8 +238,10 @@ export function parseGedcom(input, language = 'en') {
       lastName,
       gender: sex === 'M' ? 'male' : sex === 'F' ? 'female' : 'unknown',
       birthDate: readEventDate(record, 'BIRT'),
+      birthPlace: readEventPlace(record, 'BIRT'),
       deathDate,
       deceased: hasDeathEvent || Boolean(deathDate),
+      previousName: readAlternateName(record),
       notes: readNotes(record, sharedNotes),
     });
   }
@@ -528,12 +555,31 @@ export function buildGedcom(people, treeName, families = []) {
     if (firstName) lines.push(`1 GIVN ${firstName}`);
     if (lastName) lines.push(`1 SURN ${lastName}`);
 
+    if (person.previousName) {
+      const value = cleanLine(person.previousName, 160);
+      const parts = value.split(' ').filter(Boolean);
+
+      if (parts.length > 1) {
+        const surname = parts.pop();
+        lines.push(`1 NAME ${parts.join(' ')} /${surname}/`);
+      } else {
+        lines.push(`1 NAME ${value}`);
+      }
+
+      lines.push('2 TYPE maiden');
+    }
+
     if (person.gender === 'male') lines.push('1 SEX M');
     if (person.gender === 'female') lines.push('1 SEX F');
 
-    if (person.birthDate) {
+    if (person.birthDate || person.birthPlace) {
       lines.push('1 BIRT');
-      lines.push(`2 DATE ${cleanLine(person.birthDate, 40)}`);
+      if (person.birthDate) {
+        lines.push(`2 DATE ${cleanLine(person.birthDate, 40)}`);
+      }
+      if (person.birthPlace) {
+        lines.push(`2 PLAC ${cleanLine(person.birthPlace, 160)}`);
+      }
     }
 
     if (person.deathDate) {

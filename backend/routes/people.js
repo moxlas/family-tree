@@ -22,11 +22,15 @@ function readFields(body) {
 
   if ('firstName' in body) fields.firstName = cleanText(body.firstName, 80);
   if ('lastName' in body) fields.lastName = cleanText(body.lastName, 80);
+  if ('previousName' in body) {
+    fields.previousName = cleanText(body.previousName, 160);
+  }
   if ('gender' in body) {
     const allowed = ['male', 'female', 'other', 'unknown'];
     fields.gender = allowed.includes(body.gender) ? body.gender : 'unknown';
   }
   if ('birthDate' in body) fields.birthDate = cleanText(body.birthDate, 40);
+  if ('birthPlace' in body) fields.birthPlace = cleanText(body.birthPlace, 160);
   if ('deathDate' in body) fields.deathDate = cleanText(body.deathDate, 40);
   if ('deceased' in body) fields.deceased = Boolean(body.deceased);
   if ('spouseName' in body) fields.spouseName = cleanText(body.spouseName, 160);

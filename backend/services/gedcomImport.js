@@ -49,8 +49,10 @@ function sanitizeIndividual(raw) {
     key,
     firstName: cleanText(raw.firstName, 80),
     lastName: cleanText(raw.lastName, 80),
+    previousName: cleanText(raw.previousName, 160),
     gender: GENDERS.has(raw.gender) ? raw.gender : 'unknown',
     birthDate: cleanText(raw.birthDate, 40),
+    birthPlace: cleanText(raw.birthPlace, 160),
     deathDate: cleanText(raw.deathDate, 40),
     deceased: Boolean(raw.deceased),
     notes: cleanText(raw.notes, 2000),
@@ -286,7 +288,14 @@ async function importGedcom({ ownerId, tree, body }) {
       const patch = {};
       let changed = false;
 
-      for (const field of ['lastName', 'birthDate', 'deathDate', 'notes']) {
+      for (const field of [
+        'lastName',
+        'previousName',
+        'birthDate',
+        'birthPlace',
+        'deathDate',
+        'notes',
+      ]) {
         if (!match[field] && fields[field]) {
           patch[field] = fields[field];
           changed = true;
@@ -325,8 +334,10 @@ async function importGedcom({ ownerId, tree, body }) {
       tree: tree._id,
       firstName: fields.firstName,
       lastName: fields.lastName,
+      previousName: fields.previousName,
       gender: fields.gender,
       birthDate: fields.birthDate,
+      birthPlace: fields.birthPlace,
       deathDate: fields.deathDate,
       deceased: fields.deceased,
       spouseId: null,

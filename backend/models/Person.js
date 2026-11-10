@@ -26,6 +26,12 @@ const personSchema = new mongoose.Schema(
       maxlength: 80,
       default: '',
     },
+    previousName: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: '',
+    },
     gender: {
       type: String,
       enum: ['male', 'female', 'other', 'unknown'],
@@ -35,6 +41,12 @@ const personSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: 40,
+      default: '',
+    },
+    birthPlace: {
+      type: String,
+      trim: true,
+      maxlength: 160,
       default: '',
     },
     deathDate: {

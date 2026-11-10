@@ -170,6 +170,58 @@ describe('GEDCOM spouse connection round-trip', () => {
     expect(byName.get('Living').deceased).toBe(false);
   });
 
+  it('round-trips a maiden name and a birth place', () => {
+    const peopleWithDetails = [
+      person('1', {
+        firstName: 'Birutė',
+        lastName: 'Mikėnienė',
+        gender: 'female',
+        birthDate: '1940',
+        birthPlace: 'Kaunas, Lithuania',
+        previousName: 'Birutė Strumskytė',
+      }),
+      person('2', { firstName: 'Adam', gender: 'male' }),
+    ];
+
+    const text = buildGedcom(peopleWithDetails, 'Names test', []);
+    expect(text).toContain('1 NAME Birutė /Strumskytė/');
+    expect(text).toContain('2 TYPE maiden');
+    expect(text).toContain('2 PLAC Kaunas, Lithuania');
+
+    const parsed = parseGedcom(text, 'en');
+    const birute = parsed.individuals.find(
+      (entry) => entry.firstName === 'Birutė'
+    );
+
+    expect(birute.previousName).toBe('Birutė Strumskytė');
+    expect(birute.birthPlace).toBe('Kaunas, Lithuania');
+    expect(parsed.individuals.find((entry) => entry.firstName === 'Adam').previousName).toBe('');
+  });
+
+  it('reads a secondary NAME and BIRT place from a file', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 5.5.1',
+      '1 CHAR UTF-8',
+      '0 @I1@ INDI',
+      '1 NAME Birutė /Mikėnienė/',
+      '1 SEX F',
+      '1 BIRT',
+      '2 DATE 1940',
+      '2 PLAC Kaunas',
+      '1 NAME Birutė /Strumskytė/',
+      '2 TYPE maiden',
+      '0 TRLR',
+    ].join('\n');
+
+    const parsed = parseGedcom(text, 'en');
+    expect(parsed.individuals[0].firstName).toBe('Birutė');
+    expect(parsed.individuals[0].lastName).toBe('Mikėnienė');
+    expect(parsed.individuals[0].previousName).toBe('Birutė Strumskytė');
+    expect(parsed.individuals[0].birthPlace).toBe('Kaunas');
+  });
+
   it('round-trips multiline person and family notes', () => {    const peopleWithNotes = [
       person('1', { firstName: 'Adam', gender: 'male', spouseId: '2' }),
       person('2', { firstName: 'Emma', gender: 'female', spouseId: '1' }),
