@@ -1136,6 +1136,7 @@ export default function SpouseTreeComponent({
           childUnitIndex,
           parentDepth: scene.depths[parentIndex] || 0,
           childDepth: scene.depths[childUnitIndex] || 0,
+          parentBottom: (parentRect.bottom - containerRect.top) / scale,
           junctionX,
           junctionY,
           endX,
@@ -1146,53 +1147,22 @@ export default function SpouseTreeComponent({
       });
     });
 
-    // Each child link drops from its marriage anchor into the gap below the
-    // parent row and travels to the child on a lane dedicated to that
-    // parent, so lanes never overlap and never pass through a card.
-    const parentsByDepth = new Map();
-    descriptorById.forEach((descriptor) => {
-      if (!parentsByDepth.has(descriptor.parentDepth)) {
-        parentsByDepth.set(descriptor.parentDepth, new Set());
-      }
-      parentsByDepth.get(descriptor.parentDepth).add(descriptor.parentIndex);
-    });
-
-    const laneIndexByParent = new Map();
-    parentsByDepth.forEach((parents, depth) => {
-      const ordered = [...parents].sort(
-        (first, second) =>
-          (scene.units[first].x || 0) - (scene.units[second].x || 0)
-      );
-      ordered.forEach((parentIndex, index) => {
-        laneIndexByParent.set(`${depth}:${parentIndex}`, index);
-      });
-    });
-
-    const laneCountByDepth = new Map(
-      [...parentsByDepth.entries()].map(([depth, parents]) => [depth, parents.size])
-    );
-
+    // Every child link drops straight down from its marriage heart, runs
+    // horizontally at one consistent height in the middle of the empty gap
+    // between the parent row and the child row, then drops into the child.
+    // So horizontals stay below parent cards and above child cards.
     const nextEdges = [...descriptorById.values()].map((descriptor) => {
-      const laneIndex =
-        laneIndexByParent.get(`${descriptor.parentDepth}:${descriptor.parentIndex}`) || 0;
-      const laneCount = laneCountByDepth.get(descriptor.parentDepth) || 1;
-      const gap = Math.max(24, descriptor.endY - descriptor.junctionY);
-      const laneStep = Math.min(7, Math.max(3, (gap - 24) / Math.max(1, laneCount)));
-      const laneY = Math.min(
-        descriptor.endY - 8,
-        descriptor.junctionY + 16 + laneIndex * laneStep
-      );
+      const skipsRows =
+        descriptor.childDepth - descriptor.parentDepth > 1;
+      const laneY = skipsRows
+        ? descriptor.endY - 28
+        : descriptor.parentBottom +
+          (descriptor.endY - descriptor.parentBottom) / 2;
 
-      // Links that skip a generation (a parent two or more rows above the
-      // child) keep their long run in the empty gap directly above the
-      // child, so the visible line does not cut across a card row.
-      const skipsRows = descriptor.childDepth - descriptor.parentDepth > 1;
-      const skipLaneY = Math.max(descriptor.junctionY + 12, descriptor.endY - 14);
-      const middleY = skipsRows ? skipLaneY : laneY;
       const path =
         Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
           ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${descriptor.endY}`
-          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${middleY} H ${descriptor.endX} V ${descriptor.endY}`;
+          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
 
       return {
         id: descriptor.id,
