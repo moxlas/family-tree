@@ -148,11 +148,6 @@ export default function PersonCard({
         <div className="person-details">
           <h3>
             {fullName}
-            {isHome && (
-              <span className="person-home-tag" title={t('person.homePerson')}>
-                {t('person.homeBadge')}
-              </span>
-            )}
             {person.deceased && (
               <span
                 aria-label={t('person.deceased')}
@@ -164,7 +159,14 @@ export default function PersonCard({
               </span>
             )}
           </h3>
-          <p className="person-life">{life}</p>
+          <p className="person-life">
+            {life}
+            {isHome && (
+              <span className="person-home-tag" title={t('person.homePerson')}>
+                {t('person.homeBadge')}
+              </span>
+            )}
+          </p>
           {showSpouseName && person.spouseName && (
             <p
               aria-label={t('person.spouseLabel', { name: person.spouseName })}
