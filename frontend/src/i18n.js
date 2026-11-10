@@ -88,6 +88,7 @@ const translations = {
 
     'person.born': 'Born {{date}}',
     'person.died': 'Died {{date}}',
+    'person.deceased': 'Deceased',
     'person.datesUnknown': 'Dates not added',
     'person.spouseLabel': 'Spouse or partner: {{name}}',
     'person.addChild': 'Add a child of {{name}}',
@@ -109,6 +110,7 @@ const translations = {
     'details.eyebrow': 'Person details',
     'details.title': 'About {{name}}',
     'details.gender': 'Gender',
+    'details.status': 'Status',
     'details.birth': 'Birth date or year',
     'details.death': 'Death date or year',
     'details.currentSpouse': 'Current spouse or partner',
@@ -147,6 +149,9 @@ const translations = {
     'modal.birthPlaceholder': 'e.g. 1945 or 1945-06-12',
     'modal.death': 'Death date or year',
     'modal.deathPlaceholder': 'Leave empty if living',
+    'modal.deceased': 'Deceased',
+    'modal.deceasedHint':
+      'Mark this if the person has died, even when the date is unknown.',
     'modal.linkedSpouse': 'Spouse already in the tree',
     'modal.noLinkedSpouse': 'No linked spouse',
     'modal.linkedSpouseHint':
@@ -453,6 +458,7 @@ const translations = {
 
     'person.born': 'Gimė {{date}}',
     'person.died': 'Mirė {{date}}',
+    'person.deceased': 'Miręs (-usi)',
     'person.datesUnknown': 'Datos nenurodytos',
     'person.spouseLabel': 'Sutuoktinis (-ė) arba partneris (-ė): {{name}}',
     'person.addChild': 'Pridėti {{name}} vaiką',
@@ -474,6 +480,7 @@ const translations = {
     'details.eyebrow': 'Asmens duomenys',
     'details.title': 'Apie {{name}}',
     'details.gender': 'Lytis',
+    'details.status': 'Būsena',
     'details.birth': 'Gimimo data arba metai',
     'details.death': 'Mirties data arba metai',
     'details.currentSpouse': 'Dabartinis sutuoktinis (-ė) arba partneris (-ė)',
@@ -512,6 +519,9 @@ const translations = {
     'modal.birthPlaceholder': 'pvz., 1945 arba 1945-06-12',
     'modal.death': 'Mirties data arba metai',
     'modal.deathPlaceholder': 'Palikite tuščią, jei asmuo gyvas',
+    'modal.deceased': 'Miręs (-usi)',
+    'modal.deceasedHint':
+      'Pažymėkite, jei asmuo miręs, net kai data nežinoma.',
     'modal.linkedSpouse': 'Sutuoktinis (-ė) medyje',
     'modal.noLinkedSpouse': 'Nėra susieto sutuoktinio (-ės)',
     'modal.linkedSpouseHint':

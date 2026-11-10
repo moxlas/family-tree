@@ -52,6 +52,7 @@ function sanitizeIndividual(raw) {
     gender: GENDERS.has(raw.gender) ? raw.gender : 'unknown',
     birthDate: cleanText(raw.birthDate, 40),
     deathDate: cleanText(raw.deathDate, 40),
+    deceased: Boolean(raw.deceased),
     notes: cleanText(raw.notes, 2000),
   };
 }
@@ -297,6 +298,11 @@ async function importGedcom({ ownerId, tree, body }) {
         changed = true;
       }
 
+      if (fields.deceased && !match.deceased) {
+        patch.deceased = true;
+        changed = true;
+      }
+
       if (
         (match.birthDate &&
           fields.birthDate &&
@@ -322,6 +328,7 @@ async function importGedcom({ ownerId, tree, body }) {
       gender: fields.gender,
       birthDate: fields.birthDate,
       deathDate: fields.deathDate,
+      deceased: fields.deceased,
       spouseId: null,
       spouseName: '',
       notes: fields.notes,

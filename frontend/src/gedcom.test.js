@@ -123,8 +123,54 @@ describe('GEDCOM spouse connection round-trip', () => {
     expect(parsed.families.filter((family) => family.notes)).toHaveLength(1);
   });
 
-  it('round-trips multiline person and family notes', () => {
-    const peopleWithNotes = [
+  it('reads DEAT as a deceased flag even without a date', () => {
+    const text = [
+      '0 HEAD',
+      '1 GEDC',
+      '2 VERS 5.5.1',
+      '1 CHAR UTF-8',
+      '0 @I1@ INDI',
+      '1 NAME Bronius /Mikėnas/',
+      '1 SEX M',
+      '1 DEAT Y',
+      '0 @I2@ INDI',
+      '1 NAME Vanda //',
+      '1 SEX F',
+      '0 TRLR',
+    ].join('\n');
+
+    const parsed = parseGedcom(text, 'en');
+    expect(parsed.individuals[0].deceased).toBe(true);
+    expect(parsed.individuals[0].deathDate).toBe('');
+    expect(parsed.individuals[1].deceased).toBe(false);
+  });
+
+  it('exports and re-imports the deceased flag', () => {
+    const peopleWithDeath = [
+      person('1', { firstName: 'DeceasedNoDate', gender: 'male' }),
+      person('2', { firstName: 'DeceasedWithDate', gender: 'female' }),
+      person('3', { firstName: 'Living', gender: 'male' }),
+    ];
+    peopleWithDeath[0].deceased = true;
+    peopleWithDeath[1].deceased = true;
+    peopleWithDeath[1].deathDate = '1999';
+
+    const text = buildGedcom(peopleWithDeath, 'Deceased test', []);
+    expect(text).toContain('1 DEAT Y');
+    expect(text).toContain('2 DATE 1999');
+
+    const parsed = parseGedcom(text, 'en');
+    const byName = new Map(
+      parsed.individuals.map((entry) => [entry.firstName, entry])
+    );
+    expect(byName.get('DeceasedNoDate').deceased).toBe(true);
+    expect(byName.get('DeceasedNoDate').deathDate).toBe('');
+    expect(byName.get('DeceasedWithDate').deceased).toBe(true);
+    expect(byName.get('DeceasedWithDate').deathDate).toBe('1999');
+    expect(byName.get('Living').deceased).toBe(false);
+  });
+
+  it('round-trips multiline person and family notes', () => {    const peopleWithNotes = [
       person('1', { firstName: 'Adam', gender: 'male', spouseId: '2' }),
       person('2', { firstName: 'Emma', gender: 'female', spouseId: '1' }),
     ];

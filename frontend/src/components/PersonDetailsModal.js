@@ -148,6 +148,8 @@ export default function PersonDetailsModal({
     life = t('person.born', { date: person.birthDate });
   } else if (person.deathDate) {
     life = t('person.died', { date: person.deathDate });
+  } else if (person.deceased) {
+    life = t('person.deceased');
   }
 
   return (
@@ -206,6 +208,12 @@ export default function PersonDetailsModal({
             <div>
               <dt>{t('details.death')}</dt>
               <dd>{person.deathDate}</dd>
+            </div>
+          )}
+          {person.deceased && (
+            <div>
+              <dt>{t('details.status')}</dt>
+              <dd>{t('person.deceased')}</dd>
             </div>
           )}
           <div>

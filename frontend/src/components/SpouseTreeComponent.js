@@ -1052,61 +1052,87 @@ export function buildScene(people, families, showFormerSpouses = true) {
   const layoutX = new Map();
   let layoutCursor = 0;
 
-  // Reserve a width for every subtree first, then place parents centred
-  // over their children's block. This is deterministic and cannot overlap.
-  const subtreeWidths = new Map();
+  // Every child is placed under the heart of the marriage that produced it,
+  // and only moves sideways when it would collide with a sibling. The space a
+  // subtree reserves is the union of the parent unit and those heart anchors,
+  // so a single child sits exactly on its parents' connection.
+  const subtreeMetrics = new Map();
 
-  function subtreeWidth(unitIndex) {
-    if (subtreeWidths.has(unitIndex)) return subtreeWidths.get(unitIndex);
-    const children = primaryChildrenByParent.get(unitIndex) || [];
-    const childrenTotal = children.reduce(
-      (sum, childIndex, index) =>
-        sum + subtreeWidth(childIndex) + (index > 0 ? UNIT_GAP : 0),
-      0
-    );
-    const width = Math.max(unitWidths[unitIndex], childrenTotal);
-    subtreeWidths.set(unitIndex, width);
-    return width;
+  function childAnchorOffset(parentIndex, childIndex) {
+    const context = units[childIndex].parentLinks?.get(parentIndex)
+      ?.relationshipContext;
+    if (!context?.firstId || !context?.secondId) return 0;
+    return marriageAnchorOffset(parentIndex, context);
   }
 
-  function placeUnit(unitIndex, left, preferredX = null, seen = new Set()) {
-    if (layoutX.has(unitIndex) || seen.has(unitIndex)) return;
-    seen.add(unitIndex);
+  function resolveChildCenters(parentIndex) {
+    const children = primaryChildrenByParent.get(parentIndex) || [];
+    if (!children.length) return [];
 
-    const children = primaryChildrenByParent.get(unitIndex) || [];
-    const width = subtreeWidth(unitIndex);
-    const unitWidth = unitWidths[unitIndex];
-    const minX = left + unitWidth / 2;
-    const maxX = left + width - unitWidth / 2;
-    let center = left + width / 2;
+    const desired = children.map((childIndex) =>
+      childAnchorOffset(parentIndex, childIndex)
+    );
+    const metrics = children.map((childIndex) => subtreeMetricsOf(childIndex));
+    const centers = desired.slice();
 
-    if (preferredX != null) {
-      center = Math.min(Math.max(preferredX, minX), maxX);
+    // Forward pass: keep siblings apart while preserving their heart order.
+    for (let index = 1; index < children.length; index += 1) {
+      const minCenter =
+        centers[index - 1] +
+        metrics[index - 1].right -
+        metrics[index].left +
+        UNIT_GAP;
+      if (centers[index] < minCenter) centers[index] = minCenter;
     }
 
-    layoutX.set(unitIndex, center);
+    // Shift the resolved group back towards the hearts so the parent stays
+    // visually centred instead of drifting to the right.
+    const desiredMean =
+      desired.reduce((sum, value) => sum + value, 0) / desired.length;
+    const resolvedMean =
+      centers.reduce((sum, value) => sum + value, 0) / centers.length;
+    const shift = desiredMean - resolvedMean;
+    if (Math.abs(shift) > 0.5) {
+      for (let index = 0; index < centers.length; index += 1) {
+        centers[index] += shift;
+      }
+    }
 
+    return centers;
+  }
+
+  function subtreeMetricsOf(unitIndex) {
+    if (subtreeMetrics.has(unitIndex)) return subtreeMetrics.get(unitIndex);
+
+    const unitHalf = unitWidths[unitIndex] / 2;
+    let left = -unitHalf;
+    let right = unitHalf;
+
+    const children = primaryChildrenByParent.get(unitIndex) || [];
+    const centers = resolveChildCenters(unitIndex);
+
+    children.forEach((childIndex, index) => {
+      const childMetrics = subtreeMetricsOf(childIndex);
+      left = Math.min(left, centers[index] + childMetrics.left);
+      right = Math.max(right, centers[index] + childMetrics.right);
+    });
+
+    const metrics = { left, right, width: right - left };
+    subtreeMetrics.set(unitIndex, metrics);
+    return metrics;
+  }
+
+  function placeUnit(unitIndex, centerX, seen = new Set()) {
+    if (layoutX.has(unitIndex) || seen.has(unitIndex)) return;
+    seen.add(unitIndex);
+    layoutX.set(unitIndex, centerX);
+
+    const children = primaryChildrenByParent.get(unitIndex) || [];
     if (!children.length) return;
 
-    const childrenTotal = children.reduce(
-      (sum, childIndex, index) =>
-        sum + subtreeWidth(childIndex) + (index > 0 ? UNIT_GAP : 0),
-      0
-    );
-    let childLeft = Math.min(
-      Math.max(center - childrenTotal / 2, left),
-      left + width - childrenTotal
-    );
-
-    children.forEach((childIndex) => {
-      const context = units[childIndex].parentLinks?.get(unitIndex)?.relationshipContext;
-      const anchorOffset =
-        context?.firstId && context?.secondId
-          ? marriageAnchorOffset(unitIndex, context)
-          : 0;
-
-      placeUnit(childIndex, childLeft, center + anchorOffset, seen);
-      childLeft += subtreeWidth(childIndex) + UNIT_GAP;
+    const centers = resolveChildCenters(unitIndex);
+    children.forEach((childIndex, index) => {
+      placeUnit(childIndex, centerX + centers[index], seen);
     });
   }
 
@@ -1137,8 +1163,9 @@ export function buildScene(people, families, showFormerSpouses = true) {
       .filter((unitIndex) => componentOf[unitIndex] === componentIndex)
       .forEach((unitIndex) => {
         if (layoutX.has(unitIndex)) return;
-        placeUnit(unitIndex, layoutCursor);
-        layoutCursor += subtreeWidth(unitIndex) + UNIT_GAP;
+        const metrics = subtreeMetricsOf(unitIndex);
+        placeUnit(unitIndex, layoutCursor - metrics.left);
+        layoutCursor += metrics.width + UNIT_GAP;
       });
   });
 
@@ -1163,6 +1190,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
   units.forEach((unit, unitIndex) => {
     unit.x = layoutX.get(unitIndex) || 0;
     unit.width = unitWidths[unitIndex];
+    unit.cardWidth = CARD_WIDTH;
     unit.layoutCenter = unit.x;
     unit.memberCenters = unit.members.map(
       (_member, memberIndex) =>
@@ -1718,9 +1746,10 @@ export default function SpouseTreeComponent({
               familyIds.length > 0 &&
               familyIds.some((familyId) => collapsedSet.has(String(familyId)));
 
-            // Partners who are not beside each other get a line that runs
-            // behind the cards, with the heart in the visible gap beside the
-            // ex-spouse (or the first partner for a current marriage).
+            // Partners who are not beside each other are connected behind the
+            // cards. The line is drawn only inside the gaps between cards, on
+            // its own height, so it never covers a card border or merges with
+            // the neighbouring marriage line.
             const behindLinks = unitRelationships
               .map((relationship) => {
                 const firstIndex = unit.members.findIndex(
@@ -1738,17 +1767,25 @@ export default function SpouseTreeComponent({
                   pairKeyOf(relationship.firstId, relationship.secondId)
                 );
                 if (gapIndex == null) return null;
-                const gapX =
-                  (unit.memberCenters[gapIndex] +
-                    unit.memberCenters[gapIndex + 1]) /
-                  2;
+
+                const cardWidth = unit.cardWidth || 232;
+                const segments = [];
+                for (let index = leftIndex; index < rightIndex; index += 1) {
+                  const left = unit.memberCenters[index] + cardWidth / 2;
+                  const right = unit.memberCenters[index + 1] - cardWidth / 2;
+                  if (right - left < 1) continue;
+                  segments.push({ left, width: right - left });
+                }
+                if (!segments.length) return null;
 
                 return {
                   key: `behind-${relationship.firstId}-${relationship.secondId}`,
                   heartKey: `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
-                  left: unit.memberCenters[leftIndex],
-                  width: unit.memberCenters[rightIndex] - unit.memberCenters[leftIndex],
-                  heartX: gapX,
+                  segments,
+                  heartX:
+                    (unit.memberCenters[gapIndex] +
+                      unit.memberCenters[gapIndex + 1]) /
+                    2,
                   broken: relationship.status === 'former',
                   former: relationship.status === 'former',
                 };
@@ -1762,14 +1799,20 @@ export default function SpouseTreeComponent({
                 role="listitem"
                 style={{ left: `${unit.x || 0}px` }}
               >
-                {behindLinks.map((link) => (
-                  <span
-                    aria-hidden="true"
-                    className={`spouse-link-behind${link.former ? ' is-former' : ''}`}
-                    key={`${link.key}-line`}
-                    style={{ left: `${link.left}px`, width: `${link.width}px` }}
-                  />
-                ))}
+                {behindLinks.map((link) =>
+                  link.segments.map((segment, segmentIndex) => (
+                    <span
+                      aria-hidden="true"
+                      className={`spouse-link-behind${link.former ? ' is-former' : ''}`}
+                      key={`${link.key}-line-${segmentIndex}`}
+                      style={{
+                        left: `${segment.left}px`,
+                        width: `${segment.width}px`,
+                        top: 'calc(50% - 5px)',
+                      }}
+                    />
+                  ))
+                )}
                 {childCount > 0 && onToggleFamily && (
                   <button
                     aria-expanded={!isCollapsed}
@@ -1848,7 +1891,10 @@ export default function SpouseTreeComponent({
                     className="spouse-gap-heart"
                     key={`${link.key}-heart`}
                     ref={(node) => setHeartRef(link.heartKey, node)}
-                    style={{ left: `${link.heartX}px` }}
+                    style={{
+                      left: `${link.heartX}px`,
+                      top: 'calc(50% - 5px)',
+                    }}
                   >
                     <span className="spouse-link-heart">
                       <HeartIcon broken={link.broken} />

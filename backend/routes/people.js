@@ -28,6 +28,7 @@ function readFields(body) {
   }
   if ('birthDate' in body) fields.birthDate = cleanText(body.birthDate, 40);
   if ('deathDate' in body) fields.deathDate = cleanText(body.deathDate, 40);
+  if ('deceased' in body) fields.deceased = Boolean(body.deceased);
   if ('spouseName' in body) fields.spouseName = cleanText(body.spouseName, 160);
   if ('spouseStatus' in body) {
     fields.spouseStatus = body.spouseStatus === 'former' ? 'former' : 'current';

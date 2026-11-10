@@ -374,8 +374,35 @@ describe('buildScene generation placement', () => {
     );
   });
 
-  it('widens a current marriage gap by the number of children it carries', () => {
+  it('places a single child exactly under its parents marriage heart', () => {
     const people = [
+      person('1', { firstName: 'Mother', gender: 'female' }),
+      person('2', { firstName: 'Father', gender: 'male' }),
+      person('3', { firstName: 'Child', parentId: '1' }),
+      person('5', { firstName: 'SecondWife', gender: 'female' }),
+      person('4', { firstName: 'OtherChild', parentId: '2' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '2', wife: '1', status: 'current', children: ['3'] },
+      { id: 'f2', husband: '2', wife: '5', status: 'current', children: ['4'] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '2')
+    );
+    const order = unit.members.map((member) => member.id);
+    const unitLeft = unit.x - unit.width / 2;
+    const centerOf = (personId) =>
+      unitLeft + unit.memberCenters[order.indexOf(personId)];
+    const heartX = (centerOf('1') + centerOf('2')) / 2;
+    const child = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '3')
+    );
+
+    expect(child.x).toBeCloseTo(heartX, 1);
+  });
+
+  it('widens a current marriage gap by the number of children it carries', () => {    const people = [
       person('1', { firstName: 'Father', gender: 'male' }),
       person('2', { firstName: 'Mother', gender: 'female' }),
       person('3', { firstName: 'ChildOne', parentId: '1' }),

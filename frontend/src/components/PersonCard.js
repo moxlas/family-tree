@@ -36,6 +36,8 @@ export default function PersonCard({
     life = t('person.born', { date: person.birthDate });
   } else if (person.deathDate) {
     life = t('person.died', { date: person.deathDate });
+  } else if (person.deceased) {
+    life = t('person.deceased');
   }
 
   const [menuOpen, setMenuOpen] = useState(false);
@@ -139,7 +141,19 @@ export default function PersonCard({
           {initials(person)}
         </div>
         <div className="person-details">
-          <h3>{fullName}</h3>
+          <h3>
+            {fullName}
+            {person.deceased && (
+              <span
+                aria-label={t('person.deceased')}
+                className="person-deceased-mark"
+                title={t('person.deceased')}
+              >
+                {' '}
+                †
+              </span>
+            )}
+          </h3>
           <p className="person-life">{life}</p>
           {showSpouseName && person.spouseName && (
             <p

@@ -43,6 +43,10 @@ const personSchema = new mongoose.Schema(
       maxlength: 40,
       default: '',
     },
+    deceased: {
+      type: Boolean,
+      default: false,
+    },
     spouseId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Person',

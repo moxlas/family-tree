@@ -1233,6 +1233,29 @@ textarea {
   margin: 0;
 }
 
+.person-deceased-mark {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.checkbox-row {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.checkbox-row input[type='checkbox'] {
+  accent-color: var(--brand-deep);
+  height: 16px;
+  width: 16px;
+}
+
+.checkbox-row span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .person-spouse {
   color: #9d174d;
   font-size: 11.5px;

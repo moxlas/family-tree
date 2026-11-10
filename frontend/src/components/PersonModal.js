@@ -43,6 +43,7 @@ function initialState(
     gender: person?.gender || 'unknown',
     birthDate: person?.birthDate || '',
     deathDate: person?.deathDate || '',
+    deceased: Boolean(person?.deceased),
     spouseId: legacyFormerSpouse
       ? ''
       : person?.spouseId
@@ -102,6 +103,13 @@ export default function PersonModal({
     }));
   };
 
+  const updateChecked = (event) => {
+    setForm((current) => ({
+      ...current,
+      [event.target.name]: event.target.checked,
+    }));
+  };
+
   const updateSpouse = (event) => {
     const nextSpouseId = event.target.value;
 
@@ -139,6 +147,7 @@ export default function PersonModal({
         parentId: form.parentId || null,
         spouseId: form.spouseId || null,
         spouseStatus: form.spouseId ? 'current' : form.spouseStatus,
+        deceased: Boolean(form.deceased),
         // Free-text spouse names only apply when no spouse is linked in
         // the tree; a linked spouse always supplies the name.
         spouseName: form.spouseId ? '' : form.spouseName,
@@ -312,6 +321,17 @@ export default function PersonModal({
               />
             </label>
           </div>
+
+          <label className="checkbox-row">
+            <input
+              checked={Boolean(form.deceased)}
+              name="deceased"
+              onChange={updateChecked}
+              type="checkbox"
+            />
+            <span>{t('modal.deceased')}</span>
+          </label>
+          <small className="field-hint">{t('modal.deceasedHint')}</small>
 
           <label>
             <span>{t('modal.currentSpouse')}</span>

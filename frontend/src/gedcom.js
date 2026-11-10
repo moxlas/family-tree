@@ -204,6 +204,8 @@ export function parseGedcom(input, language = 'en') {
       record.children.find((child) => child.tag === 'SEX')?.value,
       4
     ).toUpperCase();
+    const deathDate = readEventDate(record, 'DEAT');
+    const hasDeathEvent = record.children.some((child) => child.tag === 'DEAT');
 
     individuals.push({
       key,
@@ -211,7 +213,8 @@ export function parseGedcom(input, language = 'en') {
       lastName,
       gender: sex === 'M' ? 'male' : sex === 'F' ? 'female' : 'unknown',
       birthDate: readEventDate(record, 'BIRT'),
-      deathDate: readEventDate(record, 'DEAT'),
+      deathDate,
+      deceased: hasDeathEvent || Boolean(deathDate),
       notes: readNotes(record, sharedNotes),
     });
   }
@@ -536,6 +539,8 @@ export function buildGedcom(people, treeName, families = []) {
     if (person.deathDate) {
       lines.push('1 DEAT');
       lines.push(`2 DATE ${cleanLine(person.deathDate, 40)}`);
+    } else if (person.deceased) {
+      lines.push('1 DEAT Y');
     }
 
     if (person.notes) {
