@@ -52,9 +52,10 @@ const translations = {
     'tree.homePerson': 'Home person',
     'tree.homePersonHint':
       'The tree shows this person’s ancestors and their descendants.',
-    'tree.headingHint': 'Use the + button on a card to add a child.',
+    'tree.headingHint':
+      'Use + on a card to add a child, parent or sibling. Spouse cards are hidden in this view.',
     'tree.headingHintSpouses':
-      'Use ♥ to add a spouse or + to add a child. Each spouse has their own card.',
+      'Use + on a card to add a child, parent, sibling or spouse. Use ▾ to hide that person’s children only.',
     'tree.modeBloodline': 'Bloodline view',
     'tree.modeSpouses': 'Spouse cards',
     'tree.addRoot': 'Add another root',
@@ -89,6 +90,8 @@ const translations = {
     'person.born': 'Born {{date}}',
     'person.died': 'Died {{date}}',
     'person.deceased': 'Deceased',
+    'person.deceasedMale': 'Deceased',
+    'person.deceasedFemale': 'Deceased',
     'person.hideChildren': 'Hide children',
     'person.showChildren': 'Show children',
     'person.noChildren': 'This person has no children',
@@ -348,9 +351,9 @@ const translations = {
     'branch.focusAria': 'Show only the branch of {{name}}',
     'branch.focusBanner': 'Showing the branch of {{name}}',
     'branch.focusHint':
-      'This view shows their ancestors, siblings and descendants only.',
+      'This view shows their ancestors, siblings and descendants, with their families.',
     'branch.fullTreeNote':
-      'In-laws are hidden here; use the ◎ button to open a spouse’s own branch.',
+      'A spouse’s own parents and family appear in their branch — open it with ◎.',
     'branch.backToFull': 'Back to full tree',
 
     'api.authRequired': 'Authentication required.',
@@ -432,9 +435,9 @@ const translations = {
     'tree.homePersonHint':
       'Medis rodo šio asmens protėvius ir jų palikuonis.',
     'tree.headingHint':
-      'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką.',
+      'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką, tėvą ar motiną, brolį ar seserį. Šiame vaizde sutuoktinių kortelės nerodomos.',
     'tree.headingHintSpouses':
-      'Spustelėkite „♥“, kad pridėtumėte sutuoktinį (-ę), arba „+“, kad pridėtumėte vaiką. Kiekvienas sutuoktinis turi savo kortelę.',
+      'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką, tėvą ar motiną, brolį ar seserį arba sutuoktinį (-ę). Naudokite „▾“, kad paslėptumėte tik to asmens vaikus.',
     'tree.modeBloodline': 'Kraujo linijos vaizdas',
     'tree.modeSpouses': 'Sutuoktinių kortelės',
     'tree.addRoot': 'Pridėti dar vieną šaknį',
@@ -469,6 +472,8 @@ const translations = {
     'person.born': 'Gimė {{date}}',
     'person.died': 'Mirė {{date}}',
     'person.deceased': 'Miręs (-usi)',
+    'person.deceasedMale': 'Miręs',
+    'person.deceasedFemale': 'Mirusi',
     'person.hideChildren': 'Slėpti vaikus',
     'person.showChildren': 'Rodyti vaikus',
     'person.noChildren': 'Šis asmuo neturi vaikų',
@@ -734,9 +739,9 @@ const translations = {
     'branch.focusAria': 'Rodyti tik {{name}} šaką',
     'branch.focusBanner': 'Rodoma {{name}} šaka',
     'branch.focusHint':
-      'Čia rodomi tik jų protėviai, broliai ir seserys bei palikuonys.',
+      'Čia rodomi jų protėviai, broliai ir seserys bei palikuonys su savo šeimomis.',
     'branch.fullTreeNote':
-      'Svainiai čia nerodomi; naudokite ◎ mygtuką, kad atidarytumėte sutuoktinio šaką.',
+      'Sutuoktinio tėvai ir šeima rodomi jo šakoje — atidarykite ją mygtuku „◎“.',
     'branch.backToFull': 'Grįžti prie viso medžio',
 
     'api.authRequired': 'Reikia prisijungti.',
@@ -913,4 +918,10 @@ export function useI18n() {
     throw new Error('useI18n must be used inside LanguageProvider');
   }
   return context;
+}
+
+export function personDeceasedLabel(t, person) {
+  if (person?.gender === 'male') return t('person.deceasedMale');
+  if (person?.gender === 'female') return t('person.deceasedFemale');
+  return t('person.deceased');
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useI18n } from '../i18n';
+import { personDeceasedLabel, useI18n } from '../i18n';
 
 function previousSpouseIdsForPerson(person, families) {
   if (!person) return [];
@@ -327,7 +327,7 @@ export default function PersonModal({
               onChange={updateChecked}
               type="checkbox"
             />
-            <span>{t('modal.deceased')}</span>
+            <span>{personDeceasedLabel(t, form)}</span>
           </label>
           <small className="field-hint">{t('modal.deceasedHint')}</small>
 

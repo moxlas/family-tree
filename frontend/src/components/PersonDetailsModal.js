@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useI18n } from '../i18n';
+import { personDeceasedLabel, useI18n } from '../i18n';
 
 function genderLabel(t, gender) {
   if (gender === 'male') return t('modal.genderMale');
@@ -146,7 +146,7 @@ export default function PersonDetailsModal({
   } else if (person.deathDate) {
     life = t('person.died', { date: person.deathDate });
   } else if (person.deceased) {
-    life = t('person.deceased');
+    life = personDeceasedLabel(t, person);
   }
 
   return (
@@ -222,7 +222,7 @@ export default function PersonDetailsModal({
           {person.deceased && (
             <div>
               <dt>{t('details.status')}</dt>
-              <dd>{t('person.deceased')}</dd>
+              <dd>{personDeceasedLabel(t, person)}</dd>
             </div>
           )}
           <div>

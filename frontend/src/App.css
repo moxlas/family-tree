@@ -1212,7 +1212,10 @@ textarea {
 
 .person-deceased-mark {
   color: var(--muted);
-  font-weight: 600;
+  font-size: 1.2em;
+  font-weight: 800;
+  line-height: 1;
+  vertical-align: 0.03em;
 }
 
 .person-home-tag {
