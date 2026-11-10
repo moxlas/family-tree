@@ -822,12 +822,14 @@ export function buildScene(people, families, showFormerSpouses = true) {
         if (occupied.has(gapIndex)) {
           let found = null;
           for (let distance = 1; distance <= lastGap + 1 && found == null; distance += 1) {
-            [preferred - distance, preferred + distance].forEach((candidate) => {
-              if (found != null) return;
-              if (candidate >= 0 && candidate <= lastGap && !occupied.has(candidate)) {
-                found = candidate;
-              }
-            });
+            const candidates = [preferred - distance, preferred + distance];
+            for (let index = 0; index < candidates.length; index += 1) {
+              const candidate = candidates[index];
+              if (candidate < 0 || candidate > lastGap) continue;
+              if (occupied.has(candidate)) continue;
+              found = candidate;
+              break;
+            }
           }
           if (found != null) gapIndex = found;
         }
