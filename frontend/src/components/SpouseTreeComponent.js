@@ -741,6 +741,75 @@ export function buildScene(people, families, showFormerSpouses = true) {
     row.forEach((ui, order) => orderInRow.set(ui, order));
   });
 
+  // 8. Remove crossings with adjacent swaps. Only swaps that strictly reduce
+  // the number of crossing links are kept, so this pass is deterministic and
+  // cannot make a row worse.
+  const gapEdges = () => {
+    const gaps = new Map();
+    units.forEach((unit, childIndex) => {
+      (unitParents[childIndex] || []).forEach((parentIndex) => {
+        const key = `${depths[parentIndex]}-${depths[childIndex]}`;
+        if (!gaps.has(key)) gaps.set(key, []);
+        gaps.get(key).push({
+          parent: orderInRow.get(parentIndex),
+          child: orderInRow.get(childIndex),
+        });
+      });
+    });
+    return gaps;
+  };
+
+  const countCrossings = (gaps) => {
+    let total = 0;
+    gaps.forEach((edges) => {
+      for (let first = 0; first < edges.length; first += 1) {
+        for (let second = first + 1; second < edges.length; second += 1) {
+          if (
+            (edges[first].parent - edges[second].parent) *
+              (edges[first].child - edges[second].child) <
+            0
+          ) {
+            total += 1;
+          }
+        }
+      }
+    });
+    return total;
+  };
+
+  let currentCrossings = countCrossings(gapEdges());
+
+  for (let pass = 0; pass < 4 && currentCrossings > 0; pass += 1) {
+    let improved = false;
+
+    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+      const row = rows[rowIndex];
+
+      for (let index = 0; index < row.length - 1; index += 1) {
+        const first = row[index];
+        const second = row[index + 1];
+
+        row[index] = second;
+        row[index + 1] = first;
+        orderInRow.set(first, index + 1);
+        orderInRow.set(second, index);
+
+        const nextCrossings = countCrossings(gapEdges());
+        if (nextCrossings < currentCrossings) {
+          currentCrossings = nextCrossings;
+          improved = true;
+        } else {
+          row[index] = first;
+          row[index + 1] = second;
+          orderInRow.set(first, index);
+          orderInRow.set(second, index + 1);
+        }
+      }
+    }
+
+    if (!improved) break;
+  }
+
   // Layout: every connected family is laid out as one block and children
   // are reserved bottom-up, so each parent is centred over its descendants
   // without any later shifting.
