@@ -12,6 +12,7 @@ const people = [
   person('S', 'female'),
   person('HS', 'female'),
   person('HSH', 'male'),
+  person('EXHSH', 'male'),
   person('U', 'male'),
   person('C', 'male'),
   person('CS', 'male'),
@@ -27,6 +28,14 @@ const families = [
   { id: 'f1', husband: 'F', wife: 'M', children: ['R', 'S'] },
   { id: 'f2', husband: 'F', wife: 'M2', children: ['HS'] },
   { id: 'f3', husband: 'HSH', wife: 'HS', children: [] },
+  {
+    id: 'f10',
+    husband: 'EXHSH',
+    wife: 'HS',
+    status: 'former',
+    relationshipStatus: 'divorced',
+    children: [],
+  },
   { id: 'f4', husband: 'GF', wife: 'GM', children: ['F', 'U'] },
   { id: 'f5', husband: 'U', wife: null, children: ['C'] },
   { id: 'f6', husband: 'C', wife: null, children: ['CS'] },
@@ -76,6 +85,22 @@ function t(key, values = {}) {
   return value;
 }
 
+const ltLabels = {
+  'relation.halfSister': 'Įseserė',
+  'relation.halfSisterGenitive': 'Įseserės',
+  'relation.exHusband': 'Buvęs vyras',
+  'relation.exWife': 'Buvusi žmona',
+  'relation.spouseOf': '{{relation}} {{spouse}}',
+};
+
+function ltT(key, values = {}) {
+  let value = ltLabels[key] || key;
+  Object.entries(values).forEach(([name, replacement]) => {
+    value = value.replace(`{{${name}}}`, replacement);
+  });
+  return value;
+}
+
 describe('describeRelationship', () => {
   it('identifies parents, siblings and half-siblings', () => {
     expect(relation('F').key).toBe('relation.father');
@@ -107,6 +132,32 @@ describe('describeRelationship', () => {
     ).toBe('relation.exHusband');
   });
 
+  it('lets a former family override stale current spouse fields', () => {
+    const stalePeople = [
+      person('A', 'male', { spouseId: 'B', spouseStatus: 'current' }),
+      person('B', 'female', { spouseId: 'A', spouseStatus: 'current' }),
+    ];
+    const staleFamilies = [
+      {
+        id: 'stale',
+        husband: 'A',
+        wife: 'B',
+        status: 'former',
+        relationshipStatus: 'divorced',
+        children: [],
+      },
+    ];
+
+    expect(
+      describeRelationship({
+        families: staleFamilies,
+        people: stalePeople,
+        referenceId: 'A',
+        targetId: 'B',
+      }).key
+    ).toBe('relation.exWife');
+  });
+
   it('builds a descriptive spouse-of-relative label', () => {
     const descriptor = relation('HSH');
     expect(descriptor).toEqual({
@@ -117,6 +168,23 @@ describe('describeRelationship', () => {
     });
     expect(formatRelationship(descriptor, t, 'en')).toBe(
       'Half-sister’s husband'
+    );
+  });
+
+  it('uses Lithuanian genitive forms for spouses of relatives', () => {
+    const descriptor = relation('EXHSH');
+    expect(descriptor).toEqual({
+      key: 'relation.spouseOf',
+      relation: { key: 'relation.halfSister' },
+      spouseFormer: true,
+      spouseGender: 'male',
+    });
+    expect(formatRelationship(descriptor, ltT, 'lt')).toBe(
+      'Įseserės buvęs vyras'
+    );
+
+    expect(formatRelationship(relation('EXW'), ltT, 'lt')).toBe(
+      'Buvusi žmona'
     );
   });
 });

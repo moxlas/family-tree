@@ -41,10 +41,6 @@ export function buildRelationshipGraph(people, families) {
     if (person.spouseId) {
       addToMap(spousesByPerson, id, person.spouseId);
       addToMap(spousesByPerson, person.spouseId, id);
-      const spouse = byId.get(String(person.spouseId));
-      const former =
-        person.spouseStatus === 'former' || spouse?.spouseStatus === 'former';
-      setSpouseFormer(spouseFormerByPair, id, person.spouseId, former);
     }
   });
 
@@ -67,6 +63,18 @@ export function buildRelationshipGraph(people, families) {
       addToMap(spousesByPerson, parents[1], parents[0]);
       setSpouseFormer(spouseFormerByPair, parents[0], parents[1], former);
     }
+  });
+
+  // Family records are authoritative; use the person-level spouse fields only
+  // when no family record describes the pair.
+  (people || []).forEach((person) => {
+    if (!person.spouseId) return;
+    const key = pairKey(person.id, person.spouseId);
+    if (spouseFormerByPair.has(key)) return;
+    const spouse = byId.get(String(person.spouseId));
+    const former =
+      person.spouseStatus === 'former' || spouse?.spouseStatus === 'former';
+    setSpouseFormer(spouseFormerByPair, person.id, person.spouseId, former);
   });
 
   return {
@@ -230,6 +238,22 @@ function spouseKey(gender, former = false) {
     );
   }
   return genderedKey(gender, 'relation.husband', 'relation.wife', 'relation.partner');
+}
+
+function lowerFirst(value) {
+  if (!value) return '';
+  return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+function formatGenitive(descriptor, t) {
+  if (!descriptor) return '';
+  if (descriptor.key === 'relation.spouseOf') {
+    return formatRelationship(descriptor, t, 'lt');
+  }
+
+  const key = `${descriptor.key}Genitive`;
+  const translated = t(key);
+  return translated === key ? formatRelationship(descriptor, t, 'lt') : translated;
 }
 
 function describeSteps(steps, context, nodes, formerFlags = []) {
@@ -412,11 +436,13 @@ export function formatRelationship(descriptor, t, language = 'en') {
   if (!descriptor) return '';
 
   if (descriptor.key === 'relation.spouseOf') {
-    const relation = formatRelationship(descriptor.relation, t, language);
-    let spouse = t(spouseKey(descriptor.spouseGender, descriptor.spouseFormer));
-    if (language === 'en' && spouse) {
-      spouse = spouse.charAt(0).toLowerCase() + spouse.slice(1);
-    }
+    const spouse = lowerFirst(
+      t(spouseKey(descriptor.spouseGender, descriptor.spouseFormer))
+    );
+    const relation =
+      language === 'lt'
+        ? formatGenitive(descriptor.relation, t)
+        : formatRelationship(descriptor.relation, t, language);
     return t('relation.spouseOf', { relation, spouse });
   }
 
