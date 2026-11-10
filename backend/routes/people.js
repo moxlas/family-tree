@@ -84,8 +84,60 @@ async function resolveParent(parentId, ownerId, treeId, currentId = null) {
   return parentId;
 }
 
-async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {
-  if (spouseId == null || spouseId === '') {
+// Keep Family records in step with the parent fields. A child belongs to a
+// family only when every parent of that family is still one of the chosen
+// parents; otherwise the family would keep showing the old parent.
+async function syncFamilyChildren(person, parentIds, treeId) {
+  const targetIds = [...new Set(parentIds.filter(Boolean).map(String))];
+  const targetSet = new Set(targetIds);
+
+  const childFamilies = await Family.find({
+    owner: person.owner,
+    tree: treeId,
+    children: person._id,
+  });
+
+  for (const family of childFamilies) {
+    const familyParentIds = [family.husband, family.wife]
+      .filter(Boolean)
+      .map(String);
+    const keep =
+      familyParentIds.length > 0 &&
+      familyParentIds.every((parentId) => targetSet.has(parentId));
+    if (keep) continue;
+
+    family.children = (family.children || []).filter(
+      (childId) => String(childId) !== String(person._id)
+    );
+    await family.save();
+  }
+
+  if (!targetIds.length) return;
+
+  const families = await Family.find({
+    owner: person.owner,
+    tree: treeId,
+  });
+  const targetFamily = families.find((family) => {
+    const ids = [family.husband, family.wife].filter(Boolean).map(String);
+    return (
+      ids.length === targetIds.length &&
+      ids.every((parentId) => targetSet.has(parentId))
+    );
+  });
+
+  if (!targetFamily) return;
+
+  const alreadyLinked = (targetFamily.children || []).some(
+    (childId) => String(childId) === String(person._id)
+  );
+  if (alreadyLinked) return;
+
+  targetFamily.children.push(person._id);
+  await targetFamily.save();
+}
+
+async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {  if (spouseId == null || spouseId === '') {
     return null;
   }
 
@@ -384,6 +436,8 @@ router.post('/', async (req, res) => {
     await attachSpouse(person, spouse);
   }
 
+  await syncFamilyChildren(person, [parentId, secondParentId], tree._id);
+
   await syncPreviousSpouses(
     person,
     req.body.previousSpouseIds,
@@ -535,6 +589,10 @@ router.put('/:id', async (req, res) => {
     return res.status(400).json({ error: 'First name is required' });
   }
 
+  const previousParentIds = [person.parentId, person.secondParentId]
+    .filter(Boolean)
+    .map(String);
+
   const spouseProvided = Object.prototype.hasOwnProperty.call(
     req.body,
     'spouseId'
@@ -584,6 +642,17 @@ router.put('/:id', async (req, res) => {
   } else {
     await person.save();
     await syncSpouseLabels(person);
+  }
+
+  const nextParentIds = [person.parentId, person.secondParentId]
+    .filter(Boolean)
+    .map(String);
+  const parentsChanged =
+    previousParentIds.length !== nextParentIds.length ||
+    previousParentIds.some((parentId) => !nextParentIds.includes(parentId));
+
+  if (parentsChanged) {
+    await syncFamilyChildren(person, nextParentIds, tree._id);
   }
 
   await syncPreviousSpouses(

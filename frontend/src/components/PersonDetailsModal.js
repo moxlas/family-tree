@@ -86,6 +86,10 @@ export default function PersonDetailsModal({
     );
   }
 
+  [person.parentId, person.secondParentId].filter(Boolean).forEach((parentId) => {
+    if (!parentIds.includes(String(parentId))) parentIds.push(String(parentId));
+  });
+
   const currentSpouseIdSet = new Set(currentSpouseIds);
   const uniquePreviousSpouseIds = previousSpouseIds.filter(
     (id) => !currentSpouseIdSet.has(id)
@@ -209,16 +213,19 @@ export default function PersonDetailsModal({
               <dd>{person.previousName}</dd>
             </div>
           )}
-          {person.birthDate && (
+          {(person.birthDate || person.birthPlace) && (
             <div>
               <dt>{t('details.birth')}</dt>
-              <dd>{formatDateForDisplay(person.birthDate, language)}</dd>
-            </div>
-          )}
-          {person.birthPlace && (
-            <div>
-              <dt>{t('details.birthPlace')}</dt>
-              <dd>{person.birthPlace}</dd>
+              <dd>
+                {[
+                  person.birthDate
+                    ? formatDateForDisplay(person.birthDate, language)
+                    : '',
+                  person.birthPlace || '',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </dd>
             </div>
           )}
           {person.deathDate && (

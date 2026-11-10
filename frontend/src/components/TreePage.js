@@ -573,6 +573,9 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       mode: 'create',
       person: null,
       parentId: person.parentId ? String(person.parentId) : '',
+      secondParentId: person.secondParentId
+        ? String(person.secondParentId)
+        : '',
       spouseId: '',
       anchorPerson: person,
       relationship: 'sibling',
@@ -595,6 +598,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       mode: 'edit',
       person,
       parentId: person.parentId ? String(person.parentId) : '',
+      secondParentId: person.secondParentId ? String(person.secondParentId) : '',
       spouseId: '',
       anchorPerson: null,
       relationship: null,
@@ -618,8 +622,37 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
         modal.anchorPerson &&
         created?.id
       ) {
-        await api.put(`/people/${modal.anchorPerson.id}`, {
-          parentId: created.id,
+        const anchor = modal.anchorPerson;
+        const anchorParentIds = [anchor.parentId, anchor.secondParentId]
+          .filter(Boolean)
+          .map(String);
+        const parentUpdate = {};
+
+        if (anchorParentIds.length === 0) {
+          parentUpdate.parentId = created.id;
+        } else if (anchorParentIds.length === 1) {
+          parentUpdate.secondParentId = created.id;
+        } else {
+          const byId = new Map(
+            people.map((entry) => [String(entry.id), entry])
+          );
+          const sameRoleId = anchorParentIds.find(
+            (parentId) =>
+              byId.get(parentId)?.gender === created.gender
+          );
+
+          if (
+            sameRoleId &&
+            String(anchor.parentId) === String(sameRoleId)
+          ) {
+            parentUpdate.parentId = created.id;
+          } else {
+            parentUpdate.secondParentId = created.id;
+          }
+        }
+
+        await api.put(`/people/${anchor.id}`, {
+          ...parentUpdate,
           treeId: activeTreeId,
         });
       }
@@ -1195,6 +1228,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           }
           families={families}
           initialParentId={modal.parentId}
+          initialSecondParentId={modal.secondParentId}
           initialSpouseId={modal.spouseId}
           mode={modal.mode}
           onClose={() => setModal(null)}

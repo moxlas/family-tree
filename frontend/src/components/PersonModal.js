@@ -32,7 +32,6 @@ function previousSpouseIdsForPerson(person, families) {
 
 function initialState(
   person,
-  initialParentId,
   initialSpouseId,
   previousSpouseIds = []
 ) {
@@ -59,14 +58,75 @@ function initialState(
     spouseName: person?.spouseName || '',
     previousSpouseIds,
     notes: person?.notes || '',
-    parentId: initialParentId || '',
   };
+}
+
+// Parents are stored both on the person and in their birth family, so gather
+// every known parent before deciding which one belongs in the father slot and
+// which one in the mother slot.
+function parentIdsForPerson(person, families) {
+  const ids = [];
+  const add = (id) => {
+    if (!id) return;
+    const key = String(id);
+    if (!ids.includes(key)) ids.push(key);
+  };
+
+  if (person) {
+    add(person.parentId);
+    add(person.secondParentId);
+    (families || []).forEach((family) => {
+      const isChild = (family.children || []).some(
+        (childId) => String(childId) === String(person.id)
+      );
+      if (!isChild) return;
+      add(family.husband);
+      add(family.wife);
+    });
+  }
+
+  return ids;
+}
+
+function parentRolesFor({
+  families,
+  initialParentId,
+  initialSecondParentId,
+  people,
+  person,
+}) {
+  const byId = new Map((people || []).map((entry) => [String(entry.id), entry]));
+  const ids = person
+    ? parentIdsForPerson(person, families)
+    : [initialParentId, initialSecondParentId]
+        .filter(Boolean)
+        .map(String);
+
+  const unique = [...new Set(ids)];
+  let fatherId = '';
+  let motherId = '';
+  const unassigned = [];
+
+  unique.forEach((id) => {
+    const gender = byId.get(id)?.gender;
+    if (gender === 'male' && !fatherId) fatherId = id;
+    else if (gender === 'female' && !motherId) motherId = id;
+    else unassigned.push(id);
+  });
+
+  unassigned.forEach((id) => {
+    if (!fatherId) fatherId = id;
+    else if (!motherId) motherId = id;
+  });
+
+  return { fatherId, motherId };
 }
 
 export default function PersonModal({
   anchorName,
   families = [],
   initialParentId,
+  initialSecondParentId,
   initialSpouseId,
   mode,
   onClose,
@@ -76,14 +136,20 @@ export default function PersonModal({
   relationship,
 }) {
   const { t, translateApiError } = useI18n();
-  const [form, setForm] = useState(() =>
-    initialState(
+  const [form, setForm] = useState(() => ({
+    ...initialState(
       person,
-      initialParentId,
       initialSpouseId,
       previousSpouseIdsForPerson(person, families)
-    )
-  );
+    ),
+    ...parentRolesFor({
+      families,
+      initialParentId,
+      initialSecondParentId,
+      people,
+      person,
+    }),
+  }));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -149,11 +215,14 @@ export default function PersonModal({
     setSaving(true);
 
     try {
+      const orderedParents = [form.fatherId, form.motherId].filter(Boolean);
+
       await onSubmit({
         ...form,
         birthDate: normalizeDateValue(form.birthDate),
         deathDate: normalizeDateValue(form.deathDate),
-        parentId: form.parentId || null,
+        parentId: orderedParents[0] || null,
+        secondParentId: orderedParents[1] || null,
         spouseId: form.spouseId || null,
         spouseStatus: form.spouseId ? 'current' : form.spouseStatus,
         deceased: Boolean(form.deceased),
@@ -177,6 +246,12 @@ export default function PersonModal({
   };
 
   const parentOptions = people.filter((entry) => entry.id !== person?.id);
+  const fatherOptions = parentOptions.filter(
+    (entry) => String(entry.id) !== String(form.motherId || '')
+  );
+  const motherOptions = parentOptions.filter(
+    (entry) => String(entry.id) !== String(form.fatherId || '')
+  );
   const spouseOptions = people.filter((entry) => {
     if (entry.id === person?.id) return false;
     if (!entry.spouseId) return true;
@@ -202,7 +277,7 @@ export default function PersonModal({
               ? t('modal.addChild')
               : initialSpouseId
                 ? t('modal.addSpouseTitle')
-                : form.parentId
+                : form.fatherId || form.motherId
                   ? t('modal.addChild')
                   : t('modal.addPerson');
 
@@ -265,19 +340,29 @@ export default function PersonModal({
 
           <div className="form-grid">
             <label>
-              <span>{t('modal.gender')}</span>
-              <select name="gender" onChange={update} value={form.gender}>
-                <option value="unknown">{t('modal.genderUnknown')}</option>
-                <option value="female">{t('modal.genderFemale')}</option>
-                <option value="male">{t('modal.genderMale')}</option>
-                <option value="other">{t('modal.genderOther')}</option>
+              <span>{t('modal.father')}</span>
+              <select
+                name="fatherId"
+                onChange={update}
+                value={form.fatherId || ''}
+              >
+                <option value="">{t('modal.noFather')}</option>
+                {fatherOptions.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {`${entry.firstName} ${entry.lastName}`.trim()}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
-              <span>{t('modal.parent')}</span>
-              <select name="parentId" onChange={update} value={form.parentId}>
-                <option value="">{t('modal.noParent')}</option>
-                {parentOptions.map((entry) => (
+              <span>{t('modal.mother')}</span>
+              <select
+                name="motherId"
+                onChange={update}
+                value={form.motherId || ''}
+              >
+                <option value="">{t('modal.noMother')}</option>
+                {motherOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
                     {`${entry.firstName} ${entry.lastName}`.trim()}
                   </option>
@@ -285,6 +370,16 @@ export default function PersonModal({
               </select>
             </label>
           </div>
+
+          <label>
+            <span>{t('modal.gender')}</span>
+            <select name="gender" onChange={update} value={form.gender}>
+              <option value="unknown">{t('modal.genderUnknown')}</option>
+              <option value="female">{t('modal.genderFemale')}</option>
+              <option value="male">{t('modal.genderMale')}</option>
+              <option value="other">{t('modal.genderOther')}</option>
+            </select>
+          </label>
 
           <label>
             <span>{t('modal.previousName')}</span>
