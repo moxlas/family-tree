@@ -426,3 +426,56 @@ describe('buildScene generation placement', () => {
     expect(unit.linkWidths).toContain(112);
   });
 });
+
+// Maternal grandparents A & B have no recorded parents. Paternal
+// grandparents PGF & PGM do, through PGM's parents GG1 & GG2. Without an
+// anchor the maternal line floats up to the great-grandparent row.
+const anchoredPeople = [
+  person('A', { firstName: 'MaternalGrandfather', gender: 'male' }),
+  person('B', { firstName: 'MaternalGrandmother', gender: 'female' }),
+  person('M', { firstName: 'Mother', gender: 'female' }),
+  person('AUNT', { firstName: 'Aunt', gender: 'female' }),
+  person('F', { firstName: 'Father', gender: 'male' }),
+  person('C', { firstName: 'Child', gender: 'male' }),
+  person('PGF', { firstName: 'PaternalGrandfather', gender: 'male' }),
+  person('PGM', { firstName: 'PaternalGrandmother', gender: 'female' }),
+  person('GG1', { firstName: 'GreatGrandfather', gender: 'male' }),
+  person('GG2', { firstName: 'GreatGrandmother', gender: 'female' }),
+];
+
+const anchoredFamilies = [
+  { id: 'f1', husband: 'A', wife: 'B', status: 'current', children: ['M', 'AUNT'] },
+  { id: 'f2', husband: 'F', wife: 'M', status: 'current', children: ['C'] },
+  { id: 'f3', husband: 'PGF', wife: 'PGM', status: 'current', children: ['F'] },
+  { id: 'f4', husband: 'GG1', wife: 'GG2', status: 'current', children: ['PGM'] },
+];
+
+describe('buildScene anchored generations', () => {
+  it('keeps both grandparents on one row when only one side has ancestors', () => {
+    const scene = buildScene(anchoredPeople, anchoredFamilies, true, 'C');
+    const rows = scene.rows.map((row) =>
+      row.flatMap((unitIndex) =>
+        scene.units[unitIndex].members.map((member) => member.id)
+      )
+    );
+    const rowOf = (id) => rows.findIndex((row) => row.includes(id));
+
+    expect(rowOf('A')).toBe(rowOf('PGF'));
+    expect(rowOf('B')).toBe(rowOf('PGM'));
+    expect(rowOf('A')).toBe(rowOf('GG1') + 1);
+  });
+
+  it('keeps the maternal aunt on the parents row', () => {
+    const scene = buildScene(anchoredPeople, anchoredFamilies, true, 'C');
+    const rows = scene.rows.map((row) =>
+      row.flatMap((unitIndex) =>
+        scene.units[unitIndex].members.map((member) => member.id)
+      )
+    );
+    const rowOf = (id) => rows.findIndex((row) => row.includes(id));
+
+    expect(rowOf('AUNT')).toBe(rowOf('M'));
+    expect(rowOf('AUNT')).toBe(rowOf('F'));
+    expect(rowOf('AUNT')).toBe(rowOf('C') - 1);
+  });
+});

@@ -101,7 +101,70 @@ function yearFromDate(value) {
   return match ? Number(match[1]) : 0;
 }
 
-export function buildScene(people, families, showFormerSpouses = true) {
+// Generation depth relative to one reference person. Parent links move one
+// row up or down and partners share a row. This keeps both family sides on
+// the same horizontal level even when one side has fewer recorded ancestors.
+function relativePersonDepths(people, families, anchorId) {
+  const ids = new Set(people.map((person) => String(person.id)));
+  const adjacency = new Map();
+  const addEdge = (from, to, delta) => {
+    if (!ids.has(from) || !ids.has(to)) return;
+    if (!adjacency.has(from)) adjacency.set(from, []);
+    adjacency.get(from).push([to, delta]);
+  };
+
+  (families || []).forEach((family) => {
+    const husband = family.husband == null ? '' : String(family.husband);
+    const wife = family.wife == null ? '' : String(family.wife);
+    if (husband && wife) {
+      addEdge(husband, wife, 0);
+      addEdge(wife, husband, 0);
+    }
+    (family.children || []).forEach((childId) => {
+      const child = String(childId);
+      [husband, wife].filter(Boolean).forEach((parentId) => {
+        addEdge(parentId, child, 1);
+        addEdge(child, parentId, -1);
+      });
+    });
+  });
+
+  people.forEach((person) => {
+    const id = String(person.id);
+    const spouseId = person.spouseId ? String(person.spouseId) : '';
+    if (spouseId) {
+      addEdge(id, spouseId, 0);
+      addEdge(spouseId, id, 0);
+    }
+    [person.parentId, person.secondParentId]
+      .filter(Boolean)
+      .map(String)
+      .forEach((parentId) => {
+        addEdge(parentId, id, 1);
+        addEdge(id, parentId, -1);
+      });
+  });
+
+  const depths = new Map([[anchorId, 0]]);
+  const queue = [anchorId];
+  while (queue.length) {
+    const current = queue.shift();
+    (adjacency.get(current) || []).forEach(([next, delta]) => {
+      if (depths.has(next)) return;
+      depths.set(next, depths.get(current) + delta);
+      queue.push(next);
+    });
+  }
+
+  return depths;
+}
+
+export function buildScene(
+  people,
+  families,
+  showFormerSpouses = true,
+  anchorPersonId = ''
+) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
   const personUnits = new Map(); // personId -> [unitIndex, ...]
@@ -707,6 +770,33 @@ export function buildScene(people, families, showFormerSpouses = true) {
     }
   }
 
+  // Anchor the whole connected family to the selected (or home) person so
+  // grandparents on both sides share a row even when only one side has
+  // recorded great-grandparents. Units that are not connected to the anchor
+  // keep their own root-based depths.
+  const anchorId = String(anchorPersonId || '');
+  if (anchorId && byId.has(anchorId)) {
+    const relativeDepths = relativePersonDepths(people, families, anchorId);
+    const unitDepths = new Map();
+
+    units.forEach((unit, unitIndex) => {
+      let depth = null;
+      unit.members.forEach((member) => {
+        const memberDepth = relativeDepths.get(String(member.id));
+        if (memberDepth == null) return;
+        if (depth == null || memberDepth > depth) depth = memberDepth;
+      });
+      if (depth != null) unitDepths.set(unitIndex, depth);
+    });
+
+    if (unitDepths.size) {
+      const topDepth = Math.min(...unitDepths.values());
+      unitDepths.forEach((depth, unitIndex) => {
+        depths[unitIndex] = depth - topDepth;
+      });
+    }
+  }
+
   // 6. Build rows
   const maxDepth = depths.reduce((m, d) => Math.max(m, d), 0);
   const rows = Array.from({ length: maxDepth + 1 }, () => []);
@@ -1214,6 +1304,7 @@ export default function SpouseTreeComponent({
   childrenByPerson,
   collapsedPersonIds = [],
   families = [],
+  focusId,
   homePersonId,
   onAddChild,
   onAddParent,
@@ -1230,8 +1321,14 @@ export default function SpouseTreeComponent({
   zoom = 1,
 }) {
   const scene = useMemo(
-    () => buildScene(people, families, showFormerSpouses),
-    [people, families, showFormerSpouses]
+    () =>
+      buildScene(
+        people,
+        families,
+        showFormerSpouses,
+        focusId || homePersonId || ''
+      ),
+    [people, families, showFormerSpouses, focusId, homePersonId]
   );
 
   const containerRef = useRef(null);

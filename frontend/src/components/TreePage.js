@@ -1102,6 +1102,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   childrenByPerson={childrenByPerson}
                   collapsedPersonIds={collapsedPersonIds}
                   families={view.families}
+                  focusId={focusId}
                   homePersonId={homePersonId}
                   showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
