@@ -77,8 +77,20 @@ function sanitizeFamily(raw, index) {
     wife: cleanText(raw.wife, 80),
     children,
     status: raw.status === 'former' ? 'former' : 'current',
+    relationshipStatus: [
+      'married',
+      'partner',
+      'engaged',
+      'divorced',
+      'widowed',
+      'separated',
+    ].includes(raw.relationshipStatus)
+      ? raw.relationshipStatus
+      : '',
     marriageDate: cleanText(raw.marriageDate, 40),
+    marriagePlace: cleanText(raw.marriagePlace, 160),
     divorceDate: cleanText(raw.divorceDate, 40),
+    separationDate: cleanText(raw.separationDate, 40),
     notes: cleanText(raw.notes, 2000),
   };
 }
@@ -420,8 +432,11 @@ async function importGedcom({ ownerId, tree, body }) {
         wife: wifePerson?._id || null,
         children: childIds,
         status: family.status,
+        relationshipStatus: family.relationshipStatus || '',
         marriageDate: family.marriageDate,
+        marriagePlace: family.marriagePlace || '',
         divorceDate: family.divorceDate,
+        separationDate: family.separationDate || '',
         notes: family.notes || '',
       });
     }

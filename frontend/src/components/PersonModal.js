@@ -1,44 +1,175 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { normalizeDateValue } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import DateField from './DateField';
 
-function previousSpouseIdsForPerson(person, families) {
-  if (!person) return [];
+const RELATIONSHIP_STATUSES = [
+  'married',
+  'partner',
+  'engaged',
+  'divorced',
+  'widowed',
+  'separated',
+];
+const ACTIVE_RELATIONSHIP_STATUSES = new Set([
+  'married',
+  'partner',
+  'engaged',
+]);
+const ENDED_RELATIONSHIP_STATUSES = new Set([
+  'divorced',
+  'widowed',
+  'separated',
+]);
 
-  const ids = [];
-  (families || []).forEach((family) => {
-    if (family.status !== 'former') return;
-    const isHusband = String(family.husband || '') === String(person.id);
-    const isWife = String(family.wife || '') === String(person.id);
-    if (!isHusband && !isWife) return;
-    const partnerId = isHusband ? family.wife : family.husband;
-    if (partnerId && !ids.includes(String(partnerId))) {
-      ids.push(String(partnerId));
+function relationshipStatusForFamily(family, partner) {
+  let status = RELATIONSHIP_STATUSES.includes(family.relationshipStatus)
+    ? family.relationshipStatus
+    : '';
+
+  if (!status) {
+    if (family.status === 'former') {
+      if (family.separationDate) status = 'separated';
+      else if (family.divorceDate) status = 'divorced';
+      else if (partner?.deceased) status = 'widowed';
+      else status = 'divorced';
+    } else {
+      status = partner?.deceased ? 'widowed' : 'married';
     }
-  });
-
-  // Legacy records store a divorced partner as spouseId + spouseStatus.
-  if (
-    person.spouseStatus === 'former' &&
-    person.spouseId &&
-    !ids.includes(String(person.spouseId))
-  ) {
-    ids.push(String(person.spouseId));
   }
 
-  return ids;
+  if (ACTIVE_RELATIONSHIP_STATUSES.has(status) && partner?.deceased) {
+    return 'widowed';
+  }
+
+  return status;
 }
 
-function initialState(
-  person,
-  initialSpouseId,
-  previousSpouseIds = []
-) {
-  const legacyFormerSpouse =
-    person && person.spouseStatus === 'former' ? person.spouseId : null;
+function relationshipBlockForFamily(family, person, byId) {
+  const partnerId =
+    String(family.husband) === String(person.id)
+      ? family.wife
+      : family.husband;
+  const partner = partnerId ? byId.get(String(partnerId)) : null;
 
+  return {
+    key: `family-${family.id}-${String(partnerId || '')}`,
+    partnerId: partnerId ? String(partnerId) : '',
+    status: relationshipStatusForFamily(family, partner),
+    startDate: family.marriageDate || '',
+    startPlace: family.marriagePlace || '',
+    endDate: family.separationDate || family.divorceDate || '',
+  };
+}
+
+function emptyRelationship(status = 'married') {
+  return {
+    partnerId: '',
+    status,
+    startDate: '',
+    startPlace: '',
+    endDate: '',
+  };
+}
+
+function relationshipsForPerson(person, families, people, initialSpouseId) {
+  const byId = new Map((people || []).map((entry) => [String(entry.id), entry]));
+  const blocks = [];
+  const seen = new Set();
+
+  if (person) {
+    (families || []).forEach((family) => {
+      const isHusband = String(family.husband || '') === String(person.id);
+      const isWife = String(family.wife || '') === String(person.id);
+      if (!isHusband && !isWife) return;
+
+      const partnerId = isHusband ? family.wife : family.husband;
+      if (!partnerId || seen.has(String(partnerId))) return;
+      seen.add(String(partnerId));
+      blocks.push(relationshipBlockForFamily(family, person, byId));
+    });
+  }
+
+  let current = emptyRelationship('married');
+  let previous = blocks;
+
+  if (person) {
+    const preferredId = person.spouseId ? String(person.spouseId) : '';
+    const preferred =
+      person.spouseStatus === 'former'
+        ? null
+        : blocks.find((block) => block.partnerId === preferredId);
+
+    if (preferred) {
+      current = preferred;
+      previous = blocks.filter((block) => block !== preferred);
+    } else {
+      const active = blocks.find((block) =>
+        ACTIVE_RELATIONSHIP_STATUSES.has(block.status)
+      );
+      if (active) {
+        current = active;
+        previous = blocks.filter((block) => block !== active);
+      } else {
+        previous = blocks;
+      }
+    }
+
+    if (!current.partnerId && person.spouseId) {
+      const spouseId = String(person.spouseId);
+      const alreadyListed = blocks.some(
+        (block) => block.partnerId === spouseId
+      );
+
+      if (alreadyListed) {
+        previous = blocks;
+      } else {
+        const partner = byId.get(spouseId);
+        const legacyBlock = {
+          key: `legacy-${spouseId}`,
+          partnerId: spouseId,
+          status:
+            person.spouseStatus === 'former'
+              ? partner?.deceased
+                ? 'widowed'
+                : 'divorced'
+              : partner?.deceased
+                ? 'widowed'
+                : 'married',
+          startDate: '',
+          startPlace: '',
+          endDate: '',
+        };
+
+        if (person.spouseStatus === 'former') {
+          previous = [legacyBlock, ...previous];
+        } else {
+          current = legacyBlock;
+        }
+      }
+    }
+  } else if (initialSpouseId) {
+    const partner = byId.get(String(initialSpouseId));
+    current = {
+      ...emptyRelationship(partner?.deceased ? 'widowed' : 'married'),
+      key: `initial-${String(initialSpouseId)}`,
+      partnerId: String(initialSpouseId),
+    };
+  }
+
+  return {
+    current,
+    previous: previous
+      .filter((block) => block.partnerId)
+      .map((block, index) => ({
+        ...block,
+        key: block.key || `previous-${index}-${block.partnerId}`,
+      })),
+  };
+}
+
+function initialState(person, relationships) {
   return {
     firstName: person?.firstName || '',
     lastName: person?.lastName || '',
@@ -48,16 +179,9 @@ function initialState(
     birthPlace: person?.birthPlace || '',
     deathDate: person?.deathDate || '',
     deceased: Boolean(person?.deceased),
-    spouseId: legacyFormerSpouse
-      ? ''
-      : person?.spouseId
-        ? String(person.spouseId)
-        : initialSpouseId
-          ? String(initialSpouseId)
-          : '',
-    spouseStatus: person?.spouseStatus || 'current',
     spouseName: person?.spouseName || '',
-    previousSpouseIds,
+    currentRelationship: relationships.current,
+    previousRelationships: relationships.previous,
     notes: person?.notes || '',
   };
 }
@@ -137,20 +261,25 @@ export default function PersonModal({
   relationship,
 }) {
   const { t, translateApiError } = useI18n();
-  const [form, setForm] = useState(() => ({
-    ...initialState(
+  const [form, setForm] = useState(() => {
+    const relationships = relationshipsForPerson(
       person,
-      initialSpouseId,
-      previousSpouseIdsForPerson(person, families)
-    ),
-    ...parentRolesFor({
       families,
-      initialParentId,
-      initialSecondParentId,
       people,
-      person,
-    }),
-  }));
+      initialSpouseId
+    );
+
+    return {
+      ...initialState(person, relationships),
+      ...parentRolesFor({
+        families,
+        initialParentId,
+        initialSecondParentId,
+        people,
+        person,
+      }),
+    };
+  });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -184,31 +313,199 @@ export default function PersonModal({
     setForm((current) => ({ ...current, [name]: value }));
   };
 
-  const updateSpouse = (event) => {
-    const nextSpouseId = event.target.value;
+  const relationshipKeyRef = useRef(0);
+
+  const nextRelationshipKey = () => {
+    relationshipKeyRef.current += 1;
+    return `relationship-${relationshipKeyRef.current}`;
+  };
+
+  const setCurrentRelationshipField = (name, value) => {
+    setForm((current) => ({
+      ...current,
+      currentRelationship: {
+        ...current.currentRelationship,
+        [name]: value,
+      },
+    }));
+  };
+
+  const setCurrentPartner = (event) => {
+    const nextPartnerId = event.target.value;
 
     setForm((current) => {
-      const previousPartner = current.spouseId
-        ? people.find((entry) => entry.id === current.spouseId)
-        : null;
-      const previousName = previousPartner
-        ? `${previousPartner.firstName} ${previousPartner.lastName}`.trim()
-        : '';
-      const nextPrevious = (current.previousSpouseIds || []).filter(
-        (id) => String(id) !== String(nextSpouseId)
+      const previousPartnerId = String(
+        current.currentRelationship.partnerId || ''
+      );
+      const changingPartner = String(nextPartnerId) !== previousPartnerId;
+      const partner = people.find(
+        (entry) => String(entry.id) === String(nextPartnerId)
+      );
+      let status = current.currentRelationship.status;
+
+      if (!nextPartnerId) status = 'married';
+      else if (partner?.deceased) status = 'widowed';
+
+      return {
+        ...current,
+        currentRelationship: {
+          ...current.currentRelationship,
+          partnerId: nextPartnerId,
+          status,
+          ...(changingPartner
+            ? { startDate: '', startPlace: '', endDate: '' }
+            : {}),
+        },
+        previousRelationships: current.previousRelationships.filter(
+          (block) => String(block.partnerId) !== String(nextPartnerId)
+        ),
+        spouseName: nextPartnerId ? '' : current.spouseName,
+      };
+    });
+  };
+
+  const setCurrentStatus = (event) => {
+    const nextStatus = event.target.value;
+
+    setForm((current) => {
+      const partner = people.find(
+        (entry) =>
+          String(entry.id) === String(current.currentRelationship.partnerId)
+      );
+      const status =
+        partner?.deceased && ACTIVE_RELATIONSHIP_STATUSES.has(nextStatus)
+          ? 'widowed'
+          : nextStatus;
+
+      return {
+        ...current,
+        currentRelationship: {
+          ...current.currentRelationship,
+          status,
+          ...(status === 'divorced' || status === 'separated'
+            ? {}
+            : { endDate: '' }),
+        },
+      };
+    });
+  };
+
+  const addPreviousRelationship = () => {
+    setForm((current) => ({
+      ...current,
+      previousRelationships: [
+        ...current.previousRelationships,
+        {
+          key: nextRelationshipKey(),
+          partnerId: '',
+          status: 'divorced',
+          startDate: '',
+          startPlace: '',
+          endDate: '',
+        },
+      ],
+    }));
+  };
+
+  const removePreviousRelationship = (key) => {
+    setForm((current) => ({
+      ...current,
+      previousRelationships: current.previousRelationships.filter(
+        (block) => block.key !== key
+      ),
+    }));
+  };
+
+  const setPreviousRelationshipField = (key, name, value) => {
+    setForm((current) => ({
+      ...current,
+      previousRelationships: current.previousRelationships.map((block) =>
+        block.key === key ? { ...block, [name]: value } : block
+      ),
+    }));
+  };
+
+  const setPreviousPartner = (key, nextPartnerId) => {
+    setForm((current) => {
+      const partner = people.find(
+        (entry) => String(entry.id) === String(nextPartnerId)
       );
 
       return {
         ...current,
-        spouseId: nextSpouseId,
-        previousSpouseIds: nextPrevious,
-        spouseName:
-          !nextSpouseId && current.spouseName === previousName
-            ? ''
-            : current.spouseName,
+        currentRelationship:
+          nextPartnerId &&
+          String(current.currentRelationship.partnerId) ===
+            String(nextPartnerId)
+            ? {
+                ...current.currentRelationship,
+                partnerId: '',
+                status: 'married',
+                startDate: '',
+                startPlace: '',
+                endDate: '',
+              }
+            : current.currentRelationship,
+        previousRelationships: current.previousRelationships.map((block) => {
+          if (block.key !== key) return block;
+
+          const changingPartner =
+            String(block.partnerId || '') !== String(nextPartnerId || '');
+          let status = block.status;
+          if (partner?.deceased) status = 'widowed';
+
+          return {
+            ...block,
+            partnerId: nextPartnerId,
+            status,
+            ...(changingPartner
+              ? { startDate: '', startPlace: '', endDate: '' }
+              : {}),
+          };
+        }),
       };
     });
   };
+
+  const setPreviousStatus = (key, nextStatus) => {
+    setForm((current) => ({
+      ...current,
+      previousRelationships: current.previousRelationships.map((block) => {
+        if (block.key !== key) return block;
+
+        const partner = people.find(
+          (entry) => String(entry.id) === String(block.partnerId)
+        );
+        const status =
+          partner?.deceased && ACTIVE_RELATIONSHIP_STATUSES.has(nextStatus)
+            ? 'widowed'
+            : nextStatus;
+
+        return {
+          ...block,
+          status,
+          ...(status === 'divorced' || status === 'separated'
+            ? {}
+            : { endDate: '' }),
+        };
+      }),
+    }));
+  };
+
+  const relationshipPayload = (block) => ({
+    partnerId: block.partnerId || null,
+    status: block.status,
+    startDate: normalizeDateValue(block.startDate),
+    startPlace: block.startPlace || '',
+    divorceDate:
+      block.status === 'divorced'
+        ? normalizeDateValue(block.endDate)
+        : '',
+    separationDate:
+      block.status === 'separated'
+        ? normalizeDateValue(block.endDate)
+        : '',
+  });
 
   const submit = async (event) => {
     event.preventDefault();
@@ -217,6 +514,10 @@ export default function PersonModal({
 
     try {
       const orderedParents = [form.fatherId, form.motherId].filter(Boolean);
+      const current = form.currentRelationship;
+      const previous = form.previousRelationships.filter(
+        (block) => block.partnerId
+      );
 
       await onSubmit({
         ...form,
@@ -224,26 +525,25 @@ export default function PersonModal({
         deathDate: normalizeDateValue(form.deathDate),
         parentId: orderedParents[0] || null,
         secondParentId: orderedParents[1] || null,
-        spouseId: form.spouseId || null,
-        spouseStatus: form.spouseId ? 'current' : form.spouseStatus,
+        currentRelationship: current.partnerId
+          ? relationshipPayload(current)
+          : null,
+        previousRelationships: previous.map(relationshipPayload),
+        spouseId: current.partnerId || null,
+        spouseStatus: ENDED_RELATIONSHIP_STATUSES.has(current.status)
+          ? 'former'
+          : 'current',
         deceased: Boolean(form.deceased),
         // Free-text spouse names only apply when no spouse is linked in
         // the tree; a linked spouse always supplies the name.
-        spouseName: form.spouseId ? '' : form.spouseName,
-        previousSpouseIds: form.previousSpouseIds || [],
+        spouseName: current.partnerId ? '' : form.spouseName,
+        previousSpouseIds: previous.map((block) => block.partnerId),
       });
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.savePerson'));
     } finally {
       setSaving(false);
     }
-  };
-
-  const updatePreviousSpouses = (event) => {
-    const selected = [...event.target.selectedOptions].map(
-      (option) => option.value
-    );
-    setForm((current) => ({ ...current, previousSpouseIds: selected }));
   };
 
   const parentOptions = people.filter((entry) => entry.id !== person?.id);
@@ -253,17 +553,63 @@ export default function PersonModal({
   const motherOptions = parentOptions.filter(
     (entry) => String(entry.id) !== String(form.fatherId || '')
   );
+
+  const currentPartnerId = String(
+    form.currentRelationship.partnerId || ''
+  );
+  const previousPartnerIds = new Set(
+    form.previousRelationships
+      .map((block) => String(block.partnerId || ''))
+      .filter(Boolean)
+  );
+
   const spouseOptions = people.filter((entry) => {
     if (entry.id === person?.id) return false;
+    if (previousPartnerIds.has(String(entry.id))) return false;
+    if (String(entry.id) === currentPartnerId) return true;
     if (!entry.spouseId) return true;
     return String(entry.spouseId) === String(person?.id);
   });
-  const previousSpouseOptions = people.filter(
-    (entry) =>
-      entry.id !== person?.id &&
-      String(entry.id) !== String(form.spouseId || '') &&
-      String(entry.id) !== String(person?.spouseId || '')
-  );
+
+  const previousOptionsFor = (blockKey) => {
+    const selectedElsewhere = new Set(
+      form.previousRelationships
+        .filter((block) => block.key !== blockKey)
+        .map((block) => String(block.partnerId || ''))
+        .filter(Boolean)
+    );
+
+    return people.filter((entry) => {
+      if (entry.id === person?.id) return false;
+      if (String(entry.id) === currentPartnerId) return false;
+      if (selectedElsewhere.has(String(entry.id))) return false;
+      return true;
+    });
+  };
+
+  const startLabels = (status) => {
+    if (status === 'engaged') {
+      return {
+        date: t('modal.engagementDate'),
+        place: t('modal.engagementPlace'),
+      };
+    }
+    if (status === 'partner') {
+      return {
+        date: t('modal.meetingDate'),
+        place: t('modal.meetingPlace'),
+      };
+    }
+    return {
+      date: t('modal.marriageDate'),
+      place: t('modal.marriagePlace'),
+    };
+  };
+
+  const endLabel = (status) =>
+    status === 'separated' ? t('modal.separationDate') : t('modal.divorceDate');
+
+  const statusLabel = (status) => t(`relationship.${status}`);
 
   const title =
     mode === 'edit'
@@ -438,57 +784,223 @@ export default function PersonModal({
           </label>
           <small className="field-hint">{t('modal.deceasedHint')}</small>
 
-          <label>
-            <span>{t('modal.currentSpouse')}</span>
-            <select
-              name="spouseId"
-              onChange={updateSpouse}
-              value={form.spouseId}
-            >
-              <option value="">{t('modal.noCurrentSpouse')}</option>
-              {spouseOptions.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {`${entry.firstName} ${entry.lastName}`.trim()}
-                </option>
-              ))}
-            </select>
-            <small className="field-hint">{t('modal.currentSpouseHint')}</small>
-          </label>
+          <div className="relationship-section">
+            <div className="relationship-block">
+              <p className="relationship-section-title">
+                {t('modal.currentSpouse')}
+              </p>
 
-          <label>
-            <span>{t('modal.previousSpouses')}</span>
-            <select
-              multiple
-              name="previousSpouseIds"
-              onChange={updatePreviousSpouses}
-              size={Math.min(4, Math.max(2, previousSpouseOptions.length))}
-              value={form.previousSpouseIds || []}
-            >
-              {previousSpouseOptions.map((entry) => (
-                <option key={entry.id} value={entry.id}>
-                  {`${entry.firstName} ${entry.lastName}`.trim()}
-                </option>
-              ))}
-            </select>
-            <small className="field-hint">
-              {previousSpouseOptions.length
-                ? t('modal.previousSpousesHint')
-                : t('modal.previousSpousesEmpty')}
-            </small>
-          </label>
+              <div className="relationship-row">
+                <label>
+                  <span>{t('modal.partner')}</span>
+                  <select
+                    name="currentPartnerId"
+                    onChange={setCurrentPartner}
+                    value={form.currentRelationship.partnerId || ''}
+                  >
+                    <option value="">{t('modal.noCurrentSpouse')}</option>
+                    {spouseOptions.map((entry) => (
+                      <option key={entry.id} value={entry.id}>
+                        {`${entry.firstName} ${entry.lastName}`.trim()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{startLabels(form.currentRelationship.status).date}</span>
+                  <DateField
+                    name="currentRelationshipStartDate"
+                    onChange={(_name, value) =>
+                      setCurrentRelationshipField('startDate', value)
+                    }
+                    placeholder={t('modal.relationshipDatePlaceholder')}
+                    value={form.currentRelationship.startDate || ''}
+                  />
+                </label>
+                <label>
+                  <span>
+                    {startLabels(form.currentRelationship.status).place}
+                  </span>
+                  <input
+                    name="currentRelationshipStartPlace"
+                    onChange={(event) =>
+                      setCurrentRelationshipField(
+                        'startPlace',
+                        event.target.value
+                      )
+                    }
+                    placeholder={t('modal.relationshipPlacePlaceholder')}
+                    value={form.currentRelationship.startPlace || ''}
+                  />
+                </label>
+              </div>
 
-          {!form.spouseId && (
-            <label>
-              <span>{t('modal.spouse')}</span>
-              <input
-                name="spouseName"
-                onChange={update}
-                placeholder={t('modal.spousePlaceholder')}
-                value={form.spouseName}
-              />
-              <small className="field-hint">{t('modal.spouseHint')}</small>
-            </label>
-          )}
+              <div className="relationship-status-row">
+                <label>
+                  <span>{t('modal.spouseStatus')}</span>
+                  <select
+                    name="currentRelationshipStatus"
+                    onChange={setCurrentStatus}
+                    value={form.currentRelationship.status}
+                  >
+                    {RELATIONSHIP_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {statusLabel(status)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {(form.currentRelationship.status === 'divorced' ||
+                  form.currentRelationship.status === 'separated') && (
+                  <label>
+                    <span>{endLabel(form.currentRelationship.status)}</span>
+                    <DateField
+                      name="currentRelationshipEndDate"
+                      onChange={(_name, value) =>
+                        setCurrentRelationshipField('endDate', value)
+                      }
+                      placeholder={t('modal.relationshipDatePlaceholder')}
+                      value={form.currentRelationship.endDate || ''}
+                    />
+                  </label>
+                )}
+              </div>
+
+              {!form.currentRelationship.partnerId &&
+                form.previousRelationships.length === 0 && (
+                <label className="relationship-spouse-name">
+                  <span>{t('modal.spouse')}</span>
+                  <input
+                    name="spouseName"
+                    onChange={update}
+                    placeholder={t('modal.spousePlaceholder')}
+                    value={form.spouseName}
+                  />
+                  <small className="field-hint">{t('modal.spouseHint')}</small>
+                </label>
+              )}
+            </div>
+
+            <div className="relationship-section-title relationship-previous-title">
+              {t('modal.previousSpouses')}
+            </div>
+
+            {form.previousRelationships.map((block) => (
+              <div
+                className="relationship-block relationship-block-previous"
+                key={block.key}
+              >
+                <div className="relationship-block-head">
+                  <span>{t('modal.previousSpouseBlock')}</span>
+                  <button
+                    className="relationship-remove"
+                    onClick={() => removePreviousRelationship(block.key)}
+                    type="button"
+                  >
+                    {t('modal.removeRelationship')}
+                  </button>
+                </div>
+
+                <div className="relationship-row">
+                  <label>
+                    <span>{t('modal.partner')}</span>
+                    <select
+                      name={`previousPartner-${block.key}`}
+                      onChange={(event) =>
+                        setPreviousPartner(block.key, event.target.value)
+                      }
+                      value={block.partnerId || ''}
+                    >
+                      <option value="">{t('modal.noPreviousSpouse')}</option>
+                      {previousOptionsFor(block.key).map((entry) => (
+                        <option key={entry.id} value={entry.id}>
+                          {`${entry.firstName} ${entry.lastName}`.trim()}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>{startLabels(block.status).date}</span>
+                    <DateField
+                      name={`previousStartDate-${block.key}`}
+                      onChange={(_name, value) =>
+                        setPreviousRelationshipField(
+                          block.key,
+                          'startDate',
+                          value
+                        )
+                      }
+                      placeholder={t('modal.relationshipDatePlaceholder')}
+                      value={block.startDate || ''}
+                    />
+                  </label>
+                  <label>
+                    <span>{startLabels(block.status).place}</span>
+                    <input
+                      name={`previousStartPlace-${block.key}`}
+                      onChange={(event) =>
+                        setPreviousRelationshipField(
+                          block.key,
+                          'startPlace',
+                          event.target.value
+                        )
+                      }
+                      placeholder={t('modal.relationshipPlacePlaceholder')}
+                      value={block.startPlace || ''}
+                    />
+                  </label>
+                </div>
+
+                <div className="relationship-status-row">
+                  <label>
+                    <span>{t('modal.spouseStatus')}</span>
+                    <select
+                      name={`previousStatus-${block.key}`}
+                      onChange={(event) =>
+                        setPreviousStatus(block.key, event.target.value)
+                      }
+                      value={block.status}
+                    >
+                      {RELATIONSHIP_STATUSES.map((status) => (
+                        <option key={status} value={status}>
+                          {statusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {(block.status === 'divorced' ||
+                    block.status === 'separated') && (
+                    <label>
+                      <span>{endLabel(block.status)}</span>
+                      <DateField
+                        name={`previousEndDate-${block.key}`}
+                        onChange={(_name, value) =>
+                          setPreviousRelationshipField(
+                            block.key,
+                            'endDate',
+                            value
+                          )
+                        }
+                        placeholder={t('modal.relationshipDatePlaceholder')}
+                        value={block.endDate || ''}
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            <button
+              className="relationship-add"
+              onClick={addPreviousRelationship}
+              type="button"
+            >
+              <span aria-hidden="true">+</span>
+              {t('modal.addPreviousSpouse')}
+            </button>
+          </div>
 
           <label>
             <span>{t('modal.notes')}</span>

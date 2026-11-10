@@ -137,10 +137,219 @@ async function syncFamilyChildren(person, parentIds, treeId) {
   await targetFamily.save();
 }
 
-async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {  if (spouseId == null || spouseId === '') {
-    return null;
+const RELATIONSHIP_STATUSES = new Set([
+  'married',
+  'partner',
+  'engaged',
+  'divorced',
+  'widowed',
+  'separated',
+]);
+const ACTIVE_RELATIONSHIP_STATUSES = new Set([
+  'married',
+  'partner',
+  'engaged',
+]);
+const ENDED_RELATIONSHIP_STATUSES = new Set([
+  'divorced',
+  'widowed',
+  'separated',
+]);
+
+function readRelationship(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+
+  const partnerId = raw.partnerId ? String(raw.partnerId) : '';
+  if (!mongoose.isValidObjectId(partnerId)) return null;
+
+  return {
+    partnerId,
+    status: RELATIONSHIP_STATUSES.has(raw.status) ? raw.status : 'married',
+    startDate: cleanText(raw.startDate, 40),
+    startPlace: cleanText(raw.startPlace, 160),
+    divorceDate: cleanText(raw.divorceDate, 40),
+    separationDate: cleanText(raw.separationDate, 40),
+  };
+}
+
+async function upsertRelationshipFamily(person, partner, relationship, forceFormer = false) {
+  let family = await Family.findOne({
+    owner: person.owner,
+    tree: person.tree,
+    $or: [
+      { husband: person._id, wife: partner._id },
+      { husband: partner._id, wife: person._id },
+    ],
+  });
+
+  if (!family) {
+    const personIsFemale = person.gender === 'female';
+    family = new Family({
+      owner: person.owner,
+      tree: person.tree,
+      husband: personIsFemale ? partner._id : person._id,
+      wife: personIsFemale ? person._id : partner._id,
+      children: [],
+    });
   }
 
+  const ended = ENDED_RELATIONSHIP_STATUSES.has(relationship.status);
+  family.status = forceFormer || ended ? 'former' : 'current';
+  family.relationshipStatus = relationship.status;
+  family.marriageDate = relationship.startDate;
+  family.marriagePlace = relationship.startPlace;
+  family.divorceDate =
+    relationship.status === 'divorced' ? relationship.divorceDate : '';
+  family.separationDate =
+    relationship.status === 'separated' ? relationship.separationDate : '';
+
+  await family.save();
+  return family;
+}
+
+async function removeFamilyPreservingChildren(family) {
+  const parentIds = [family.husband, family.wife].filter(Boolean);
+  const children = await Person.find({
+    _id: { $in: family.children || [] },
+    owner: family.owner,
+    tree: family.tree,
+  });
+
+  for (const child of children) {
+    let changed = false;
+
+    if (!child.parentId && parentIds[0]) {
+      child.parentId = parentIds[0];
+      changed = true;
+    }
+
+    const secondParentId = parentIds.find(
+      (parentId) => String(parentId) !== String(child.parentId)
+    );
+    if (!child.secondParentId && secondParentId) {
+      child.secondParentId = secondParentId;
+      changed = true;
+    }
+
+    if (changed) await child.save();
+  }
+
+  await Family.deleteOne({ _id: family._id });
+}
+
+async function syncRelationshipDetails(person, body, ownerId, treeId) {
+  const hasCurrent = Object.prototype.hasOwnProperty.call(
+    body,
+    'currentRelationship'
+  );
+  const hasPrevious = Object.prototype.hasOwnProperty.call(
+    body,
+    'previousRelationships'
+  );
+
+  if (!hasCurrent && !hasPrevious) return;
+
+  const current = hasCurrent ? readRelationship(body.currentRelationship) : null;
+  const previous =
+    hasPrevious && Array.isArray(body.previousRelationships)
+      ? body.previousRelationships.map(readRelationship).filter(Boolean)
+      : null;
+
+  const keepPartnerIds = new Set();
+  if (current) keepPartnerIds.add(current.partnerId);
+  if (previous) {
+    previous.forEach((relationship) =>
+      keepPartnerIds.add(relationship.partnerId)
+    );
+  }
+
+  if (hasCurrent && !current) {
+    await detachSpouse(person);
+    await person.save();
+  }
+
+  if (current) {
+    const partner = await Person.findOne({
+      _id: current.partnerId,
+      owner: ownerId,
+      tree: treeId,
+    });
+
+    if (partner && String(partner._id) !== String(person._id)) {
+      if (
+        partner.deceased &&
+        ACTIVE_RELATIONSHIP_STATUSES.has(current.status)
+      ) {
+        current.status = 'widowed';
+      }
+
+      await upsertRelationshipFamily(person, partner, current);
+      const ended = ENDED_RELATIONSHIP_STATUSES.has(current.status);
+      person.spouseStatus = ended ? 'former' : 'current';
+
+      if (String(partner.spouseId || '') === String(person._id)) {
+        partner.spouseStatus = person.spouseStatus;
+        await partner.save();
+      }
+
+      await person.save();
+    }
+  }
+
+  if (previous) {
+    for (const relationship of previous) {
+      if (
+        current &&
+        String(relationship.partnerId) === String(current.partnerId)
+      ) {
+        continue;
+      }
+
+      const partner = await Person.findOne({
+        _id: relationship.partnerId,
+        owner: ownerId,
+        tree: treeId,
+      });
+      if (!partner || String(partner._id) === String(person._id)) continue;
+
+      if (
+        partner.deceased &&
+        ACTIVE_RELATIONSHIP_STATUSES.has(relationship.status)
+      ) {
+        relationship.status = 'widowed';
+      }
+
+      await upsertRelationshipFamily(person, partner, relationship, true);
+    }
+
+    if (hasCurrent) {
+      const families = await Family.find({
+        owner: ownerId,
+        tree: treeId,
+        $or: [{ husband: person._id }, { wife: person._id }],
+      });
+
+      for (const family of families) {
+        const partnerId =
+          String(family.husband || '') === String(person._id)
+            ? family.wife
+            : family.husband;
+
+        if (!partnerId) continue;
+        if (keepPartnerIds.has(String(partnerId))) continue;
+
+        await removeFamilyPreservingChildren(family);
+      }
+    }
+  }
+
+  await syncSpouseLabels(person);
+}
+
+async function resolveSpouse(spouseId, ownerId, treeId, currentId = null) {
+  if (spouseId == null || spouseId === '') {
+    return null;
+  }
   if (!mongoose.isValidObjectId(spouseId)) {
     throw httpError(400, 'Invalid spouse');
   }
@@ -445,6 +654,8 @@ router.post('/', async (req, res) => {
     tree._id
   );
 
+  await syncRelationshipDetails(person, req.body, req.user.id, tree._id);
+
   return res.status(201).json(person);
 });
 
@@ -661,6 +872,8 @@ router.put('/:id', async (req, res) => {
     req.user.id,
     tree._id
   );
+
+  await syncRelationshipDetails(person, req.body, req.user.id, tree._id);
 
   return res.json(person);
 });

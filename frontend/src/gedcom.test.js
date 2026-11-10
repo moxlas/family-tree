@@ -86,6 +86,42 @@ describe('GEDCOM spouse connection round-trip', () => {
     );
   });
 
+  it('round-trips relationship status, place and separation date', () => {
+    const relationshipFamilies = [
+      {
+        id: 'f1',
+        husband: '1',
+        wife: '2',
+        status: 'former',
+        relationshipStatus: 'separated',
+        marriageDate: '1990',
+        marriagePlace: 'Kaunas',
+        divorceDate: '',
+        separationDate: '1995',
+        children: [],
+      },
+    ];
+
+    const text = buildGedcom(people, 'Spouse test', relationshipFamilies);
+    expect(text).toContain('1 MARR');
+    expect(text).toContain('2 DATE 1990');
+    expect(text).toContain('2 PLAC Kaunas');
+    expect(text).toContain('1 SEPA');
+    expect(text).toContain('2 DATE 1995');
+    expect(text).toContain('1 _STAT Separated');
+
+    const parsed = parseGedcom(text, 'en');
+    expect(parsed.families[0]).toEqual(
+      expect.objectContaining({
+        status: 'former',
+        relationshipStatus: 'separated',
+        marriageDate: '1990',
+        marriagePlace: 'Kaunas',
+        separationDate: '1995',
+      })
+    );
+  });
+
   it('keeps a former marriage without a date as divorced', () => {
     const text = [
       '0 HEAD',

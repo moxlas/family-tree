@@ -35,13 +35,38 @@ const familySchema = new mongoose.Schema(
       enum: ['current', 'former'],
       default: 'current',
     },
+    relationshipStatus: {
+      type: String,
+      enum: [
+        '',
+        'married',
+        'partner',
+        'engaged',
+        'divorced',
+        'widowed',
+        'separated',
+      ],
+      default: '',
+    },
     marriageDate: {
       type: String,
       trim: true,
       maxlength: 40,
       default: '',
     },
+    marriagePlace: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: '',
+    },
     divorceDate: {
+      type: String,
+      trim: true,
+      maxlength: 40,
+      default: '',
+    },
+    separationDate: {
       type: String,
       trim: true,
       maxlength: 40,

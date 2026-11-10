@@ -1481,6 +1481,101 @@ textarea {
   gap: 7px;
 }
 
+.relationship-section {
+  display: grid;
+  gap: 14px;
+}
+
+.relationship-block {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.relationship-section-title {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.relationship-previous-title {
+  margin-top: 2px;
+}
+
+.relationship-block-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.relationship-block-head > span {
+  color: var(--brand-deep);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.relationship-remove {
+  background: none;
+  border: 0;
+  border-radius: 8px;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 650;
+  padding: 4px 7px;
+}
+
+.relationship-remove:hover {
+  background: #fee2e2;
+}
+
+.relationship-row {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns:
+    minmax(0, 1.12fr) minmax(0, 0.9fr)
+    minmax(0, 1.08fr);
+}
+
+.relationship-status-row {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.relationship-add {
+  align-items: center;
+  align-self: flex-start;
+  background: var(--brand-soft);
+  border: 1px dashed rgba(15, 118, 110, 0.45);
+  border-radius: 10px;
+  color: var(--brand-deep);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 650;
+  gap: 7px;
+  padding: 8px 12px;
+}
+
+.relationship-add:hover {
+  background: #b9f5ea;
+}
+
+.relationship-add span {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.relationship-spouse-name {
+  display: grid;
+  gap: 7px;
+}
+
 .date-field {
   position: relative;
 }
@@ -1842,6 +1937,11 @@ textarea {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .relationship-row,
+  .relationship-status-row {
     grid-template-columns: 1fr;
   }
 

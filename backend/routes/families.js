@@ -13,6 +13,19 @@ function cleanText(value, maxLength) {
   return String(value == null ? '' : value).trim().slice(0, maxLength);
 }
 
+const RELATIONSHIP_STATUSES = new Set([
+  'married',
+  'partner',
+  'engaged',
+  'divorced',
+  'widowed',
+  'separated',
+]);
+
+function cleanRelationshipStatus(value) {
+  return RELATIONSHIP_STATUSES.has(value) ? value : '';
+}
+
 async function resolvePerson(personId, ownerId, treeId) {
   if (personId == null || personId === '') return null;
   if (!mongoose.isValidObjectId(personId)) {
@@ -68,8 +81,11 @@ router.post('/', async (req, res) => {
     wife: wife ? wife._id : null,
     children,
     status,
+    relationshipStatus: cleanRelationshipStatus(req.body.relationshipStatus),
     marriageDate: cleanText(req.body.marriageDate, 40),
+    marriagePlace: cleanText(req.body.marriagePlace, 160),
     divorceDate: cleanText(req.body.divorceDate, 40),
+    separationDate: cleanText(req.body.separationDate, 40),
     notes: cleanText(req.body.notes, 2000),
   });
 
@@ -115,8 +131,19 @@ router.put('/:id', async (req, res) => {
   if ('marriageDate' in req.body) {
     family.marriageDate = cleanText(req.body.marriageDate, 40);
   }
+  if ('marriagePlace' in req.body) {
+    family.marriagePlace = cleanText(req.body.marriagePlace, 160);
+  }
   if ('divorceDate' in req.body) {
     family.divorceDate = cleanText(req.body.divorceDate, 40);
+  }
+  if ('separationDate' in req.body) {
+    family.separationDate = cleanText(req.body.separationDate, 40);
+  }
+  if ('relationshipStatus' in req.body) {
+    family.relationshipStatus = cleanRelationshipStatus(
+      req.body.relationshipStatus
+    );
   }
   if ('notes' in req.body) {
     family.notes = cleanText(req.body.notes, 2000);

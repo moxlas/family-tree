@@ -155,9 +155,27 @@ export function previousSurnameFor(person) {
 
 function readFamilyEvent(node, tags) {
   const event = node.children.find((child) => tags.includes(child.tag));
-  if (!event) return { present: false, date: '' };
+  if (!event) return { present: false, date: '', place: '' };
   const date = event.children.find((child) => child.tag === 'DATE');
-  return { present: true, date: cleanText(date?.value, 40) };
+  const place = event.children.find((child) => child.tag === 'PLAC');
+  return {
+    present: true,
+    date: cleanText(date?.value, 40),
+    place: cleanText(place?.value, 160),
+  };
+}
+
+function readFamilyStatus(node) {
+  const stat = node.children.find((child) => /^_?STAT$/i.test(child.tag));
+  const value = cleanText(stat?.value, 40).toLowerCase();
+  if (!value) return '';
+  if (value.includes('widow')) return 'widowed';
+  if (value.includes('divorc')) return 'divorced';
+  if (value.includes('separat')) return 'separated';
+  if (value.includes('engag')) return 'engaged';
+  if (value.includes('partner')) return 'partner';
+  if (value.includes('marri')) return 'married';
+  return '';
 }
 
 function readNotes(node, sharedNotes) {
@@ -356,16 +374,37 @@ export function parseGedcom(input, language = 'en') {
     if (!knownHusband && !knownWife && !knownChildren.length) continue;
 
     const marriage = readFamilyEvent(record, ['MARR', 'MARRIAGE']);
+    const engagement = readFamilyEvent(record, ['ENGA', 'ENGAGEMENT']);
     const divorce = readFamilyEvent(record, ['DIV', 'DIVORCE']);
+    const separation = readFamilyEvent(record, ['SEPA', 'SEPARATION']);
+
+    let relationshipStatus = readFamilyStatus(record);
+    if (!relationshipStatus) {
+      if (divorce.present) relationshipStatus = 'divorced';
+      else if (separation.present) relationshipStatus = 'separated';
+      else if (engagement.present && !marriage.present) {
+        relationshipStatus = 'engaged';
+      } else if (marriage.present) relationshipStatus = 'married';
+    }
+
+    const startEvent =
+      engagement.present && !marriage.present ? engagement : marriage;
+    const isFormer = ['divorced', 'widowed', 'separated'].includes(
+      relationshipStatus
+    );
 
     families.push({
       key,
       husband: knownHusband,
       wife: knownWife,
       children: knownChildren,
-      status: divorce.present ? 'former' : 'current',
-      marriageDate: marriage.date,
+      status: isFormer ? 'former' : 'current',
+      relationshipStatus,
+      marriageDate: startEvent.date || marriage.date || engagement.date,
+      marriagePlace:
+        startEvent.place || marriage.place || engagement.place || '',
       divorceDate: divorce.date,
+      separationDate: separation.date,
       notes: readNotes(record, sharedNotes),
     });
   }
@@ -497,8 +536,11 @@ export function buildGedcom(people, treeName, families = []) {
         wife,
         children,
         status: family.status === 'former' ? 'former' : 'current',
+        relationshipStatus: family.relationshipStatus || '',
         marriageDate: family.marriageDate || '',
+        marriagePlace: family.marriagePlace || '',
         divorceDate: family.divorceDate || '',
+        separationDate: family.separationDate || '',
         notes: family.notes || '',
       });
     });
@@ -526,8 +568,11 @@ export function buildGedcom(people, treeName, families = []) {
         wife: parentIsFemale ? parent : null,
         children,
         status: 'current',
+        relationshipStatus: '',
         marriageDate: '',
+        marriagePlace: '',
         divorceDate: '',
+        separationDate: '',
       });
     }
   } else {
@@ -536,8 +581,11 @@ export function buildGedcom(people, treeName, families = []) {
       wife,
       children: [],
       status: 'current',
+      relationshipStatus: '',
       marriageDate: '',
+      marriagePlace: '',
       divorceDate: '',
+      separationDate: '',
     }));
 
     const coupleByMember = new Map();
@@ -584,8 +632,11 @@ export function buildGedcom(people, treeName, families = []) {
         wife: parentIsFemale ? parent : null,
         children,
         status: 'current',
+        relationshipStatus: '',
         marriageDate: '',
+        marriagePlace: '',
         divorceDate: '',
+        separationDate: '',
       });
     }
   }
@@ -676,22 +727,54 @@ export function buildGedcom(people, treeName, families = []) {
       lines.push(`1 CHIL ${xrefById.get(String(child.id))}`);
     }
 
-    if (family.marriageDate) {
-      lines.push('1 MARR');
-      lines.push(`2 DATE ${cleanLine(family.marriageDate, 40)}`);
+    const relationshipStatus =
+      family.relationshipStatus ||
+      (family.status === 'former'
+        ? family.divorceDate
+          ? 'divorced'
+          : family.separationDate
+            ? 'separated'
+            : 'divorced'
+        : 'married');
+
+    const startTag = relationshipStatus === 'engaged' ? 'ENGA' : 'MARR';
+
+    if (family.marriageDate || family.marriagePlace || startTag === 'ENGA') {
+      lines.push(`1 ${startTag}`);
+      if (family.marriageDate) {
+        lines.push(`2 DATE ${cleanLine(family.marriageDate, 40)}`);
+      }
+      if (family.marriagePlace) {
+        lines.push(`2 PLAC ${cleanLine(family.marriagePlace, 160)}`);
+      }
     }
 
-    const isFormer =
-      family.status === 'former' || Boolean(family.divorceDate);
-
-    if (isFormer) {
+    if (relationshipStatus === 'divorced') {
       if (family.divorceDate) {
         lines.push('1 DIV');
         lines.push(`2 DATE ${cleanLine(family.divorceDate, 40)}`);
       } else {
         lines.push('1 DIV Y');
       }
+    } else if (relationshipStatus === 'separated') {
+      const separationDate = family.separationDate || family.divorceDate;
+      if (separationDate) {
+        lines.push('1 SEPA');
+        lines.push(`2 DATE ${cleanLine(separationDate, 40)}`);
+      } else {
+        lines.push('1 SEPA Y');
+      }
     }
+
+    const statusLabels = {
+      married: 'Married',
+      partner: 'Partner',
+      engaged: 'Engaged',
+      divorced: 'Divorced',
+      widowed: 'Widowed',
+      separated: 'Separated',
+    };
+    lines.push(`1 _STAT ${statusLabels[relationshipStatus] || 'Married'}`);
 
     if (family.notes) {
       appendNote(lines, 1, family.notes);
