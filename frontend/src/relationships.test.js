@@ -16,6 +16,9 @@ const people = [
   person('U', 'male'),
   person('C', 'male'),
   person('CS', 'male'),
+  person('FC', 'female'),
+  person('FCS', 'male'),
+  person('FCD', 'female'),
   person('GF', 'male'),
   person('GM', 'female'),
   person('W', 'female'),
@@ -37,8 +40,14 @@ const families = [
     children: [],
   },
   { id: 'f4', husband: 'GF', wife: 'GM', children: ['F', 'U'] },
-  { id: 'f5', husband: 'U', wife: null, children: ['C'] },
+  { id: 'f5', husband: 'U', wife: null, children: ['C', 'FC'] },
   { id: 'f6', husband: 'C', wife: null, children: ['CS'] },
+  {
+    id: 'f11',
+    husband: null,
+    wife: 'FC',
+    children: ['FCS', 'FCD'],
+  },
   { id: 'f7', husband: 'R', wife: 'W', children: [] },
   { id: 'f8', husband: 'SWF', wife: 'SWM', children: ['W'] },
   {
@@ -68,6 +77,9 @@ const labels = {
   'relation.uncle': 'Uncle',
   'relation.cousinMale': 'Cousin',
   'relation.cousinSon': 'Son of a cousin',
+  'relation.cousinSonMale': 'Son of a cousin',
+  'relation.cousinSonFemale': 'Son of a cousin',
+  'relation.cousinDaughterFemale': 'Daughter of a cousin',
   'relation.wife': 'Wife',
   'relation.husband': 'Husband',
   'relation.exWife': 'Ex-wife',
@@ -88,6 +100,8 @@ function t(key, values = {}) {
 const ltLabels = {
   'relation.halfSister': 'Įseserė',
   'relation.halfSisterGenitive': 'Įseserės',
+  'relation.cousinSonFemale': 'Pusseserės sūnus',
+  'relation.cousinDaughterFemale': 'Pusseserės duktė',
   'relation.exHusband': 'Buvęs vyras',
   'relation.exWife': 'Buvusi žmona',
   'relation.spouseOf': '{{relation}} {{spouse}}',
@@ -112,7 +126,15 @@ describe('describeRelationship', () => {
   it('identifies uncles, cousins and cousins children', () => {
     expect(relation('U').key).toBe('relation.uncle');
     expect(relation('C').key).toBe('relation.cousinMale');
-    expect(relation('CS').key).toBe('relation.cousinSon');
+    expect(relation('CS').key).toBe('relation.cousinSonMale');
+    expect(relation('FCS').key).toBe('relation.cousinSonFemale');
+    expect(relation('FCD').key).toBe('relation.cousinDaughterFemale');
+    expect(formatRelationship(relation('FCS'), ltT, 'lt')).toBe(
+      'Pusseserės sūnus'
+    );
+    expect(formatRelationship(relation('FCD'), ltT, 'lt')).toBe(
+      'Pusseserės duktė'
+    );
   });
 
   it('identifies spouses and in-laws', () => {

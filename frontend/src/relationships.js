@@ -318,6 +318,31 @@ function describeSteps(steps, context, nodes, formerFlags = []) {
   }
 
   if (path === `${PARENT}|${PARENT}|${CHILD}|${CHILD}|${CHILD}`) {
+    const cousin = byId.get(String(nodes[nodes.length - 2]));
+    const cousinGender = cousin?.gender;
+
+    if (cousinGender === 'female') {
+      return {
+        key: genderedKey(
+          gender,
+          'relation.cousinSonFemale',
+          'relation.cousinDaughterFemale',
+          'relation.cousinChildFemale'
+        ),
+      };
+    }
+
+    if (cousinGender === 'male') {
+      return {
+        key: genderedKey(
+          gender,
+          'relation.cousinSonMale',
+          'relation.cousinDaughterMale',
+          'relation.cousinChildMale'
+        ),
+      };
+    }
+
     return {
       key: genderedKey(
         gender,
