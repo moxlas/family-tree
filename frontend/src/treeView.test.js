@@ -1,6 +1,7 @@
 import {
   branchMemberIds,
   branchFlags,
+  computeTreeStats,
   defaultHomePersonId,
   viewPeople,
 } from './treeView';
@@ -354,5 +355,57 @@ describe('home person tree', () => {
       entry.id === '8' ? { ...entry, birthDate: '1995' } : entry
     );
     expect(defaultHomePersonId(withYear, homeFamilies)).toBe('8');
+  });
+});
+
+describe('computeTreeStats', () => {
+  it('uses both parent fields when finding the deepest generation', () => {
+    const statsPeople = [
+      person('child', { parentId: 'father', secondParentId: 'mother' }),
+      person('father'),
+      person('mother', { parentId: 'grandfather' }),
+      person('grandfather', { parentId: 'great' }),
+      person('great'),
+    ];
+
+    expect(computeTreeStats(statsPeople, [])).toEqual({
+      generations: 4,
+      roots: 2,
+    });
+  });
+
+  it('uses parent links stored only in families', () => {
+    const statsPeople = [
+      person('child'),
+      person('parent'),
+      person('grandparent'),
+    ];
+    const statsFamilies = [
+      { id: 'f1', husband: 'parent', wife: null, children: ['child'] },
+      {
+        id: 'f2',
+        husband: 'grandparent',
+        wife: null,
+        children: ['parent'],
+      },
+    ];
+
+    expect(computeTreeStats(statsPeople, statsFamilies)).toEqual({
+      generations: 3,
+      roots: 1,
+    });
+  });
+
+  it('does not count missing parents or loop forever on cycles', () => {
+    const statsPeople = [
+      person('a', { parentId: 'missing' }),
+      person('b', { parentId: 'c', secondParentId: 'missing' }),
+      person('c', { parentId: 'b' }),
+    ];
+
+    expect(computeTreeStats(statsPeople, [])).toEqual({
+      generations: 2,
+      roots: 1,
+    });
   });
 });

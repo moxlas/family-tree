@@ -18,6 +18,7 @@ import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
 import {
   branchMemberIds,
+  computeTreeStats,
   defaultHomePersonId,
   viewPeople,
 } from '../treeView';
@@ -451,30 +452,10 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     };
   }, [accountMenuOpen]);
 
-  const stats = useMemo(() => {
-    const ids = new Set(displayPeople.map((person) => person.id));
-    const roots = displayPeople.filter(
-      (person) => !person.parentId || !ids.has(String(person.parentId))
-    ).length;
-
-    const byId = new Map(displayPeople.map((person) => [person.id, person]));
-    let generations = 0;
-    displayPeople.forEach((person) => {
-      let depth = 1;
-      let current = person;
-      const seen = new Set([person.id]);
-      while (current.parentId && byId.has(String(current.parentId))) {
-        const parentId = String(current.parentId);
-        if (seen.has(parentId)) break;
-        seen.add(parentId);
-        depth += 1;
-        current = byId.get(parentId);
-      }
-      generations = Math.max(generations, depth);
-    });
-
-    return { roots, generations };
-  }, [displayPeople]);
+  const stats = useMemo(
+    () => computeTreeStats(displayPeople, families),
+    [displayPeople, families]
+  );
 
   const refreshCounts = useCallback(
     () => loadTrees({ quiet: true, preferredId: activeTreeId }),

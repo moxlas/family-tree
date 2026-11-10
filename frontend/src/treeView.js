@@ -318,8 +318,62 @@ export function branchMemberIds(people, families, personId) {
 
 // Picks a sensible trunk for the main tree when the user has not chosen one:
 // the youngest person with recorded parents, then the deepest generation.
-export function defaultHomePersonId(people, families) {
-  const list = Array.isArray(people) ? people : [];
+export function computeTreeStats(people, families = []) {
+  const ids = new Set(people.map((person) => idOf(person.id)));
+  const parentsByChild = new Map();
+
+  const addParent = (childId, parentId) => {
+    const child = idOf(childId);
+    const parent = idOf(parentId);
+    if (!child || !parent || child === parent) return;
+    if (!ids.has(child) || !ids.has(parent)) return;
+    if (!parentsByChild.has(child)) parentsByChild.set(child, new Set());
+    parentsByChild.get(child).add(parent);
+  };
+
+  people.forEach((person) => {
+    addParent(person.id, person.parentId);
+    addParent(person.id, person.secondParentId);
+  });
+
+  (families || []).forEach((family) => {
+    const parents = [family.husband, family.wife].filter(Boolean);
+    (family.children || []).forEach((childId) => {
+      parents.forEach((parentId) => addParent(childId, parentId));
+    });
+  });
+
+  const depths = new Map();
+  const visiting = new Set();
+
+  const depthOf = (personId) => {
+    const id = idOf(personId);
+    if (depths.has(id)) return depths.get(id);
+    if (visiting.has(id)) return 0;
+
+    visiting.add(id);
+    let depth = 1;
+    (parentsByChild.get(id) || new Set()).forEach((parentId) => {
+      depth = Math.max(depth, depthOf(parentId) + 1);
+    });
+    visiting.delete(id);
+    depths.set(id, depth);
+    return depth;
+  };
+
+  let generations = 0;
+  people.forEach((person) => {
+    generations = Math.max(generations, depthOf(person.id));
+  });
+
+  const roots = people.filter(
+    (person) => !(parentsByChild.get(idOf(person.id)) || new Set()).size
+  ).length;
+
+  return { generations, roots };
+}
+
+export function defaultHomePersonId(people, families) {  const list = Array.isArray(people) ? people : [];
   if (!list.length) return '';
 
   const graph = buildGraph(list, families || []);
