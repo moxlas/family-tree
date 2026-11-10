@@ -33,10 +33,13 @@ function directNoteText(node) {
 
 function readName(node) {
   const nameNode = node.children.find((child) => child.tag === 'NAME');
-  if (!nameNode) return { firstName: '', lastName: '' };
+  if (!nameNode) return { firstName: '', lastName: '', marriedName: '' };
 
   const givenNode = nameNode.children.find((child) => child.tag === 'GIVN');
   const surnameNode = nameNode.children.find((child) => child.tag === 'SURN');
+  const marriedNode = nameNode.children.find((child) =>
+    /^_?MARNM$/i.test(child.tag)
+  );
 
   let firstName = cleanText(givenNode?.value, 80);
   let lastName = cleanText(surnameNode?.value, 80);
@@ -53,7 +56,11 @@ function readName(node) {
     }
   }
 
-  return { firstName, lastName };
+  return {
+    firstName,
+    lastName,
+    marriedName: cleanText(marriedNode?.value, 80),
+  };
 }
 
 function readEventDate(node, tag) {
@@ -103,20 +110,30 @@ function readAlternateName(node) {
   const nameNodes = node.children.filter((child) => child.tag === 'NAME');
   if (!nameNodes.length) return '';
 
+  const { firstName, lastName: primaryLastName, marriedName } = readName(node);
+
   const preferred = nameNodes.slice(1).find((nameNode) => {
     const type = nameNode.children.find((child) => child.tag === 'TYPE')?.value;
     return /maiden|birth|aka|nick/i.test(type || '');
   });
 
-  const { firstName } = readName(node);
   if (preferred) return surnameFromNameNode(preferred, firstName);
+
+  // A MyHeritage _MARNM is the current married surname. The primary SURN is
+  // then the maiden/previous surname.
+  if (marriedName) {
+    if (
+      primaryLastName &&
+      primaryLastName.toLocaleLowerCase() !== marriedName.toLocaleLowerCase()
+    ) {
+      return primaryLastName;
+    }
+    return '';
+  }
+
   if (nameNodes[1]) return surnameFromNameNode(nameNodes[1], firstName);
 
-  const marriedName =
-    nameNodes[0].children.find((child) => /^_?MARNM$/i.test(child.tag)) ||
-    node.children.find((child) => /^_?MARNM$/i.test(child.tag));
-
-  return cleanText(marriedName?.value, 160);
+  return '';
 }
 
 // Existing records may still hold a full alternate name. The field now means
@@ -269,8 +286,13 @@ export function parseGedcom(input, language = 'en') {
     }
     seenKeys.add(key);
 
-    const { firstName: parsedFirstName, lastName } = readName(record);
+    const {
+      firstName: parsedFirstName,
+      lastName: primaryLastName,
+      marriedName,
+    } = readName(record);
     const firstName = parsedFirstName || namePlaceholder;
+    const lastName = marriedName || primaryLastName;
 
     const sex = cleanText(
       record.children.find((child) => child.tag === 'SEX')?.value,

@@ -282,7 +282,7 @@ describe('GEDCOM spouse connection round-trip', () => {
     expect(parsed.individuals[0].previousName).toBe('Strumskytė');
   });
 
-  it('reads a MyHeritage alternate surname from _MARNM', () => {
+  it('treats _MARNM as the current surname and SURN as the maiden surname', () => {
     const text = [
       '0 HEAD',
       '1 GEDC',
@@ -310,8 +310,9 @@ describe('GEDCOM spouse connection round-trip', () => {
       (entry) => entry.firstName === 'Sofija'
     );
 
-    expect(dovile.lastName).toBe('Jasinevičiūtė');
-    expect(dovile.previousName).toBe('Šiukščiuvienė');
-    expect(sofija.previousName).toBe('Strumskienė');
+    expect(dovile.lastName).toBe('Šiukščiuvienė');
+    expect(dovile.previousName).toBe('Jasinevičiūtė');
+    expect(sofija.lastName).toBe('Strumskienė');
+    expect(sofija.previousName).toBe('');
   });
 });

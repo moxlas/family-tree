@@ -141,15 +141,15 @@ function buildIndex(people) {
   return { byName, byNameBirth };
 }
 
-function findMatch(fields, index, addWarning) {
-  const key = nameKey(`${fields.firstName} ${fields.lastName}`);
-  const year = yearOf(fields.birthDate);
+function findMatchByName(firstName, lastName, birthDate, index, addWarning) {
+  const key = nameKey(`${firstName} ${lastName}`);
+  const year = yearOf(birthDate);
 
   if (year) {
     const exact = index.byNameBirth.get(`${key}|${year}`) || [];
     if (exact.length === 1) return exact[0];
     if (exact.length > 1) {
-      addWarning('ambiguousMatch', { name: fullName(fields) });
+      addWarning('ambiguousMatch', { name: fullName({ firstName, lastName }) });
       return null;
     }
 
@@ -159,7 +159,7 @@ function findMatch(fields, index, addWarning) {
     );
     if (withoutDate.length === 1) return withoutDate[0];
     if (withoutDate.length > 1) {
-      addWarning('ambiguousMatch', { name: fullName(fields) });
+      addWarning('ambiguousMatch', { name: fullName({ firstName, lastName }) });
     }
     return null;
   }
@@ -167,8 +167,36 @@ function findMatch(fields, index, addWarning) {
   const candidates = index.byName.get(key) || [];
   if (candidates.length === 1) return candidates[0];
   if (candidates.length > 1) {
-    addWarning('ambiguousMatch', { name: fullName(fields) });
+    addWarning('ambiguousMatch', { name: fullName({ firstName, lastName }) });
   }
+  return null;
+}
+
+function findMatch(fields, index, addWarning) {
+  const match = findMatchByName(
+    fields.firstName,
+    fields.lastName,
+    fields.birthDate,
+    index,
+    addWarning
+  );
+  if (match) return match;
+
+  // A married surname may not exist in the tree yet. Try the maiden surname
+  // so a re-import updates the existing person instead of duplicating them.
+  if (
+    fields.previousName &&
+    nameKey(fields.previousName) !== nameKey(fields.lastName)
+  ) {
+    return findMatchByName(
+      fields.firstName,
+      fields.previousName,
+      fields.birthDate,
+      index,
+      addWarning
+    );
+  }
+
   return null;
 }
 
@@ -287,6 +315,24 @@ async function importGedcom({ ownerId, tree, body }) {
     if (match) {
       const patch = {};
       let changed = false;
+
+      // The file may now give a married surname where the tree still has the
+      // maiden surname. Move the old surname into previousName and use the
+      // married surname as the current last name.
+      const existingSurname = nameKey(match.lastName || '');
+      const incomingMaiden = nameKey(fields.previousName || '');
+      const incomingCurrent = nameKey(fields.lastName || '');
+
+      if (
+        incomingMaiden &&
+        incomingCurrent &&
+        existingSurname === incomingMaiden &&
+        existingSurname !== incomingCurrent
+      ) {
+        patch.lastName = fields.lastName;
+        patch.previousName = fields.previousName;
+        changed = true;
+      }
 
       for (const field of [
         'lastName',
