@@ -49,6 +49,9 @@ const translations = {
     'stats.roots.one': 'Family root',
     'stats.roots.other': 'Family roots',
     'tree.heading': 'Family tree',
+    'tree.homePerson': 'Home person',
+    'tree.homePersonHint':
+      'The tree shows this person’s ancestors and their descendants.',
     'tree.headingHint': 'Use the + button on a card to add a child.',
     'tree.headingHintSpouses':
       'Use ♥ to add a spouse or + to add a child. Each spouse has their own card.',
@@ -72,6 +75,7 @@ const translations = {
     'notice.demoLoaded': 'Example family loaded.',
     'notice.treeCreated': 'Tree created.',
     'notice.treeRenamed': 'Tree renamed.',
+    'notice.homePersonSet': 'Home person updated.',
     'notice.treeDeleted': 'Tree deleted.',
     'notice.gedcomExported': 'GEDCOM file exported.',
 
@@ -285,6 +289,7 @@ const translations = {
     'errors.createTree': 'Could not create this tree. Please try again.',
     'errors.renameTree': 'Could not rename this tree. Please try again.',
     'errors.deleteTree': 'Could not delete this tree. Please try again.',
+    'errors.homePerson': 'Could not change the home person. Please try again.',
     'errors.importGedcom':
       'Could not import this GEDCOM file. Please try again.',
 
@@ -408,6 +413,9 @@ const translations = {
     'stats.roots.few': 'Šeimos šaknys',
     'stats.roots.many': 'Šeimos šaknų',
     'tree.heading': 'Šeimos medis',
+    'tree.homePerson': 'Pagrindinis asmuo',
+    'tree.homePersonHint':
+      'Medis rodo šio asmens protėvius ir jų palikuonis.',
     'tree.headingHint':
       'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką.',
     'tree.headingHintSpouses':
@@ -432,6 +440,7 @@ const translations = {
     'notice.demoLoaded': 'Pavyzdinė šeima įkelta.',
     'notice.treeCreated': 'Medis sukurtas.',
     'notice.treeRenamed': 'Medžio pavadinimas pakeistas.',
+    'notice.homePersonSet': 'Pagrindinis asmuo atnaujintas.',
     'notice.treeDeleted': 'Medis ištrintas.',
     'notice.gedcomExported': 'GEDCOM failas eksportuotas.',
 
@@ -648,6 +657,8 @@ const translations = {
       'Nepavyko pervadinti šio medžio. Bandykite dar kartą.',
     'errors.deleteTree':
       'Nepavyko ištrinti šio medžio. Bandykite dar kartą.',
+    'errors.homePerson':
+      'Nepavyko pakeisti pagrindinio asmens. Bandykite dar kartą.',
     'errors.importGedcom':
       'Nepavyko importuoti šio GEDCOM failo. Bandykite dar kartą.',
 

@@ -59,6 +59,7 @@ function serializeTree(tree, peopleCount = 0) {
     id: tree.id,
     name: tree.name,
     peopleCount,
+    homePersonId: tree.homePersonId ? String(tree.homePersonId) : '',
     createdAt: tree.createdAt,
     updatedAt: tree.updatedAt,
   };

@@ -57,6 +57,14 @@ function closure(seeds, edges) {
   return result;
 }
 
+function reverseEdges(edges) {
+  const reversed = new Map();
+  edges.forEach((targets, source) => {
+    targets.forEach((target) => addEdge(reversed, target, source));
+  });
+  return reversed;
+}
+
 // Parent-child components: everyone linked by blood or adoption. A spouse
 // who married in starts their own component unless they descend from the
 // same family, which is exactly what we need to tell in-laws apart.
@@ -143,8 +151,43 @@ function fullTreeKeep(people, families) {
   return keep;
 }
 
-// A person's branch is their own line, not their whole blood component:
-// ancestors (parents, grandparents, ...), their siblings with the siblings'
+// The main tree follows one home person: their ancestors, every descendant
+// of those ancestors (siblings, cousins, nieces and nephews) and the spouse
+// cards of the bloodline. A spouse's own parents and siblings are an in-law
+// branch and are only shown in that person's branch view.
+function homeTreeKeep(homeId, people, families) {
+  const graph = buildGraph(people, families);
+  const parents = reverseEdges(graph.children);
+  const ancestors = closure([homeId], parents);
+  const bloodline = closure([...ancestors], graph.children);
+
+  const keep = new Set([...ancestors, ...bloodline]);
+
+  [...keep].forEach((personId) => {
+    (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
+      keep.add(partnerId);
+    });
+  });
+
+  // A family with no marriage link to this line is its own tree.
+  const { componentOf, members } = parentComponents(people, graph);
+  const homeComponent = componentOf.get(homeId);
+
+  members.forEach((personIds, componentId) => {
+    if (componentId === homeComponent) return;
+    const linkedByMarriage = personIds.some((personId) =>
+      [...(graph.partners.get(personId) || new Set())].some((partnerId) =>
+        keep.has(partnerId)
+      )
+    );
+    if (linkedByMarriage) return;
+    personIds.forEach((personId) => keep.add(personId));
+  });
+
+  return keep;
+}
+
+// A person's branch: their ancestors, their siblings with the siblings'
 // whole families (nieces, nephews, ...), and their own descendants. Partners
 // of those people are added as spouse cards, but nobody else's line is
 // pulled in - that is what keeps the branch view different from the full tree.
@@ -209,13 +252,18 @@ export function viewPeople(people, families, options = {}) {
   const list = Array.isArray(people) ? people : [];
   const marriages = Array.isArray(families) ? families : [];
   const focusId = idOf(options.focusId);
+  const homePersonId = idOf(options.homePersonId);
   const collapsed = new Set((options.collapsedFamilyIds || []).map(idOf));
   const all = new Set(list.map((person) => idOf(person.id)));
 
-  const baseKeep =
-    focusId && all.has(focusId)
-      ? branchKeep(focusId, list, marriages)
-      : fullTreeKeep(list, marriages);
+  let baseKeep;
+  if (focusId && all.has(focusId)) {
+    baseKeep = branchKeep(focusId, list, marriages);
+  } else if (homePersonId && all.has(homePersonId)) {
+    baseKeep = homeTreeKeep(homePersonId, list, marriages);
+  } else {
+    baseKeep = fullTreeKeep(list, marriages);
+  }
 
   const graph = buildGraph(list, marriages);
   let keep = baseKeep || new Set(all);
@@ -259,7 +307,6 @@ export function branchFlags(people, families, personId) {
     if (!descendants.has(id)) return;
     parents.add(parentId);
   });
-
   parents.forEach((parentId) => {
     (graph.children.get(parentId) || new Set()).forEach((childId) => {
       if (childId !== id) siblings.add(childId);
@@ -271,4 +318,64 @@ export function branchFlags(people, families, personId) {
     hasSiblings: siblings.size > 0,
     hasBranch: parents.size > 0 || siblings.size > 0,
   };
+}
+
+// Picks a sensible trunk for the main tree when the user has not chosen one:
+// the youngest person with recorded parents, then the deepest generation.
+export function defaultHomePersonId(people, families) {
+  const list = Array.isArray(people) ? people : [];
+  if (!list.length) return '';
+
+  const graph = buildGraph(list, families || []);
+  const parents = reverseEdges(graph.children);
+
+  const depthOf = (id) => {
+    let depth = 0;
+    let current = id;
+    const seen = new Set([id]);
+    for (;;) {
+      const next = [...(parents.get(current) || [])][0];
+      if (!next || seen.has(next)) break;
+      seen.add(next);
+      depth += 1;
+      current = next;
+    }
+    return depth;
+  };
+
+  const yearOf = (person) => {
+    const match = String(person.birthDate || '').match(/\b(\d{4})\b/);
+    return match ? Number(match[1]) : 0;
+  };
+
+  let best = null;
+
+  list.forEach((person) => {
+    const id = idOf(person.id);
+    const candidate = {
+      person,
+      hasParents: (parents.get(id) || new Set()).size > 0,
+      year: yearOf(person),
+      depth: depthOf(id),
+    };
+
+    if (!best) {
+      best = candidate;
+      return;
+    }
+
+    if (candidate.hasParents !== best.hasParents) {
+      if (candidate.hasParents) best = candidate;
+      return;
+    }
+
+    if (candidate.year !== best.year) {
+      if (candidate.year > best.year) best = candidate;
+      return;
+    }
+
+    if (candidate.depth >= best.depth) best = candidate;
+  });
+
+  return best ? idOf(best.person.id) : '';
 }

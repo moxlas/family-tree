@@ -14,6 +14,11 @@ const treeSchema = new mongoose.Schema(
       trim: true,
       maxlength: 120,
     },
+    homePersonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Person',
+      default: null,
+    },
   },
   { timestamps: true }
 );

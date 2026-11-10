@@ -1,4 +1,4 @@
-import { branchFlags, viewPeople } from './treeView';
+import { branchFlags, defaultHomePersonId, viewPeople } from './treeView';
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', spouseId: null, parentId: null, ...extra };
@@ -88,8 +88,7 @@ const widerFamilies = [
   { id: 'w4', husband: '4', wife: '9', status: 'current', children: ['10'] },
 ];
 
-describe('branch views are narrower than the full tree', () => {
-  it('focusing a grandchild leaves out the uncle and cousin lines', () => {
+describe('branch views are narrower than the full tree', () => {  it('focusing a grandchild leaves out the uncle and cousin lines', () => {
     expect(ids(viewPeople(wider, widerFamilies))).toEqual([
       '1',
       '10',
@@ -140,5 +139,73 @@ describe('branch views are narrower than the full tree', () => {
       '8',
       '9',
     ]);
+  });
+});
+
+// Home person 7. 1 & 2 have children 3 and 4; 3 marries 5 and has 7; 4
+// marries 6 and has 8; 8 marries 12, whose parents 13 & 14 have 15.
+const homePeople = [
+  person('1', { spouseId: '2' }),
+  person('2', { spouseId: '1' }),
+  person('3', { parentId: '1', spouseId: '5' }),
+  person('4', { parentId: '1', spouseId: '6' }),
+  person('5', { spouseId: '3' }),
+  person('6', { spouseId: '4' }),
+  person('7', { parentId: '3' }),
+  person('8', { parentId: '4', spouseId: '12' }),
+  person('12', { spouseId: '8' }),
+  person('13', { spouseId: '14' }),
+  person('14', { spouseId: '13' }),
+  person('15', { parentId: '13' }),
+];
+
+const homeFamilies = [
+  { id: 'h1', husband: '1', wife: '2', status: 'current', children: ['3', '4'] },
+  { id: 'h2', husband: '3', wife: '5', status: 'current', children: ['7'] },
+  { id: 'h3', husband: '6', wife: '4', status: 'current', children: ['8'] },
+  { id: 'h4', husband: '13', wife: '14', status: 'current', children: ['15', '12'] },
+];
+
+describe('home person tree', () => {
+  it('shows the home person ancestors, their descendants and spouse cards', () => {
+    const view = ids(viewPeople(homePeople, homeFamilies, { homePersonId: '7' }));
+    // Cousin 8 and their spouse 12 are in; the spouse's own parents 13 & 14
+    // and their other child 15 are an in-law branch.
+    expect(view).toEqual([
+      '1',
+      '12',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+    ]);
+  });
+
+  it('keeps a spouse own family reachable through their branch', () => {
+    const branch = ids(
+      viewPeople(homePeople, homeFamilies, { focusId: '12' })
+    );
+    expect(branch).toEqual(['12', '13', '14', '15', '8']);
+  });
+
+  it('falls back to the plain full tree when the home person is unknown', () => {
+    const withMissing = ids(
+      viewPeople(homePeople, homeFamilies, { homePersonId: 'missing' })
+    );
+    const withoutOption = ids(viewPeople(homePeople, homeFamilies));
+    expect(withMissing).toEqual(withoutOption);
+  });
+
+  it('picks the youngest person with parents as the default trunk', () => {
+    const dated = homePeople.map((entry) =>
+      entry.id === '7' ? { ...entry, birthDate: '1990' } : entry
+    );
+    const withYear = dated.map((entry) =>
+      entry.id === '8' ? { ...entry, birthDate: '1995' } : entry
+    );
+    expect(defaultHomePersonId(withYear, homeFamilies)).toBe('8');
   });
 });

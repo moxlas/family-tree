@@ -61,23 +61,55 @@ router.put('/:id', async (req, res) => {
   }
 
   const name = cleanName(req.body.name);
-  if (!name) {
+  const hasHomePerson = Object.prototype.hasOwnProperty.call(
+    req.body,
+    'homePersonId'
+  );
+
+  if (!name && !hasHomePerson) {
     return res.status(400).json({ error: 'Tree name is required' });
   }
 
-  const existing = await Tree.findOne({
-    owner: req.user.id,
-    name,
-    _id: { $ne: tree._id },
-  });
+  if (name) {
+    const existing = await Tree.findOne({
+      owner: req.user.id,
+      name,
+      _id: { $ne: tree._id },
+    });
 
-  if (existing) {
-    return res
-      .status(409)
-      .json({ error: 'A tree with this name already exists' });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: 'A tree with this name already exists' });
+    }
+
+    tree.name = name;
   }
 
-  tree.name = name;
+  if (hasHomePerson) {
+    const homePersonId = req.body.homePersonId;
+
+    if (!homePersonId) {
+      tree.homePersonId = null;
+    } else {
+      if (!mongoose.isValidObjectId(homePersonId)) {
+        return res.status(400).json({ error: 'Invalid home person' });
+      }
+
+      const homePerson = await Person.findOne({
+        _id: homePersonId,
+        owner: req.user.id,
+        tree: tree._id,
+      });
+
+      if (!homePerson) {
+        return res.status(400).json({ error: 'Invalid home person' });
+      }
+
+      tree.homePersonId = homePerson._id;
+    }
+  }
+
   await tree.save();
 
   const peopleCount = await Person.countDocuments({

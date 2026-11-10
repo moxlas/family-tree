@@ -846,6 +846,46 @@ textarea {
   justify-content: flex-end;
 }
 
+.home-person-control {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.home-person-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.home-person-select {
+  display: inline-flex;
+  position: relative;
+}
+
+.home-person-select select {
+  appearance: none;
+  background: var(--surface, #fff);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  max-width: 190px;
+  padding: 7px 28px 7px 10px;
+}
+
+.home-person-select .select-chevron {
+  color: var(--muted);
+  font-size: 11px;
+  pointer-events: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .mode-badge {
   background: var(--brand-soft);
   border-radius: 999px;

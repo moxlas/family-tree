@@ -16,7 +16,7 @@ import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
-import { branchFlags, viewPeople } from '../treeView';
+import { branchFlags, defaultHomePersonId, viewPeople } from '../treeView';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 const COLLAPSED_KEY = 'familyTreeCollapsedMarriages';
@@ -240,6 +240,19 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
   const displayPeople = bloodlineOnly ? bloodlinePeople : people;
 
+  const fallbackHomePersonId = useMemo(
+    () => defaultHomePersonId(people, families),
+    [people, families]
+  );
+
+  const homePersonId = useMemo(() => {
+    const stored = activeTree?.homePersonId ? String(activeTree.homePersonId) : '';
+    if (stored && people.some((person) => String(person.id) === stored)) {
+      return stored;
+    }
+    return fallbackHomePersonId;
+  }, [activeTree, people, fallbackHomePersonId]);
+
   const collapsedFamilyIds = useMemo(
     () => (activeTreeId && collapsedByTree[activeTreeId]) || [],
     [activeTreeId, collapsedByTree]
@@ -249,9 +262,10 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     () =>
       viewPeople(people, families, {
         focusId,
+        homePersonId,
         collapsedFamilyIds,
       }),
-    [people, families, focusId, collapsedFamilyIds]
+    [people, families, focusId, homePersonId, collapsedFamilyIds]
   );
 
   // Only count children that are actually drawn, so a branch view does not
@@ -365,6 +379,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     setTrees((current) =>
       current.map((entry) => (entry.id === tree.id ? tree : entry))
     );
+  };
+
+  const changeHomePerson = async (personId) => {
+    if (!activeTreeId || !personId) return;
+
+    setError('');
+    try {
+      const response = await api.put(`/trees/${activeTreeId}`, {
+        homePersonId: personId,
+      });
+      handleTreeUpdated(response.data);
+      setFocusId('');
+      setNotice('notice.homePersonSet');
+    } catch (requestError) {
+      setError(translateApiError(requestError, 'errors.homePerson'));
+    }
   };
 
   const handleTreeDeleted = (treeId) => {
@@ -870,6 +900,30 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 </p>
               </div>
               <div className="tree-heading-actions">
+                <label
+                  className="home-person-control"
+                  title={t('tree.homePersonHint')}
+                >
+                  <span className="home-person-label">
+                    {t('tree.homePerson')}
+                  </span>
+                  <span className="home-person-select">
+                    <select
+                      disabled={!people.length}
+                      onChange={(event) => changeHomePerson(event.target.value)}
+                      value={homePersonId}
+                    >
+                      {people.map((person) => (
+                        <option key={person.id} value={String(person.id)}>
+                          {`${person.firstName} ${person.lastName}`.trim()}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="select-chevron" aria-hidden="true">
+                      ▾
+                    </span>
+                  </span>
+                </label>
                 <span className="mode-badge">
                   {bloodlineOnly
                     ? t('tree.modeBloodline')
