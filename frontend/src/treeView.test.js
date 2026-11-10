@@ -1,4 +1,9 @@
-import { branchFlags, defaultHomePersonId, viewPeople } from './treeView';
+import {
+  branchMemberIds,
+  branchFlags,
+  defaultHomePersonId,
+  viewPeople,
+} from './treeView';
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', spouseId: null, parentId: null, ...extra };
@@ -213,6 +218,20 @@ describe('home person tree', () => {
     // 13, 14 and 15 are in-laws that the home tree of 7 does not contain.
     expect(withHome).toEqual(withoutHome);
     expect(withHome).toEqual(['12', '13', '14', '15', '8']);
+  });
+
+  it('reports branch members that the main tree hides', () => {
+    const baseIds = new Set(
+      viewPeople(homePeople, homeFamilies, { homePersonId: '7' }).people.map(
+        (person) => String(person.id)
+      )
+    );
+    const extra = branchMemberIds(homePeople, homeFamilies, '12')
+      .map(String)
+      .filter((id) => !baseIds.has(id))
+      .sort();
+
+    expect(extra).toEqual(['13', '14', '15']);
   });
 
   it('falls back to the plain full tree when the home person is unknown', () => {

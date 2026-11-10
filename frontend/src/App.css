@@ -1215,6 +1215,28 @@ textarea {
   font-weight: 600;
 }
 
+.person-home-tag {
+  background: var(--brand-soft);
+  border-radius: 999px;
+  color: var(--brand-deep);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-left: 6px;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.person-card.is-home {
+  box-shadow: 0 0 0 2px var(--brand-soft), 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.person-card.is-home:hover {
+  box-shadow: 0 0 0 2px var(--brand-soft), 0 14px 30px rgba(15, 23, 42, 0.14);
+}
+
 .checkbox-row {
   align-items: center;
   display: flex;

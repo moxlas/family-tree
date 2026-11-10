@@ -22,6 +22,7 @@ export default function PersonCard({
   childCount = 0,
   childrenHidden = false,
   hasBranch = false,
+  isHome = false,
   muted = false,
   person,
   showSpouseName = true,
@@ -132,7 +133,8 @@ export default function PersonCard({
     <article
       className={`person-card gender-${person.gender}${
         onView ? ' is-clickable' : ''
-      }${muted ? ' is-former' : ''}`}
+      }${muted ? ' is-former' : ''}${isHome ? ' is-home' : ''}`}
+      data-person-id={String(person.id)}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       ref={cardRef}
@@ -146,6 +148,11 @@ export default function PersonCard({
         <div className="person-details">
           <h3>
             {fullName}
+            {isHome && (
+              <span className="person-home-tag" title={t('person.homePerson')}>
+                {t('person.homeBadge')}
+              </span>
+            )}
             {person.deceased && (
               <span
                 aria-label={t('person.deceased')}

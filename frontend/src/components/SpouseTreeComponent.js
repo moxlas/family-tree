@@ -1214,6 +1214,7 @@ export default function SpouseTreeComponent({
   childrenByPerson,
   collapsedPersonIds = [],
   families = [],
+  homePersonId,
   onAddChild,
   onAddParent,
   onAddSibling,
@@ -1850,6 +1851,7 @@ export default function SpouseTreeComponent({
                         }
                         childrenHidden={collapsedPersonSet.has(String(member.id))}
                         hasBranch={Boolean(branchFlagsById?.get(String(member.id))?.hasBranch)}
+                        isHome={String(homePersonId || '') === String(member.id)}
                         muted={formerMemberIds.has(String(member.id))}
                         onAddChild={onAddChild}
                         onAddParent={onAddParent}

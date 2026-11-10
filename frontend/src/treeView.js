@@ -301,8 +301,7 @@ export function viewPeople(people, families, options = {}) {
   return filterToKeep(list, marriages, keep);
 }
 
-// Whether a person has parents or siblings recorded, used to highlight the
-// "show branch" button on their card.
+// Whether a person has parents or siblings recorded, used by older callers.
 export function branchFlags(people, families, personId) {
   const id = idOf(personId);
   const list = Array.isArray(people) ? people : [];
@@ -327,6 +326,16 @@ export function branchFlags(people, families, personId) {
     hasSiblings: siblings.size > 0,
     hasBranch: parents.size > 0 || siblings.size > 0,
   };
+}
+
+// Everyone who would be drawn in a person's branch view.
+export function branchMemberIds(people, families, personId) {
+  const id = idOf(personId);
+  const list = Array.isArray(people) ? people : [];
+  const marriages = Array.isArray(families) ? families : [];
+
+  if (!list.some((person) => idOf(person.id) === id)) return [];
+  return [...branchKeep(id, list, marriages)];
 }
 
 // Picks a sensible trunk for the main tree when the user has not chosen one:

@@ -3,6 +3,7 @@ import PersonCard from './PersonCard';
 
 function TreeNode({
   childrenByParent,
+  homePersonId,
   onAddChild,
   onAddParent,
   onAddSibling,
@@ -18,6 +19,7 @@ function TreeNode({
   return (
     <li className="tree-item">
       <PersonCard
+        isHome={String(homePersonId || '') === String(person.id)}
         onAddChild={onAddChild}
         onAddParent={onAddParent}
         onAddSibling={onAddSibling}
@@ -33,6 +35,7 @@ function TreeNode({
           {children.map((child) => (
             <TreeNode
               childrenByParent={childrenByParent}
+              homePersonId={homePersonId}
               key={child.id}
               onAddChild={onAddChild}
               onAddParent={onAddParent}
@@ -52,6 +55,7 @@ function TreeNode({
 }
 
 export default function TreeComponent({
+  homePersonId,
   onAddChild,
   onAddParent,
   onAddSibling,
@@ -97,6 +101,7 @@ export default function TreeComponent({
         {roots.map((person) => (
           <TreeNode
             childrenByParent={childrenByParent}
+            homePersonId={homePersonId}
             key={person.id}
             onAddChild={onAddChild}
             onAddParent={onAddParent}

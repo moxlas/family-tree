@@ -16,7 +16,11 @@ import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
-import { branchFlags, defaultHomePersonId, viewPeople } from '../treeView';
+import {
+  branchMemberIds,
+  defaultHomePersonId,
+  viewPeople,
+} from '../treeView';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 const COLLAPSED_KEY = 'familyTreeCollapsedPeople';
@@ -286,12 +290,34 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   }, [families]);
 
   const branchFlagsById = useMemo(() => {
+    // The branch button is only highlighted when opening the branch reveals
+    // people that the current main tree does not already show.
+    const base = viewPeople(people, families, { homePersonId });
+    const baseIds = new Set(base.people.map((person) => String(person.id)));
     const flags = new Map();
+
     people.forEach((entry) => {
-      flags.set(String(entry.id), branchFlags(people, families, entry.id));
+      const id = String(entry.id);
+      const revealsMore = branchMemberIds(people, families, id).some(
+        (memberId) => !baseIds.has(String(memberId))
+      );
+      flags.set(id, { hasBranch: revealsMore });
     });
+
     return flags;
-  }, [people, families]);
+  }, [people, families, homePersonId]);
+
+  const homePersonOptions = useMemo(
+    () =>
+      [...people].sort((first, second) => {
+        const firstLabel = `${first.firstName} ${first.lastName}`.trim();
+        const secondLabel = `${second.firstName} ${second.lastName}`.trim();
+        return firstLabel.localeCompare(secondLabel, undefined, {
+          sensitivity: 'base',
+        });
+      }),
+    [people]
+  );
 
   const focusedPerson = focusId
     ? people.find((entry) => String(entry.id) === String(focusId)) || null
@@ -311,6 +337,49 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   useEffect(() => {
     if (bloodlineOnly) setFocusId('');
   }, [bloodlineOnly]);
+
+  // Put the focused card in the middle of the tree viewport once the branch
+  // has rendered, so nobody has to scroll around to find the person.
+  useEffect(() => {
+    if (!focusId) return undefined;
+
+    let frame = 0;
+    let attempts = 0;
+    let cancelled = false;
+
+    const centre = () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      const scroll = scrollRef.current;
+      const card = scroll?.querySelector(
+        `[data-person-id="${String(focusId).replace(/"/g, '\\"')}"]`
+      );
+
+      if (!scroll || !card) {
+        if (attempts < 20) {
+          frame = window.requestAnimationFrame(centre);
+        }
+        return;
+      }
+
+      const windowX = window.scrollX;
+      const windowY = window.scrollY;
+      card.scrollIntoView({
+        behavior: 'auto',
+        block: 'center',
+        inline: 'center',
+      });
+      window.scrollTo(windowX, windowY);
+    };
+
+    frame = window.requestAnimationFrame(centre);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+    };
+  }, [focusId]);
 
   const toggleChildren = (person) => {
     const id = person ? String(person.id) : '';
@@ -925,7 +994,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                       onChange={(event) => changeHomePerson(event.target.value)}
                       value={homePersonId}
                     >
-                      {people.map((person) => (
+                      {homePersonOptions.map((person) => (
                         <option key={person.id} value={String(person.id)}>
                           {`${person.firstName} ${person.lastName}`.trim()}
                         </option>
@@ -1002,6 +1071,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             >
               {bloodlineOnly ? (
                 <TreeComponent
+                  homePersonId={homePersonId}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}
@@ -1018,6 +1088,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   childrenByPerson={childrenByPerson}
                   collapsedPersonIds={collapsedPersonIds}
                   families={view.families}
+                  homePersonId={homePersonId}
                   showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
