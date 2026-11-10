@@ -389,6 +389,21 @@ export function buildScene(people, families, showFormerSpouses = true) {
     units.push({
       id: unitId,
       members,
+      formerMemberIds: new Set(
+        members
+          .filter((member) => {
+            const links = relationships.filter(
+              (relationship) =>
+                String(relationship.firstId) === String(member.id) ||
+                String(relationship.secondId) === String(member.id)
+            );
+            return (
+              links.length > 0 &&
+              links.every((relationship) => relationship.status === 'former')
+            );
+          })
+          .map((member) => String(member.id))
+      ),
       familyIds: relatedFamilyRecords.map((record) => record.family.id),
       familyId: relatedFamilyRecords[0]?.family.id || null,
       relationships,
@@ -730,18 +745,126 @@ export function buildScene(people, families, showFormerSpouses = true) {
   const UNIT_GAP = 44;
   const COMPONENT_GAP = 140;
 
+  // Where the heart for a marriage is drawn: in the gap between the partners
+  // when they are neighbours, otherwise in the gap beside the partner with
+  // fewer marriages (the ex-partner rather than the shared hub). The marriage
+  // line then runs behind the cards in between.
+  function heartGapIndex(unitIndex, relationship) {
+    const unit = units[unitIndex];
+    if (!unit?.heartGapByPair) return null;
+    const gapIndex = unit.heartGapByPair.get(
+      pairKeyOf(relationship.firstId, relationship.secondId)
+    );
+    return gapIndex == null ? null : gapIndex;
+  }
+
   units.forEach((unit) => {
-    unit.linkWidths = unit.members.slice(1).map((member, index) => {
-      const previous = unit.members[index];
-      const relationship = unit.relationshipByPair?.get(
-        pairKeyOf(previous.id, member.id)
-      );
-      if (relationship?.status !== 'former') return SPOUSE_LINK_WIDTH;
-      return relationship.hasChildren
-        ? FORMER_LINK_CHILDREN_WIDTH
-        : FORMER_LINK_WIDTH;
+    const relationships = unit.relationships || [];
+    const degree = new Map();
+    relationships.forEach((relationship) => {
+      [relationship.firstId, relationship.secondId].forEach((personId) => {
+        const id = String(personId);
+        degree.set(id, (degree.get(id) || 0) + 1);
+      });
     });
+
+    const indexOfMember = (personId) =>
+      unit.members.findIndex((member) => String(member.id) === String(personId));
+    const gapKey = (relationship) =>
+      pairKeyOf(relationship.firstId, relationship.secondId);
+
+    unit.heartGapByPair = new Map();
+    const occupied = new Set();
+
+    // Neighbouring partners always keep the heart in their own gap.
+    relationships.forEach((relationship) => {
+      const firstIndex = indexOfMember(relationship.firstId);
+      const secondIndex = indexOfMember(relationship.secondId);
+      if (firstIndex < 0 || secondIndex < 0) return;
+      if (Math.abs(firstIndex - secondIndex) !== 1) return;
+      const gapIndex = Math.min(firstIndex, secondIndex);
+      unit.heartGapByPair.set(gapKey(relationship), gapIndex);
+      occupied.add(gapIndex);
+    });
+
+    // Marriages drawn behind the cards get the gap beside the partner with
+    // fewer marriages (the ex rather than the shared hub). If that gap already
+    // holds a heart, take the nearest free gap so two hearts never overlap.
+    relationships
+      .filter((relationship) => {
+        const firstIndex = indexOfMember(relationship.firstId);
+        const secondIndex = indexOfMember(relationship.secondId);
+        return (
+          firstIndex >= 0 &&
+          secondIndex >= 0 &&
+          Math.abs(firstIndex - secondIndex) !== 1
+        );
+      })
+      .sort(
+        (first, second) =>
+          Number(Boolean(second.hasChildren)) -
+          Number(Boolean(first.hasChildren))
+      )
+      .forEach((relationship) => {
+        const firstIndex = indexOfMember(relationship.firstId);
+        const secondIndex = indexOfMember(relationship.secondId);
+        const firstIsLeaf =
+          (degree.get(String(relationship.firstId)) || 0) <=
+          (degree.get(String(relationship.secondId)) || 0);
+        const leafIndex = firstIsLeaf ? firstIndex : secondIndex;
+        const preferred =
+          leafIndex + 1 < unit.members.length
+            ? leafIndex
+            : Math.max(0, leafIndex - 1);
+        const lastGap = unit.members.length - 2;
+
+        let gapIndex = preferred;
+        if (occupied.has(gapIndex)) {
+          let found = null;
+          for (let distance = 1; distance <= lastGap + 1 && found == null; distance += 1) {
+            [preferred - distance, preferred + distance].forEach((candidate) => {
+              if (found != null) return;
+              if (candidate >= 0 && candidate <= lastGap && !occupied.has(candidate)) {
+                found = candidate;
+              }
+            });
+          }
+          if (found != null) gapIndex = found;
+        }
+
+        unit.heartGapByPair.set(gapKey(relationship), gapIndex);
+        occupied.add(gapIndex);
+      });
   });
+
+  // The gap widths follow the hearts: a previous marriage with children gets
+  // a wide gap so those children hang under their own heart instead of under
+  // an unrelated card. Marriages drawn behind the cards need the room too.
+  units.forEach((unit, unitIndex) => {
+    const gapWidths = unit.members.slice(1).map(() => 0);
+    (unit.relationships || []).forEach((relationship) => {
+      const gapIndex = heartGapIndex(unitIndex, relationship);
+      if (gapIndex == null) return;
+      const firstIndex = unit.members.findIndex(
+        (member) => String(member.id) === String(relationship.firstId)
+      );
+      const secondIndex = unit.members.findIndex(
+        (member) => String(member.id) === String(relationship.secondId)
+      );
+      const behind = Math.abs(firstIndex - secondIndex) !== 1;
+      const spread = behind || relationship.status === 'former';
+      const width = relationship.hasChildren
+        ? spread
+          ? FORMER_LINK_CHILDREN_WIDTH
+          : SPOUSE_LINK_WIDTH
+        : spread
+          ? FORMER_LINK_WIDTH
+          : SPOUSE_LINK_WIDTH;
+      gapWidths[gapIndex] = Math.max(gapWidths[gapIndex], width);
+    });
+    unit.linkWidths = gapWidths.map((width) => width || SPOUSE_LINK_WIDTH);
+  });
+
   const unitWidths = units.map(
     (unit) =>
       unit.members.length * CARD_WIDTH +
@@ -758,18 +881,14 @@ export function buildScene(people, families, showFormerSpouses = true) {
     return left + CARD_WIDTH / 2 - width / 2;
   }
 
+  // Children are laid out under the heart of their own marriage, including
+  // marriages whose heart sits in the gap beside an ex-partner.
   function marriageAnchorOffset(unitIndex, relationship) {
-    const members = units[unitIndex].members;
-    const firstIndex = members.findIndex(
-      (member) => String(member.id) === String(relationship.firstId)
-    );
-    const secondIndex = members.findIndex(
-      (member) => String(member.id) === String(relationship.secondId)
-    );
-    if (firstIndex < 0 || secondIndex < 0) return 0;
+    const gapIndex = heartGapIndex(unitIndex, relationship);
+    if (gapIndex == null) return 0;
     return (
-      (memberCenterOffset(unitIndex, Math.min(firstIndex, secondIndex)) +
-        memberCenterOffset(unitIndex, Math.max(firstIndex, secondIndex))) /
+      (memberCenterOffset(unitIndex, gapIndex) +
+        memberCenterOffset(unitIndex, gapIndex + 1)) /
       2
     );
   }
@@ -1262,21 +1381,8 @@ export default function SpouseTreeComponent({
           {row.map((unitIndex) => {
             const unit = scene.units[unitIndex];
             const unitRelationships = unit.relationships || [];
-            const formerMemberIds = new Set(
-              unit.members
-                .filter((member) => {
-                  const links = unitRelationships.filter(
-                    (relationship) =>
-                      String(relationship.firstId) === String(member.id) ||
-                      String(relationship.secondId) === String(member.id)
-                  );
-                  return (
-                    links.length > 0 &&
-                    links.every((relationship) => relationship.status === 'former')
-                  );
-                })
-                .map((member) => String(member.id))
-            );
+            const formerMemberIds =
+              unit.formerMemberIds || new Set();
             const familyIds = unit.familyIds || [];
             const childCount = familyIds.reduce(
               (sum, familyId) => sum + (childCounts[String(familyId)] || 0),
@@ -1303,15 +1409,10 @@ export default function SpouseTreeComponent({
 
                 const leftIndex = Math.min(firstIndex, secondIndex);
                 const rightIndex = Math.max(firstIndex, secondIndex);
-                const exIndex = formerMemberIds.has(
-                  String(unit.members[firstIndex].id)
-                )
-                  ? firstIndex
-                  : secondIndex;
-                const gapIndex =
-                  exIndex + 1 < unit.members.length
-                    ? exIndex
-                    : Math.max(0, exIndex - 1);
+                const gapIndex = unit.heartGapByPair?.get(
+                  pairKeyOf(relationship.firstId, relationship.secondId)
+                );
+                if (gapIndex == null) return null;
                 const gapX =
                   (unit.memberCenters[gapIndex] +
                     unit.memberCenters[gapIndex + 1]) /

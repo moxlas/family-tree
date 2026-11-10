@@ -331,4 +331,45 @@ describe('buildScene generation placement', () => {
     expect(childUnit.parentLinks?.get(rootIndex)?.childId).toBe('3');
     expect(childUnit.members.map((member) => member.id)).toEqual(['4', '3']);
   });
+
+  it('anchors children of a behind-the-cards marriage to its own heart gap', () => {
+    const people = [
+      person('1', { firstName: 'Saulius', gender: 'male' }),
+      person('2', { firstName: 'Ričardas', gender: 'male' }),
+      person('3', { firstName: 'Diana', gender: 'female' }),
+      person('4', { firstName: 'Petras', gender: 'male' }),
+      person('5', { firstName: 'Edvinas', parentId: '1' }),
+      person('6', { firstName: 'Eisra', parentId: '2' }),
+      person('7', { firstName: 'Karolis', parentId: '4' }),
+    ];
+    const families = [
+      { id: 'f1', husband: '1', wife: '3', status: 'former', children: ['5'] },
+      { id: 'f2', husband: '2', wife: '3', status: 'former', children: ['6'] },
+      { id: 'f3', husband: '4', wife: '3', status: 'current', children: ['7'] },
+    ];
+    const scene = buildScene(people, families, true);
+    const unit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '3')
+    );
+    const order = unit.members.map((member) => member.id);
+
+    expect(order).toEqual(['1', '2', '3', '4']);
+    // The heart of 1 & 3 sits beside 1, in the gap between 1 and 2, so that
+    // gap is widened for their child. 2 & 3 is a neighbour marriage.
+    expect(unit.linkWidths).toEqual([152, 152, 36]);
+
+    const unitLeft = unit.x - unit.width / 2;
+    const cardCenter = (id) => {
+      const index = order.indexOf(id);
+      return unitLeft + unit.memberCenters[index];
+    };
+    const heartForSaulius = (cardCenter('1') + cardCenter('2')) / 2;
+    const child = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '5')
+    );
+
+    expect(Math.abs(child.x - heartForSaulius)).toBeLessThan(
+      Math.abs(child.x - cardCenter('2'))
+    );
+  });
 });
