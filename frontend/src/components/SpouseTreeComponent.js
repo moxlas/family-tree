@@ -952,6 +952,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
 }
 
 export default function SpouseTreeComponent({
+  branchFlagsById,
   childCounts = {},
   collapsedFamilyIds = [],
   families = [],
@@ -1375,6 +1376,7 @@ export default function SpouseTreeComponent({
                       )}
                       <PersonCard
                         cardRef={getCardRef(member.id)}
+                        hasBranch={Boolean(branchFlagsById?.get(String(member.id))?.hasBranch)}
                         muted={formerMemberIds.has(String(member.id))}
                         onAddChild={onAddChild}
                         onAddParent={onAddParent}

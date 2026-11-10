@@ -1,4 +1,4 @@
-import { viewPeople } from './treeView';
+import { branchFlags, viewPeople } from './treeView';
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', spouseId: null, parentId: null, ...extra };
@@ -10,41 +10,58 @@ const people = [
   person('3', { parentId: '1' }),
   person('4', { spouseId: '3' }),
   person('5', { parentId: '3' }),
-  person('6', { spouseId: '1', parentId: null }),
+  person('6', { spouseId: '1' }),
   person('7', { parentId: '6' }),
 ];
 
 const families = [
   { id: 'f1', husband: '1', wife: '2', status: 'current', children: ['3'] },
-  { id: 'f2', husband: '1', wife: '6', status: 'former', children: ['7'] },
+  { id: 'f2', husband: '1', wife: '6', status: 'former', children: [] },
   { id: 'f3', husband: '3', wife: '4', status: 'current', children: ['5'] },
 ];
 
 const ids = (view) => view.people.map((entry) => entry.id).sort();
 
-describe('viewPeople', () => {
-  it('shows everyone when nothing is collapsed or focused', () => {
-    expect(ids(viewPeople(people, families))).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+describe('branch views', () => {
+  it('full tree shows the bloodline, spouse cards and mutual children only', () => {
+    const view = viewPeople(people, families);
+    // 6 and 1 are spouses, 7 is 6's child from outside this family.
+    expect(ids(view)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 
-  it('hides children, descendants and their partners when a marriage is collapsed', () => {
+  it('keeps a separate family that has no marriage link to the main one', () => {
+    const extra = [...people, person('8'), person('9', { parentId: '8' })];
+    const view = viewPeople(extra, families);
+    expect(ids(view)).toContain('8');
+    expect(ids(view)).toContain('9');
+  });
+
+  it('branch view shows parents, grandparents, siblings and their partners', () => {
+    const view = viewPeople(people, families, { focusId: '5' });
+    // 5's branch: grandparents 1 & 2, parent 3, partner 4, spouse 6 of 1.
+    expect(ids(view)).toEqual(['1', '2', '3', '4', '5', '6']);
+  });
+
+  it('branch view of a spouse shows that spouse own family', () => {
+    const view = viewPeople(people, families, { focusId: '7' });
+    expect(ids(view)).toEqual(['1', '6', '7']);
+  });
+
+  it('hides children of a collapsed marriage inside the full tree', () => {
     const view = viewPeople(people, families, { collapsedFamilyIds: ['f1'] });
-    expect(ids(view)).toEqual(['1', '2', '6', '7']);
-    expect(view.families.find((family) => family.id === 'f1').children).toEqual([]);
+    expect(ids(view)).toEqual(['1', '2', '6']);
   });
 
-  it('keeps only the focused person, partners and descendants', () => {
-    const view = viewPeople(people, families, { focusId: '3' });
-    expect(ids(view)).toEqual(['3', '4', '5']);
-  });
+  it('reports parents and siblings for the branch button', () => {
+    expect(branchFlags(people, families, '5')).toEqual({
+      hasParents: true,
+      hasSiblings: false,
+      hasBranch: true,
+    });
 
-  it('does not show ancestors when focusing a branch', () => {
-    const view = viewPeople(people, families, { focusId: '3' });
-    expect(view.people.find((entry) => entry.id === '1')).toBeUndefined();
-  });
-
-  it('keeps a partner who is still married to a visible person when collapsing', () => {
-    const view = viewPeople(people, families, { collapsedFamilyIds: ['f1'] });
-    expect(view.people.find((entry) => entry.id === '6')).toBeDefined();
+    const mixed = [...people, person('10', { parentId: '1' })];
+    expect(branchFlags(mixed, families, '10').hasBranch).toBe(true);
+    expect(branchFlags(mixed, families, '10').hasSiblings).toBe(true);
+    expect(branchFlags(mixed, families, '2').hasBranch).toBe(false);
   });
 });

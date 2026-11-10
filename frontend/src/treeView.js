@@ -57,68 +57,111 @@ function closure(seeds, edges) {
   return result;
 }
 
-// Returns the people and families that should be drawn for the current view.
-// - collapsedFamilyIds hides the children of those marriages, with their
-//   descendants and any partners who are only linked to hidden people.
-// - focusId keeps only that person, their partners and their descendants.
-export function viewPeople(people, families, options = {}) {
-  const list = Array.isArray(people) ? people : [];
-  const marriages = Array.isArray(families) ? families : [];
-  const focusId = idOf(options.focusId);
-  const collapsed = new Set((options.collapsedFamilyIds || []).map(idOf));
-  const all = new Set(list.map((person) => idOf(person.id)));
-  const graph = buildGraph(list, marriages);
+// Parent-child components: everyone linked by blood or adoption. A spouse
+// who married in starts their own component unless they descend from the
+// same family, which is exactly what we need to tell in-laws apart.
+function parentComponents(people, graph) {
+  const componentOf = new Map();
+  let cursor = 0;
 
-  let keep;
+  people.forEach((person) => {
+    const id = idOf(person.id);
+    if (componentOf.has(id)) return;
 
-  if (focusId && all.has(focusId)) {
-    keep = closure([focusId], graph.children);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      const additions = [];
-      for (const id of keep) {
-        for (const partnerId of graph.partners.get(id) || []) {
-          additions.push(partnerId);
-        }
-      }
-      for (const id of closure([...keep], graph.children)) {
-        additions.push(id);
-      }
-      for (const id of additions) {
-        if (!keep.has(id)) {
-          keep.add(id);
-          changed = true;
-        }
-      }
-    }
-  } else {
-    const hidden = new Set();
+    const componentId = cursor;
+    cursor += 1;
+    const queue = [id];
+    componentOf.set(id, componentId);
 
-    if (collapsed.size) {
-      const seeds = [];
-      marriages.forEach((family) => {
-        if (!collapsed.has(idOf(family.id))) return;
-        (family.children || []).map(idOf).forEach((childId) => seeds.push(childId));
-      });
-
-      const descendants = closure(seeds, graph.children);
-      descendants.forEach((id) => hidden.add(id));
-
-      descendants.forEach((id) => {
-        (graph.partners.get(id) || new Set()).forEach((partnerId) => {
-          if (descendants.has(partnerId)) return;
-          const linkedToVisible = [...(graph.partners.get(partnerId) || [])].some(
-            (other) => !descendants.has(other)
-          );
-          if (!linkedToVisible) hidden.add(partnerId);
-        });
+    while (queue.length) {
+      const current = queue.shift();
+      const neighbours = [
+        ...(graph.children.get(current) || []),
+        ...[...graph.children.entries()]
+          .filter(([, descendants]) => descendants.has(current))
+          .map(([parentId]) => parentId),
+      ];
+      neighbours.forEach((neighbourId) => {
+        if (componentOf.has(neighbourId)) return;
+        componentOf.set(neighbourId, componentId);
+        queue.push(neighbourId);
       });
     }
+  });
 
-    keep = new Set([...all].filter((id) => !hidden.has(id)));
-  }
+  const members = new Map();
+  componentOf.forEach((componentId, personId) => {
+    if (!members.has(componentId)) members.set(componentId, []);
+    members.get(componentId).push(personId);
+  });
 
+  return { componentOf, members };
+}
+
+function fullTreeKeep(people, families) {
+  const graph = buildGraph(people, families);
+  const { componentOf, members } = parentComponents(people, graph);
+
+  if (!members.size) return null;
+
+  const componentIds = [...members.keys()];
+  let mainComponent = componentIds[0];
+  componentIds.forEach((componentId) => {
+    const size = members.get(componentId).length;
+    const bestSize = members.get(mainComponent).length;
+    if (size > bestSize) mainComponent = componentId;
+  });
+
+  const inLawComponents = new Set();
+  componentIds.forEach((componentId) => {
+    if (componentId === mainComponent) return;
+    const linkedByMarriage = members.get(componentId).some((personId) =>
+      [...(graph.partners.get(personId) || [])].some(
+        (partnerId) => componentOf.get(partnerId) === mainComponent
+      )
+    );
+    if (linkedByMarriage) inLawComponents.add(componentId);
+  });
+
+  const keep = new Set(members.get(mainComponent));
+
+  componentIds.forEach((componentId) => {
+    if (componentId === mainComponent) return;
+    if (!inLawComponents.has(componentId)) {
+      // A separate family with no marriage link is its own tree.
+      members.get(componentId).forEach((personId) => keep.add(personId));
+    }
+  });
+
+  // Spouse cards of kept people are shown, but their relatives are not.
+  [...keep].forEach((personId) => {
+    (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
+      keep.add(partnerId);
+    });
+  });
+
+  return keep;
+}
+
+// A person's branch: their blood component (parents, grandparents, siblings,
+// cousins) together with the partners of those members.
+function branchKeep(focusId, people, families) {
+  const graph = buildGraph(people, families);
+  const { componentOf, members } = parentComponents(people, graph);
+  const componentId = componentOf.get(focusId);
+
+  if (componentId == null) return new Set([focusId]);
+
+  const keep = new Set(members.get(componentId) || []);
+  [...keep].forEach((personId) => {
+    (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
+      keep.add(partnerId);
+    });
+  });
+  return keep;
+}
+
+function filterToKeep(list, marriages, keep) {
   const visiblePeople = list.filter((person) => keep.has(idOf(person.id)));
   const visibleFamilies = marriages
     .map((family) => ({
@@ -132,4 +175,76 @@ export function viewPeople(people, families, options = {}) {
     .filter((family) => family.husband || family.wife || family.children.length);
 
   return { people: visiblePeople, families: visibleFamilies };
+}
+
+// Returns the people and families that should be drawn for the current view.
+// - focusId shows that person's own family branch in a separate view.
+// - collapsedFamilyIds hides the children of those marriages, with their
+//   descendants and any partners who are only linked to hidden people.
+export function viewPeople(people, families, options = {}) {
+  const list = Array.isArray(people) ? people : [];
+  const marriages = Array.isArray(families) ? families : [];
+  const focusId = idOf(options.focusId);
+  const collapsed = new Set((options.collapsedFamilyIds || []).map(idOf));
+  const all = new Set(list.map((person) => idOf(person.id)));
+
+  const baseKeep =
+    focusId && all.has(focusId)
+      ? branchKeep(focusId, list, marriages)
+      : fullTreeKeep(list, marriages);
+
+  const graph = buildGraph(list, marriages);
+  let keep = baseKeep || new Set(all);
+
+  if (collapsed.size) {
+    const seeds = [];
+    marriages.forEach((family) => {
+      if (!collapsed.has(idOf(family.id))) return;
+      (family.children || []).map(idOf).forEach((childId) => seeds.push(childId));
+    });
+
+    const descendants = closure(seeds, graph.children);
+    descendants.forEach((id) => keep.delete(id));
+
+    descendants.forEach((id) => {
+      (graph.partners.get(id) || new Set()).forEach((partnerId) => {
+        if (descendants.has(partnerId)) return;
+        const linkedToVisible = [...(graph.partners.get(partnerId) || [])].some(
+          (other) => keep.has(other)
+        );
+        if (!linkedToVisible) keep.delete(partnerId);
+      });
+    });
+  }
+
+  return filterToKeep(list, marriages, keep);
+}
+
+// Whether a person has parents or siblings recorded, used to highlight the
+// "show branch" button on their card.
+export function branchFlags(people, families, personId) {
+  const id = idOf(personId);
+  const list = Array.isArray(people) ? people : [];
+  const marriages = Array.isArray(families) ? families : [];
+  const graph = buildGraph(list, marriages);
+
+  const parents = new Set();
+  const siblings = new Set();
+
+  (graph.children.entries()).forEach(([parentId, descendants]) => {
+    if (!descendants.has(id)) return;
+    parents.add(parentId);
+  });
+
+  parents.forEach((parentId) => {
+    (graph.children.get(parentId) || new Set()).forEach((childId) => {
+      if (childId !== id) siblings.add(childId);
+    });
+  });
+
+  return {
+    hasParents: parents.size > 0,
+    hasSiblings: siblings.size > 0,
+    hasBranch: parents.size > 0 || siblings.size > 0,
+  };
 }

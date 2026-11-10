@@ -18,6 +18,7 @@ export default function PersonCard({
   onEdit,
   onFocus,
   onView,
+  hasBranch = false,
   muted = false,
   person,
   showSpouseName = true,
@@ -158,12 +159,14 @@ export default function PersonCard({
         {onFocus && (
           <button
             aria-label={t('branch.focusAria', { name: fullName })}
-            className="icon-button focus"
+            className={`icon-button focus${hasBranch ? ' has-branch' : ''}`}
             onClick={(event) => {
               event.stopPropagation();
               onFocus(person);
             }}
-            title={t('branch.focus')}
+            title={
+              hasBranch ? t('branch.focusHasFamily') : t('branch.focus')
+            }
             type="button"
           >
             ◎

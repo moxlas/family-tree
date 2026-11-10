@@ -1029,6 +1029,17 @@ textarea {
   font-size: 14px;
 }
 
+.icon-button.focus.has-branch {
+  background: var(--brand-soft);
+  border-color: transparent;
+  box-shadow: 0 0 0 1px rgba(15, 118, 110, 0.18) inset;
+  color: var(--brand-deep);
+}
+
+.icon-button.focus.has-branch:hover {
+  background: #99f6e4;
+}
+
 .family-tree {
   min-width: max-content;
   padding: 26px 34px 0;

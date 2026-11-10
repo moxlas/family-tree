@@ -324,8 +324,11 @@ const translations = {
     'branch.showChild': 'Show 1 child',
     'branch.showChildren': 'Show {{count}} children',
     'branch.focus': 'Show only this branch',
+    'branch.focusHasFamily': 'Open this family branch',
     'branch.focusAria': 'Show only the branch of {{name}}',
     'branch.focusBanner': 'Showing the branch of {{name}}',
+    'branch.fullTreeNote':
+      'In-laws are hidden here; use the ◎ button to open a spouse’s own branch.',
     'branch.backToFull': 'Back to full tree',
 
     'api.authRequired': 'Authentication required.',
@@ -684,8 +687,11 @@ const translations = {
     'branch.showChild': 'Rodyti 1 vaiką',
     'branch.showChildren': 'Rodyti vaikus ({{count}})',
     'branch.focus': 'Rodyti tik šią šaką',
+    'branch.focusHasFamily': 'Atidaryti šią šeimos šaką',
     'branch.focusAria': 'Rodyti tik {{name}} šaką',
     'branch.focusBanner': 'Rodoma {{name}} šaka',
+    'branch.fullTreeNote':
+      'Svainiai čia nerodomi; naudokite ◎ mygtuką, kad atidarytumėte sutuoktinio šaką.',
     'branch.backToFull': 'Grįžti prie viso medžio',
 
     'api.authRequired': 'Reikia prisijungti.',

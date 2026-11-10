@@ -16,7 +16,7 @@ import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
 import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
-import { viewPeople } from '../treeView';
+import { branchFlags, viewPeople } from '../treeView';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 const COLLAPSED_KEY = 'familyTreeCollapsedMarriages';
@@ -261,6 +261,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     });
     return counts;
   }, [families]);
+
+  const branchFlagsById = useMemo(() => {
+    const flags = new Map();
+    people.forEach((entry) => {
+      flags.set(String(entry.id), branchFlags(people, families, entry.id));
+    });
+    return flags;
+  }, [people, families]);
 
   const focusedPerson = focusId
     ? people.find((entry) => String(entry.id) === String(focusId)) || null
@@ -844,7 +852,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 <p>
                   {bloodlineOnly
                     ? t('tree.headingHint')
-                    : t('tree.headingHintSpouses')}
+                    : focusedPerson
+                      ? t('branch.focusBanner', {
+                          name: `${focusedPerson.firstName} ${focusedPerson.lastName}`.trim(),
+                        })
+                      : `${t('tree.headingHintSpouses')} ${t('branch.fullTreeNote')}`}
                 </p>
               </div>
               <div className="tree-heading-actions">
@@ -926,6 +938,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 />
               ) : (
                 <SpouseTreeComponent
+                  branchFlagsById={branchFlagsById}
                   childCounts={childCounts}
                   collapsedFamilyIds={collapsedFamilyIds}
                   families={view.families}
