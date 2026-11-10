@@ -59,8 +59,8 @@ const translations = {
       'Use + on a card to add a child, parent or sibling. Spouse cards are hidden in this view.',
     'tree.headingHintSpouses':
       'Use + on a card to add a child, parent, sibling or spouse. Use ▾ to hide that person’s children only.',
-    'tree.modeBloodline': 'Bloodline view',
-    'tree.modeSpouses': 'Spouse cards',
+    'tree.modeBloodline': 'Spouses hidden',
+    'tree.modeSpouses': 'Spouses shown',
     'tree.addRoot': 'Add another root',
     'tree.zoom': 'Tree zoom',
     'tree.zoomReset': 'Reset',
@@ -545,8 +545,8 @@ const translations = {
       'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką, tėvą ar motiną, brolį ar seserį. Šiame vaizde sutuoktinių kortelės nerodomos.',
     'tree.headingHintSpouses':
       'Spustelėkite „+“ kortelėje, kad pridėtumėte vaiką, tėvą ar motiną, brolį ar seserį arba sutuoktinį (-ę). Naudokite „▾“, kad paslėptumėte tik to asmens vaikus.',
-    'tree.modeBloodline': 'Kraujo linijos vaizdas',
-    'tree.modeSpouses': 'Sutuoktinių kortelės',
+    'tree.modeBloodline': 'Sutuoktiniai nerodomi',
+    'tree.modeSpouses': 'Rodomi sutuoktiniai',
     'tree.addRoot': 'Pridėti dar vieną šaknį',
     'tree.zoom': 'Medžio mastelis',
     'tree.zoomReset': 'Atstatyti',

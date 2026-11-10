@@ -863,6 +863,10 @@ textarea {
   padding: 20px 24px;
 }
 
+.tree-panel-heading > div:first-child {
+  min-width: 0;
+}
+
 .tree-panel-heading h2 {
   font-size: 20px;
   letter-spacing: -0.02em;
@@ -878,7 +882,8 @@ textarea {
 .tree-heading-actions {
   align-items: center;
   display: flex;
-  flex-wrap: wrap;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
   gap: 10px;
   justify-content: flex-end;
 }
@@ -923,15 +928,29 @@ textarea {
   transform: translateY(-50%);
 }
 
+.tree-heading-title {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tree-heading-title h2 {
+  margin-bottom: 0;
+}
+
+.tree-heading-title + p {
+  margin-top: 4px;
+}
+
 .mode-badge {
   background: var(--brand-soft);
   border-radius: 999px;
   color: var(--brand-deep);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 6px 10px;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 650;
+  padding: 4px 9px;
+  white-space: nowrap;
 }
 
 .tree-scroll {
@@ -1850,6 +1869,15 @@ textarea {
     align-items: center;
     padding: 16px 62px 16px 24px;
   }
+
+  .tree-panel-heading {
+    flex-wrap: wrap;
+  }
+
+  .tree-heading-actions {
+    justify-content: flex-end;
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1904,11 +1932,8 @@ textarea {
 
   .tree-heading-actions {
     align-items: stretch;
+    flex-wrap: wrap;
     width: 100%;
-  }
-
-  .mode-badge {
-    text-align: center;
   }
 
   .toggle-row {

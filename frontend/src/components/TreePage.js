@@ -1070,7 +1070,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           <section className="tree-panel" aria-label={t('tree.heading')}>
             <div className="tree-panel-heading">
               <div>
-                <h2>{t('tree.heading')}</h2>
+                <div className="tree-heading-title">
+                  <h2>{t('tree.heading')}</h2>
+                  <span className="mode-badge">
+                    {bloodlineOnly
+                      ? t('tree.modeBloodline')
+                      : t('tree.modeSpouses')}
+                  </span>
+                </div>
                 <p>
                   {bloodlineOnly
                     ? t('tree.headingHint')
@@ -1104,11 +1111,6 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                     </span>
                   </span>
                 </label>
-                <span className="mode-badge">
-                  {bloodlineOnly
-                    ? t('tree.modeBloodline')
-                    : t('tree.modeSpouses')}
-                </span>
                 <button
                   className="button secondary small"
                   onClick={() => openCreate('')}
