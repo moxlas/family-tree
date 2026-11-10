@@ -199,6 +199,22 @@ describe('home person tree', () => {
     expect(branch).toEqual(['12', '13', '14', '15', '8']);
   });
 
+  it('never applies the home person to a branch view', () => {
+    const withHome = ids(
+      viewPeople(homePeople, homeFamilies, {
+        focusId: '12',
+        homePersonId: '7',
+      })
+    );
+    const withoutHome = ids(
+      viewPeople(homePeople, homeFamilies, { focusId: '12' })
+    );
+
+    // 13, 14 and 15 are in-laws that the home tree of 7 does not contain.
+    expect(withHome).toEqual(withoutHome);
+    expect(withHome).toEqual(['12', '13', '14', '15', '8']);
+  });
+
   it('falls back to the plain full tree when the home person is unknown', () => {
     const withMissing = ids(
       viewPeople(homePeople, homeFamilies, { homePersonId: 'missing' })

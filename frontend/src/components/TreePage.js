@@ -297,6 +297,21 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     ? people.find((entry) => String(entry.id) === String(focusId)) || null
     : null;
 
+  // A branch only exists while its person does. If the focused person is
+  // deleted or the tree is replaced, leave the branch instead of silently
+  // falling back to the home-person tree.
+  useEffect(() => {
+    if (!focusId || !people.length) return;
+    if (!people.some((entry) => String(entry.id) === String(focusId))) {
+      setFocusId('');
+    }
+  }, [focusId, people]);
+
+  // The bloodline-only view has no branch button, so it cannot show a branch.
+  useEffect(() => {
+    if (bloodlineOnly) setFocusId('');
+  }, [bloodlineOnly]);
+
   const toggleChildren = (person) => {
     const id = person ? String(person.id) : '';
     if (!id || !activeTreeId) return;
