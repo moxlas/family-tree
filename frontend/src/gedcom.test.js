@@ -109,4 +109,44 @@ describe('GEDCOM spouse connection round-trip', () => {
     expect(parsed.families[0].status).toBe('former');
     expect(parsed.families[0].divorceDate).toBe('');
   });
+
+  it('round-trips family notes', () => {
+    const withNotes = families.map((family, index) => ({
+      ...family,
+      notes: index === 0 ? 'Married in Kaunas.' : '',
+    }));
+    const text = buildGedcom(people, 'Spouse test', withNotes);
+    const parsed = parseGedcom(text, 'en');
+
+    const withNote = parsed.families.find((family) => family.notes);
+    expect(withNote?.notes).toBe('Married in Kaunas.');
+    expect(parsed.families.filter((family) => family.notes)).toHaveLength(1);
+  });
+
+  it('round-trips multiline person and family notes', () => {
+    const peopleWithNotes = [
+      person('1', { firstName: 'Adam', gender: 'male', spouseId: '2' }),
+      person('2', { firstName: 'Emma', gender: 'female', spouseId: '1' }),
+    ];
+    peopleWithNotes[0].notes = 'Line one\nLine two';
+    peopleWithNotes[1].notes = 'Second person note';
+
+    const text = buildGedcom(peopleWithNotes, 'Notes test', [
+      {
+        id: 'f1',
+        husband: '1',
+        wife: '2',
+        status: 'current',
+        marriageDate: '',
+        divorceDate: '',
+        children: [],
+        notes: 'Shared family note',
+      },
+    ]);
+    const parsed = parseGedcom(text, 'en');
+
+    expect(parsed.individuals[0].notes).toBe('Line one\nLine two');
+    expect(parsed.individuals[1].notes).toBe('Second person note');
+    expect(parsed.families[0].notes).toBe('Shared family note');
+  });
 });

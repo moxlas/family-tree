@@ -267,6 +267,7 @@ export function parseGedcom(input, language = 'en') {
       status: divorce.present ? 'former' : 'current',
       marriageDate: marriage.date,
       divorceDate: divorce.date,
+      notes: readNotes(record, sharedNotes),
     });
   }
 
@@ -311,7 +312,8 @@ function appendNote(lines, level, value) {
     if (!chunks.length) chunks.push('');
 
     const tag = index === 0 ? 'NOTE' : 'CONT';
-    lines.push(`${level} ${tag}${chunks[0] ? ` ${chunks[0]}` : ''}`);
+    const tagLevel = index === 0 ? level : level + 1;
+    lines.push(`${tagLevel} ${tag}${chunks[0] ? ` ${chunks[0]}` : ''}`);
 
     for (let chunkIndex = 1; chunkIndex < chunks.length; chunkIndex += 1) {
       lines.push(`${level + 1} CONC ${chunks[chunkIndex]}`);
@@ -398,6 +400,7 @@ export function buildGedcom(people, treeName, families = []) {
         status: family.status === 'former' ? 'former' : 'current',
         marriageDate: family.marriageDate || '',
         divorceDate: family.divorceDate || '',
+        notes: family.notes || '',
       });
     });
 
@@ -570,6 +573,10 @@ export function buildGedcom(people, treeName, families = []) {
       } else {
         lines.push('1 DIV Y');
       }
+    }
+
+    if (family.notes) {
+      appendNote(lines, 1, family.notes);
     }
   });
 

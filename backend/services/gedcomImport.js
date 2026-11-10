@@ -76,6 +76,7 @@ function sanitizeFamily(raw, index) {
     status: raw.status === 'former' ? 'former' : 'current',
     marriageDate: cleanText(raw.marriageDate, 40),
     divorceDate: cleanText(raw.divorceDate, 40),
+    notes: cleanText(raw.notes, 2000),
   };
 }
 
@@ -170,14 +171,21 @@ function findMatch(fields, index, addWarning) {
 
 function wouldCreateCycle(child, parent, allById) {
   const childId = String(child._id);
-  const seen = new Set([childId]);
-  let cursor = parent;
+  const seen = new Set();
+  const queue = [parent];
 
-  while (cursor) {
+  while (queue.length) {
+    const cursor = queue.shift();
+    if (!cursor) continue;
     const id = String(cursor._id);
-    if (seen.has(id)) return true;
+    if (id === childId) return true;
+    if (seen.has(id)) continue;
     seen.add(id);
-    cursor = cursor.parentId ? allById.get(String(cursor.parentId)) : null;
+    [cursor.parentId, cursor.secondParentId].forEach((parentId) => {
+      if (!parentId) return;
+      const next = allById.get(String(parentId));
+      if (next) queue.push(next);
+    });
   }
 
   return false;
@@ -350,6 +358,7 @@ async function importGedcom({ ownerId, tree, body }) {
         status: family.status,
         marriageDate: family.marriageDate,
         divorceDate: family.divorceDate,
+        notes: family.notes || '',
       });
     }
 
@@ -403,36 +412,65 @@ async function importGedcom({ ownerId, tree, body }) {
     const primaryParent = parents[0];
     if (!primaryParent) continue;
 
+    const familyParentIds = parents.map((parent) => String(parent._id));
+
     for (const childKey of family.children) {
       const child = keyMap.get(childKey);
       if (!child) continue;
 
-      if (String(child._id) === String(primaryParent._id)) {
-        addWarning('cycle', { person: fullName(child) });
+      const existingParents = [child.parentId, child.secondParentId]
+        .filter(Boolean)
+        .map(String);
+
+      // Skip a parent that is already recorded for this child, and never
+      // attach a person to themselves.
+      const missingParents = parents.filter(
+        (parent) =>
+          String(parent._id) !== String(child._id) &&
+          !existingParents.includes(String(parent._id))
+      );
+
+      if (!missingParents.length) continue;
+
+      // The child already has a parent from a different family: mixing in
+      // another couple would give them three or four parents.
+      if (
+        existingParents.some(
+          (parentId) => !familyParentIds.includes(parentId)
+        )
+      ) {
+        addWarning('parentConflict', {
+          person: fullName(child),
+          parent: fullName(missingParents[0]),
+        });
         continue;
       }
 
-      const childParent = child.parentId ? String(child.parentId) : '';
-
-      if (!childParent) {
-        if (wouldCreateCycle(child, primaryParent, allById)) {
+      for (const parent of missingParents) {
+        if (wouldCreateCycle(child, parent, allById)) {
           addWarning('cycle', { person: fullName(child) });
           continue;
         }
 
-        applyPatch(child, { parentId: primaryParent._id });
-        parentLinks += 1;
-        continue;
-      }
+        if (!child.parentId) {
+          applyPatch(child, { parentId: parent._id });
+          parentLinks += 1;
+          existingParents.push(String(parent._id));
+          continue;
+        }
 
-      if (parents.some((parent) => String(parent._id) === childParent)) {
-        continue;
-      }
+        if (!child.secondParentId) {
+          applyPatch(child, { secondParentId: parent._id });
+          parentLinks += 1;
+          existingParents.push(String(parent._id));
+          continue;
+        }
 
-      addWarning('parentConflict', {
-        person: fullName(child),
-        parent: fullName(primaryParent),
-      });
+        addWarning('parentConflict', {
+          person: fullName(child),
+          parent: fullName(parent),
+        });
+      }
     }
   }
 
