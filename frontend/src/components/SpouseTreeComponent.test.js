@@ -355,8 +355,9 @@ describe('buildScene generation placement', () => {
 
     expect(order).toEqual(['1', '2', '3', '4']);
     // The heart of 1 & 3 sits beside 1, in the gap between 1 and 2, so that
-    // gap is widened for their child. 2 & 3 is a neighbour marriage.
-    expect(unit.linkWidths).toEqual([152, 152, 36]);
+    // gap is widened for their child. 2 & 3 is a neighbour marriage with one
+    // child, so it widens a little but stays narrower than an ex marriage.
+    expect(unit.linkWidths).toEqual([152, 152, 64]);
 
     const unitLeft = unit.x - unit.width / 2;
     const cardCenter = (id) => {

@@ -15,6 +15,7 @@ import PersonCard from './PersonCard';
 const SPOUSE_LINK_WIDTH = 36;
 const FORMER_LINK_WIDTH = 76;
 const FORMER_LINK_CHILDREN_WIDTH = 152;
+const CURRENT_LINK_CHILDREN_MAX = 112;
 
 function pairKeyOf(firstId, secondId) {
   const first = String(firstId);
@@ -322,6 +323,7 @@ export function buildScene(people, families, showFormerSpouses = true) {
         secondId,
         status: record.status,
         hasChildren: (record.children || []).length > 0,
+        childCount: (record.children || []).length,
         marriageDate: record.family.marriageDate || '',
         divorceDate: record.family.divorceDate || '',
       };
@@ -742,8 +744,18 @@ export function buildScene(people, families, showFormerSpouses = true) {
   // are reserved bottom-up, so each parent is centred over its descendants
   // without any later shifting.
   const CARD_WIDTH = 232;
-  const UNIT_GAP = 44;
+  const BASE_UNIT_GAP = 44;
+  const ROUTING_UNIT_GAP = 76;
   const COMPONENT_GAP = 140;
+
+  // Links that skip a generation need a free vertical column between card
+  // groups, so leave more room between units when the scene has any.
+  const hasSkippingEdges = units.some((unit, childIndex) =>
+    [...(unit.parentUnits || [])].some(
+      (parentIndex) => (depths[childIndex] || 0) - (depths[parentIndex] || 0) > 1
+    )
+  );
+  const UNIT_GAP = hasSkippingEdges ? ROUTING_UNIT_GAP : BASE_UNIT_GAP;
 
   // Where the heart for a marriage is drawn: in the gap between the partners
   // when they are neighbours, otherwise in the gap beside the partner with
@@ -842,6 +854,23 @@ export function buildScene(people, families, showFormerSpouses = true) {
   // The gap widths follow the hearts: a previous marriage with children gets
   // a wide gap so those children hang under their own heart instead of under
   // an unrelated card. Marriages drawn behind the cards need the room too.
+  // A marriage with several children also gets a wider gap so their drop
+  // lines can fan out under the heart instead of stacking on one column.
+  const gapWidthFor = (relationship, behind) => {
+    const childCount = relationship.childCount || 0;
+
+    if (behind || relationship.status === 'former') {
+      return childCount ? FORMER_LINK_CHILDREN_WIDTH : FORMER_LINK_WIDTH;
+    }
+
+    if (!childCount) return SPOUSE_LINK_WIDTH;
+
+    return Math.min(
+      CURRENT_LINK_CHILDREN_MAX,
+      SPOUSE_LINK_WIDTH + childCount * 28
+    );
+  };
+
   units.forEach((unit, unitIndex) => {
     const gapWidths = unit.members.slice(1).map(() => 0);
     (unit.relationships || []).forEach((relationship) => {
@@ -854,15 +883,10 @@ export function buildScene(people, families, showFormerSpouses = true) {
         (member) => String(member.id) === String(relationship.secondId)
       );
       const behind = Math.abs(firstIndex - secondIndex) !== 1;
-      const spread = behind || relationship.status === 'former';
-      const width = relationship.hasChildren
-        ? spread
-          ? FORMER_LINK_CHILDREN_WIDTH
-          : SPOUSE_LINK_WIDTH
-        : spread
-          ? FORMER_LINK_WIDTH
-          : SPOUSE_LINK_WIDTH;
-      gapWidths[gapIndex] = Math.max(gapWidths[gapIndex], width);
+      gapWidths[gapIndex] = Math.max(
+        gapWidths[gapIndex],
+        gapWidthFor(relationship, behind)
+      );
     });
     unit.linkWidths = gapWidths.map((width) => width || SPOUSE_LINK_WIDTH);
   });
@@ -1285,22 +1309,233 @@ export default function SpouseTreeComponent({
       });
     });
 
-    // Every child link drops straight down from its marriage heart, runs
-    // horizontally at one consistent height in the middle of the empty gap
-    // between the parent row and the child row, then drops into the child.
-    // So horizontals stay below parent cards and above child cards.
-    const nextEdges = [...descriptorById.values()].map((descriptor) => {
-      const skipsRows =
-        descriptor.childDepth - descriptor.parentDepth > 1;
-      const laneY = skipsRows
-        ? descriptor.endY - 28
-        : descriptor.parentBottom +
-          (descriptor.endY - descriptor.parentBottom) / 2;
+    // Every child link leaves its marriage heart, runs down to a lane in the
+    // empty gap, across to the child column and down into the child. Lanes are
+    // allocated per gap so two different families never share one horizontal.
+    // Edges that skip a generation get a reserved vertical channel between
+    // card groups, so they never cut through a heart or a card in between.
+    const descriptors = [...descriptorById.values()];
 
-      const path =
-        Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
-          ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${descriptor.endY}`
-          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
+    const rowTops = new Map();
+    const rowBottoms = new Map();
+    const rowColumns = new Map();
+
+    scene.units.forEach((unit, unitIndex) => {
+      const depth = scene.depths[unitIndex] || 0;
+      let left = Infinity;
+      let right = -Infinity;
+
+      unit.members.forEach((member) => {
+        const node = cardRefs.current.get(String(member.id));
+        if (!node) return;
+        const rect = node.getBoundingClientRect();
+        const cardLeft = (rect.left - containerRect.left) / scale;
+        const cardRight = (rect.right - containerRect.left) / scale;
+        const cardTop = (rect.top - containerRect.top) / scale;
+        const cardBottom = (rect.bottom - containerRect.top) / scale;
+        left = Math.min(left, cardLeft);
+        right = Math.max(right, cardRight);
+        rowTops.set(
+          depth,
+          Math.min(rowTops.has(depth) ? rowTops.get(depth) : Infinity, cardTop)
+        );
+        rowBottoms.set(
+          depth,
+          Math.max(rowBottoms.has(depth) ? rowBottoms.get(depth) : 0, cardBottom)
+        );
+      });
+
+      if (!Number.isFinite(left)) return;
+      if (!rowColumns.has(depth)) rowColumns.set(depth, []);
+      rowColumns.get(depth).push({ left, right });
+    });
+
+    // Card groups (hearts and spouse lines live inside them) that a long
+    // edge must not cross, merged into one sorted list.
+    const channelBlockers = (fromDepth, toDepth) => {
+      const blocked = [];
+      for (let depth = fromDepth + 1; depth < toDepth; depth += 1) {
+        (rowColumns.get(depth) || []).forEach((column) => {
+          blocked.push({ left: column.left - 14, right: column.right + 14 });
+        });
+      }
+      blocked.sort((first, second) => first.left - second.left);
+
+      const merged = [];
+      blocked.forEach((interval) => {
+        const previous = merged[merged.length - 1];
+        if (previous && interval.left <= previous.right) {
+          previous.right = Math.max(previous.right, interval.right);
+        } else {
+          merged.push({ ...interval });
+        }
+      });
+      return merged;
+    };
+
+    const usedChannels = [];
+    const channelFor = (descriptor) => {
+      const blocked = channelBlockers(
+        descriptor.parentDepth,
+        descriptor.childDepth
+      );
+      const ideal = descriptor.endX;
+
+      const isFree = (candidate) => {
+        if (candidate < 16) return false;
+        const insideBlocked = blocked.some(
+          (interval) => candidate > interval.left && candidate < interval.right
+        );
+        if (insideBlocked) return false;
+        return !usedChannels.some((used) => Math.abs(used - candidate) < 14);
+      };
+
+      let channel = ideal;
+      if (!isFree(channel)) {
+        let found = null;
+        for (let offset = 14; offset <= 420 && found == null; offset += 14) {
+          const before = ideal - offset;
+          if (isFree(before)) {
+            found = before;
+            break;
+          }
+          const after = ideal + offset;
+          if (isFree(after)) {
+            found = after;
+            break;
+          }
+        }
+        channel = found == null ? ideal : found;
+      }
+
+      usedChannels.push(channel);
+      return channel;
+    };
+
+    const segments = [];
+    const channelById = new Map();
+
+    descriptors.forEach((descriptor) => {
+      const skipsRows = descriptor.childDepth - descriptor.parentDepth > 1;
+      const straight =
+        !skipsRows && Math.abs(descriptor.endX - descriptor.junctionX) < 0.5;
+
+      if (straight) return;
+
+      if (skipsRows) {
+        const channelX = channelFor(descriptor);
+        channelById.set(descriptor.id, channelX);
+        segments.push({
+          gapDepth: descriptor.parentDepth,
+          group: `p${descriptor.parentIndex}`,
+          x1: descriptor.junctionX,
+          x2: channelX,
+        });
+        segments.push({
+          gapDepth: descriptor.childDepth - 1,
+          group: `e${descriptor.id}`,
+          x1: channelX,
+          x2: descriptor.endX,
+        });
+        return;
+      }
+
+      segments.push({
+        gapDepth: descriptor.parentDepth,
+        group: `p${descriptor.parentIndex}`,
+        x1: descriptor.junctionX,
+        x2: descriptor.endX,
+      });
+    });
+
+    const gapGroups = new Map();
+    segments.forEach((segment) => {
+      if (!gapGroups.has(segment.gapDepth)) {
+        gapGroups.set(segment.gapDepth, new Map());
+      }
+      const groups = gapGroups.get(segment.gapDepth);
+      const left = Math.min(segment.x1, segment.x2);
+      const right = Math.max(segment.x1, segment.x2);
+      const existing = groups.get(segment.group);
+      if (existing) {
+        existing.left = Math.min(existing.left, left);
+        existing.right = Math.max(existing.right, right);
+      } else {
+        groups.set(segment.group, { left, right });
+      }
+    });
+
+    const laneYByKey = new Map();
+
+    gapGroups.forEach((groups, gapDepth) => {
+      const list = [...groups.entries()].map(([group, interval]) => ({
+        group,
+        ...interval,
+      }));
+      list.sort(
+        (first, second) =>
+          first.left - second.left || first.right - second.right
+      );
+
+      const laneEnds = [];
+      const laneOf = new Map();
+
+      list.forEach((interval) => {
+        let lane = laneEnds.findIndex((end) => end <= interval.left - 10);
+        if (lane < 0) {
+          lane = laneEnds.length;
+          laneEnds.push(interval.right);
+        } else {
+          laneEnds[lane] = Math.max(laneEnds[lane], interval.right);
+        }
+        laneOf.set(interval.group, lane);
+      });
+
+      const top = rowBottoms.get(gapDepth);
+      const bottom = rowTops.get(gapDepth + 1);
+      if (top == null || bottom == null || bottom <= top) return;
+
+      const laneCount = Math.max(1, laneEnds.length);
+      list.forEach((interval) => {
+        const lane = laneOf.get(interval.group) || 0;
+        laneYByKey.set(
+          `${gapDepth}:${interval.group}`,
+          top + ((bottom - top) * (lane + 1)) / (laneCount + 1)
+        );
+      });
+    });
+
+    const nextEdges = descriptors.map((descriptor) => {
+      const skipsRows = descriptor.childDepth - descriptor.parentDepth > 1;
+      const straight =
+        !skipsRows && Math.abs(descriptor.endX - descriptor.junctionX) < 0.5;
+      const midGapY =
+        descriptor.parentBottom +
+        (descriptor.endY - descriptor.parentBottom) / 2;
+
+      let path;
+
+      if (straight) {
+        path = `M ${descriptor.junctionX} ${descriptor.junctionY} V ${descriptor.endY}`;
+      } else if (skipsRows) {
+        const channelX =
+          channelById.get(descriptor.id) ?? descriptor.endX;
+        const laneA =
+          laneYByKey.get(
+            `${descriptor.parentDepth}:p${descriptor.parentIndex}`
+          ) ?? midGapY;
+        const laneB =
+          laneYByKey.get(
+            `${descriptor.childDepth - 1}:e${descriptor.id}`
+          ) ?? descriptor.endY - 28;
+        path = `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneA} H ${channelX} V ${laneB} H ${descriptor.endX} V ${descriptor.endY}`;
+      } else {
+        const laneY =
+          laneYByKey.get(
+            `${descriptor.parentDepth}:p${descriptor.parentIndex}`
+          ) ?? midGapY;
+        path = `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
+      }
 
       return {
         id: descriptor.id,
