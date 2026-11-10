@@ -303,9 +303,11 @@ export default function PersonModal({
   };
 
   const updateChecked = (event) => {
+    const { checked, name } = event.target;
     setForm((current) => ({
       ...current,
-      [event.target.name]: event.target.checked,
+      [name]: checked,
+      ...(name === 'deceased' && !checked ? { deathDate: '' } : {}),
     }));
   };
 
@@ -639,7 +641,7 @@ export default function PersonModal({
       <section
         aria-labelledby="person-modal-title"
         aria-modal="true"
-        className="modal-card"
+        className="modal-card person-modal-card"
         role="dialog"
       >
         <div className="modal-heading">
@@ -718,26 +720,30 @@ export default function PersonModal({
             </label>
           </div>
 
-          <label>
-            <span>{t('modal.gender')}</span>
-            <select name="gender" onChange={update} value={form.gender}>
-              <option value="unknown">{t('modal.genderUnknown')}</option>
-              <option value="female">{t('modal.genderFemale')}</option>
-              <option value="male">{t('modal.genderMale')}</option>
-              <option value="other">{t('modal.genderOther')}</option>
-            </select>
-          </label>
+          <div className="form-grid form-grid-gender-name">
+            <label>
+              <span>{t('modal.gender')}</span>
+              <select name="gender" onChange={update} value={form.gender}>
+                <option value="unknown">{t('modal.genderUnknown')}</option>
+                <option value="female">{t('modal.genderFemale')}</option>
+                <option value="male">{t('modal.genderMale')}</option>
+                <option value="other">{t('modal.genderOther')}</option>
+              </select>
+            </label>
 
-          <label>
-            <span>{t('modal.previousName')}</span>
-            <input
-              name="previousName"
-              onChange={update}
-              placeholder={t('modal.previousNamePlaceholder')}
-              value={form.previousName}
-            />
-            <small className="field-hint">{t('modal.previousNameHint')}</small>
-          </label>
+            <label>
+              <span>{t('modal.previousName')}</span>
+              <input
+                name="previousName"
+                onChange={update}
+                placeholder={t('modal.previousNamePlaceholder')}
+                value={form.previousName}
+              />
+              <small className="field-hint">
+                {t('modal.previousNameHint')}
+              </small>
+            </label>
+          </div>
 
           <div className="form-grid-block">
             <div className="form-grid">
@@ -750,38 +756,42 @@ export default function PersonModal({
                   value={form.birthDate}
                 />
               </label>
-              <label>
-                <span>{t('modal.death')}</span>
-                <DateField
-                  name="deathDate"
-                  onChange={setField}
-                  placeholder={t('modal.deathPlaceholder')}
-                  value={form.deathDate}
-                />
-              </label>
+              {form.deceased && (
+                <label>
+                  <span>{t('modal.death')}</span>
+                  <DateField
+                    name="deathDate"
+                    onChange={setField}
+                    placeholder={t('modal.deathPlaceholder')}
+                    value={form.deathDate}
+                  />
+                </label>
+              )}
             </div>
             <small className="field-hint">{t('modal.dateHint')}</small>
           </div>
 
-          <label>
-            <span>{t('modal.birthPlace')}</span>
-            <input
-              name="birthPlace"
-              onChange={update}
-              placeholder={t('modal.birthPlacePlaceholder')}
-              value={form.birthPlace}
-            />
-          </label>
+          <div className="form-grid form-grid-birth-deceased">
+            <label>
+              <span>{t('modal.birthPlace')}</span>
+              <input
+                name="birthPlace"
+                onChange={update}
+                placeholder={t('modal.birthPlacePlaceholder')}
+                value={form.birthPlace}
+              />
+            </label>
 
-          <label className="checkbox-row">
-            <input
-              checked={Boolean(form.deceased)}
-              name="deceased"
-              onChange={updateChecked}
-              type="checkbox"
-            />
-            <span>{personDeceasedLabel(t, form)}</span>
-          </label>
+            <label className="checkbox-row">
+              <input
+                checked={Boolean(form.deceased)}
+                name="deceased"
+                onChange={updateChecked}
+                type="checkbox"
+              />
+              <span>{personDeceasedLabel(t, form)}</span>
+            </label>
+          </div>
           <small className="field-hint">{t('modal.deceasedHint')}</small>
 
           <div className="relationship-section">

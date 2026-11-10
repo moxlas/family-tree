@@ -1425,6 +1425,10 @@ textarea {
   width: 100%;
 }
 
+.modal-card.person-modal-card {
+  max-width: 860px;
+}
+
 /* Inset scrollbar so it never pokes through the rounded card corners. */
 .modal-card::-webkit-scrollbar {
   width: 10px;
@@ -1479,6 +1483,19 @@ textarea {
 .form-grid-block {
   display: grid;
   gap: 7px;
+}
+
+.form-grid-gender-name {
+  grid-template-columns: minmax(140px, 0.32fr) minmax(0, 1fr);
+}
+
+.form-grid-birth-deceased {
+  align-items: end;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.form-grid-birth-deceased .checkbox-row {
+  min-height: 44px;
 }
 
 .relationship-section {
@@ -1941,7 +1958,9 @@ textarea {
   }
 
   .relationship-row,
-  .relationship-status-row {
+  .relationship-status-row,
+  .form-grid-gender-name,
+  .form-grid-birth-deceased {
     grid-template-columns: 1fr;
   }
 
