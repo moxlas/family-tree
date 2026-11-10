@@ -1425,9 +1425,12 @@ export default function SpouseTreeComponent({
       if (skipsRows) {
         const channelX = channelFor(descriptor);
         channelById.set(descriptor.id, channelX);
+        const heartGroup = `p${descriptor.parentIndex}:${Math.round(
+          descriptor.junctionX
+        )}`;
         segments.push({
           gapDepth: descriptor.parentDepth,
-          group: `p${descriptor.parentIndex}`,
+          group: heartGroup,
           x1: descriptor.junctionX,
           x2: channelX,
         });
@@ -1442,7 +1445,7 @@ export default function SpouseTreeComponent({
 
       segments.push({
         gapDepth: descriptor.parentDepth,
-        group: `p${descriptor.parentIndex}`,
+        group: `p${descriptor.parentIndex}:${Math.round(descriptor.junctionX)}`,
         x1: descriptor.junctionX,
         x2: descriptor.endX,
       });
@@ -1466,6 +1469,7 @@ export default function SpouseTreeComponent({
     });
 
     const laneYByKey = new Map();
+    const laneCountByGap = new Map();
 
     gapGroups.forEach((groups, gapDepth) => {
       const list = [...groups.entries()].map(([group, interval]) => ({
@@ -1496,6 +1500,7 @@ export default function SpouseTreeComponent({
       if (top == null || bottom == null || bottom <= top) return;
 
       const laneCount = Math.max(1, laneEnds.length);
+      laneCountByGap.set(gapDepth, laneCount);
       list.forEach((interval) => {
         const lane = laneOf.get(interval.group) || 0;
         laneYByKey.set(
@@ -1512,6 +1517,9 @@ export default function SpouseTreeComponent({
       const midGapY =
         descriptor.parentBottom +
         (descriptor.endY - descriptor.parentBottom) / 2;
+      const heartGroup = `p${descriptor.parentIndex}:${Math.round(
+        descriptor.junctionX
+      )}`;
 
       let path;
 
@@ -1521,9 +1529,8 @@ export default function SpouseTreeComponent({
         const channelX =
           channelById.get(descriptor.id) ?? descriptor.endX;
         const laneA =
-          laneYByKey.get(
-            `${descriptor.parentDepth}:p${descriptor.parentIndex}`
-          ) ?? midGapY;
+          laneYByKey.get(`${descriptor.parentDepth}:${heartGroup}`) ??
+          midGapY;
         const laneB =
           laneYByKey.get(
             `${descriptor.childDepth - 1}:e${descriptor.id}`
@@ -1531,9 +1538,8 @@ export default function SpouseTreeComponent({
         path = `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneA} H ${channelX} V ${laneB} H ${descriptor.endX} V ${descriptor.endY}`;
       } else {
         const laneY =
-          laneYByKey.get(
-            `${descriptor.parentDepth}:p${descriptor.parentIndex}`
-          ) ?? midGapY;
+          laneYByKey.get(`${descriptor.parentDepth}:${heartGroup}`) ??
+          midGapY;
         path = `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
       }
 
@@ -1556,10 +1562,11 @@ export default function SpouseTreeComponent({
         })
         .filter(Boolean);
       if (measuredHeights.length) {
+        const lanes = laneCountByGap.get(depth) || 1;
         measuredRowHeights[depth] = Math.max(
           measuredRowHeights[depth] || 0,
           ...measuredHeights
-        );
+        ) + Math.max(0, lanes - 1) * 16;
       }
     });
 
