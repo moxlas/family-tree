@@ -24,6 +24,7 @@ import {
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 const COLLAPSED_KEY = 'familyTreeCollapsedPeople';
+const HERO_COLLAPSED_KEY = 'familyTreeHeroCollapsed';
 
 function readCollapsed() {
   try {
@@ -72,6 +73,13 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const [focusId, setFocusId] = useState('');
   const [collapsedByTree, setCollapsedByTree] = useState(readCollapsed);
+  const [heroCollapsed, setHeroCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(HERO_COLLAPSED_KEY) === '1';
+    } catch (_error) {
+      return false;
+    }
+  });
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef(null);
   const translateErrorRef = useRef(translateApiError);
@@ -91,6 +99,18 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   useEffect(() => {
     translateErrorRef.current = translateApiError;
   }, [translateApiError]);
+
+  const toggleHero = useCallback(() => {
+    setHeroCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(HERO_COLLAPSED_KEY, next ? '1' : '0');
+      } catch (_error) {
+        // Ignore storage failures; the banner still collapses for this session.
+      }
+      return next;
+    });
+  }, []);
 
   const activeTree = useMemo(
     () => trees.find((tree) => tree.id === activeTreeId) || null,
@@ -866,11 +886,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       </header>
 
       <main className="workspace">
-        <section className="hero-panel">
+        <section className={`hero-panel${heroCollapsed ? ' is-collapsed' : ''}`}>
           <div>
             <p className="eyebrow">{t('tree.eyebrow')}</p>
-            <h1>{t('tree.heroTitle')}</h1>
-            <p className="hero-copy">{t('tree.heroCopy')}</p>
+            {!heroCollapsed && (
+              <>
+                <h1>{t('tree.heroTitle')}</h1>
+                <p className="hero-copy">{t('tree.heroCopy')}</p>
+              </>
+            )}
           </div>
           <div className="hero-actions">
             <button className="button glass" onClick={loadDemo} type="button">
@@ -893,6 +917,34 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               {t('gedcom.export')}
             </button>
           </div>
+          <button
+            aria-expanded={!heroCollapsed}
+            aria-label={
+              heroCollapsed ? t('tree.expandHero') : t('tree.collapseHero')
+            }
+            className="hero-collapse-toggle"
+            onClick={toggleHero}
+            title={
+              heroCollapsed ? t('tree.expandHero') : t('tree.collapseHero')
+            }
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
+            >
+              {heroCollapsed ? (
+                <path d="M6 10l6 6 6-6" />
+              ) : (
+                <path d="M6 14l6-6 6 6" />
+              )}
+            </svg>
+          </button>
         </section>
 
         {notice && (

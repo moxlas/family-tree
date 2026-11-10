@@ -70,9 +70,9 @@ export function HeartIcon({ broken = false }) {
   return (
     <svg
       className={`heart-icon${broken ? ' is-broken' : ''}`}
-      height="13"
+      height="15"
       viewBox="0 0 24 24"
-      width="13"
+      width="15"
       aria-hidden="true"
     >
       <path
@@ -902,7 +902,7 @@ export function buildScene(
   // Layout: every connected family is laid out as one block and children
   // are reserved bottom-up, so each parent is centred over its descendants
   // without any later shifting.
-  const CARD_WIDTH = 232;
+  const CARD_WIDTH = 248;
   const BASE_UNIT_GAP = 44;
   const ROUTING_UNIT_GAP = 76;
   const COMPONENT_GAP = 140;
@@ -1865,7 +1865,7 @@ export default function SpouseTreeComponent({
                 );
                 if (gapIndex == null) return null;
 
-                const cardWidth = unit.cardWidth || 232;
+                const cardWidth = unit.cardWidth || 248;
                 const segments = [];
                 for (let index = leftIndex; index < rightIndex; index += 1) {
                   const left = unit.memberCenters[index] + cardWidth / 2;

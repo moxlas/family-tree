@@ -39,6 +39,8 @@ const translations = {
 
     'tree.signedInAs': 'Signed in as',
     'tree.eyebrow': 'Your family archive',
+    'tree.collapseHero': 'Hide archive banner',
+    'tree.expandHero': 'Show archive banner',
     'tree.heroTitle': 'Every name is a story worth keeping.',
     'tree.heroCopy':
       'Add relatives, connect generations and watch your family tree grow. Everything you create here is private to your account.',
@@ -422,6 +424,8 @@ const translations = {
 
     'tree.signedInAs': 'Prisijungta kaip',
     'tree.eyebrow': 'Jūsų šeimos archyvas',
+    'tree.collapseHero': 'Slėpti archyvo antraštę',
+    'tree.expandHero': 'Rodyti archyvo antraštę',
     'tree.heroTitle': 'Kiekvienas vardas – istorija, kurią verta išsaugoti.',
     'tree.heroCopy':
       'Pridėkite giminaičių, sujunkite kartas ir stebėkite, kaip auga jūsų šeimos medis. Viskas, ką sukuriate čia, matoma tik jums.',
