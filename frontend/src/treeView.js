@@ -169,15 +169,17 @@ function homeTreeKeep(homeId, people, families) {
     });
   });
 
-  // A family with no marriage link to this line is its own tree.
+  // A family with no marriage link to the home person's component is its own
+  // tree. In-law families of a spouse are not: they stay in that spouse's
+  // branch view only.
   const { componentOf, members } = parentComponents(people, graph);
   const homeComponent = componentOf.get(homeId);
 
   members.forEach((personIds, componentId) => {
     if (componentId === homeComponent) return;
     const linkedByMarriage = personIds.some((personId) =>
-      [...(graph.partners.get(personId) || new Set())].some((partnerId) =>
-        keep.has(partnerId)
+      [...(graph.partners.get(personId) || new Set())].some(
+        (partnerId) => componentOf.get(partnerId) === homeComponent
       )
     );
     if (linkedByMarriage) return;

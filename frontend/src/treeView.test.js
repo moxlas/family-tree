@@ -199,6 +199,22 @@ describe('home person tree', () => {
     expect(withMissing).toEqual(withoutOption);
   });
 
+  it('keeps a family with no link to the home line as its own tree', () => {
+    const extra = [
+      ...homePeople,
+      person('20'),
+      person('21', { spouseId: '20' }),
+      person('22', { parentId: '20' }),
+    ];
+    const combined = [
+      ...homeFamilies,
+      { id: 'h9', husband: '20', wife: '21', status: 'current', children: ['22'] },
+    ];
+    const view = ids(viewPeople(extra, combined, { homePersonId: '7' }));
+    expect(view).toContain('22');
+    expect(view).toContain('21');
+  });
+
   it('picks the youngest person with parents as the default trunk', () => {
     const dated = homePeople.map((entry) =>
       entry.id === '7' ? { ...entry, birthDate: '1990' } : entry
