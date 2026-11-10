@@ -1485,10 +1485,6 @@ textarea {
   gap: 7px;
 }
 
-.form-grid-gender-name {
-  grid-template-columns: minmax(140px, 0.32fr) minmax(0, 1fr);
-}
-
 .form-grid-birth-deceased {
   align-items: end;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1959,7 +1955,6 @@ textarea {
 
   .relationship-row,
   .relationship-status-row,
-  .form-grid-gender-name,
   .form-grid-birth-deceased {
     grid-template-columns: 1fr;
   }
@@ -2217,6 +2212,12 @@ textarea {
   color: var(--muted);
   font-size: 13px;
   margin: 2px 0 0;
+}
+
+.details-identity .details-relation {
+  color: var(--brand-deep);
+  font-size: 12.5px;
+  font-weight: 650;
 }
 
 .details-list {

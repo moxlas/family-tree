@@ -169,6 +169,16 @@ function relationshipsForPerson(person, families, people, initialSpouseId) {
   };
 }
 
+function sortPeopleByName(entries) {
+  return [...entries].sort((first, second) => {
+    const firstName = `${first.firstName || ''} ${first.lastName || ''}`.trim();
+    const secondName = `${second.firstName || ''} ${second.lastName || ''}`.trim();
+    return firstName.localeCompare(secondName, undefined, {
+      sensitivity: 'base',
+    });
+  });
+}
+
 function initialState(person, relationships) {
   return {
     firstName: person?.firstName || '',
@@ -548,12 +558,18 @@ export default function PersonModal({
     }
   };
 
-  const parentOptions = people.filter((entry) => entry.id !== person?.id);
-  const fatherOptions = parentOptions.filter(
-    (entry) => String(entry.id) !== String(form.motherId || '')
+  const parentOptions = sortPeopleByName(
+    people.filter((entry) => entry.id !== person?.id)
   );
-  const motherOptions = parentOptions.filter(
-    (entry) => String(entry.id) !== String(form.fatherId || '')
+  const fatherOptions = sortPeopleByName(
+    parentOptions.filter(
+      (entry) => String(entry.id) !== String(form.motherId || '')
+    )
+  );
+  const motherOptions = sortPeopleByName(
+    parentOptions.filter(
+      (entry) => String(entry.id) !== String(form.fatherId || '')
+    )
   );
 
   const currentPartnerId = String(
@@ -565,13 +581,15 @@ export default function PersonModal({
       .filter(Boolean)
   );
 
-  const spouseOptions = people.filter((entry) => {
-    if (entry.id === person?.id) return false;
-    if (previousPartnerIds.has(String(entry.id))) return false;
-    if (String(entry.id) === currentPartnerId) return true;
-    if (!entry.spouseId) return true;
-    return String(entry.spouseId) === String(person?.id);
-  });
+  const spouseOptions = sortPeopleByName(
+    people.filter((entry) => {
+      if (entry.id === person?.id) return false;
+      if (previousPartnerIds.has(String(entry.id))) return false;
+      if (String(entry.id) === currentPartnerId) return true;
+      if (!entry.spouseId) return true;
+      return String(entry.spouseId) === String(person?.id);
+    })
+  );
 
   const previousOptionsFor = (blockKey) => {
     const selectedElsewhere = new Set(
@@ -581,12 +599,14 @@ export default function PersonModal({
         .filter(Boolean)
     );
 
-    return people.filter((entry) => {
-      if (entry.id === person?.id) return false;
-      if (String(entry.id) === currentPartnerId) return false;
-      if (selectedElsewhere.has(String(entry.id))) return false;
-      return true;
-    });
+    return sortPeopleByName(
+      people.filter((entry) => {
+        if (entry.id === person?.id) return false;
+        if (String(entry.id) === currentPartnerId) return false;
+        if (selectedElsewhere.has(String(entry.id))) return false;
+        return true;
+      })
+    );
   };
 
   const startLabels = (status) => {
@@ -720,7 +740,7 @@ export default function PersonModal({
             </label>
           </div>
 
-          <div className="form-grid form-grid-gender-name">
+          <div className="form-grid">
             <label>
               <span>{t('modal.gender')}</span>
               <select name="gender" onChange={update} value={form.gender}>

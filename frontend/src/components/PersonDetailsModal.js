@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { formatDateForDisplay } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
+import { describeRelationship, formatRelationship } from '../relationships';
 
 function genderLabel(t, gender) {
   if (gender === 'male') return t('modal.genderMale');
@@ -16,6 +17,8 @@ export default function PersonDetailsModal({
   onEdit,
   people,
   person,
+  referenceKind = 'home',
+  referencePersonId,
 }) {
   const { language, t } = useI18n();
 
@@ -163,6 +166,32 @@ export default function PersonDetailsModal({
     life = personDeceasedLabel(t, person);
   }
 
+  const referencePerson = referencePersonId
+    ? byId.get(String(referencePersonId))
+    : null;
+  let relationText = '';
+
+  if (referencePerson) {
+    const descriptor = describeRelationship({
+      families,
+      people,
+      referenceId: referencePerson.id,
+      targetId: person.id,
+    });
+
+    if (descriptor?.key === 'relation.self') {
+      relationText =
+        referenceKind === 'branch'
+          ? t('relation.branchPerson')
+          : t('relation.homePerson');
+    } else if (descriptor) {
+      relationText = t('details.relationTo', {
+        relation: formatRelationship(descriptor, t, language),
+        name: `${referencePerson.firstName} ${referencePerson.lastName}`.trim(),
+      });
+    }
+  }
+
   return (
     <div
       className="modal-backdrop"
@@ -201,6 +230,9 @@ export default function PersonDetailsModal({
           <div>
             <strong>{fullName}</strong>
             <p>{life}</p>
+            {relationText && (
+              <p className="details-relation">{relationText}</p>
+            )}
           </div>
         </div>
 

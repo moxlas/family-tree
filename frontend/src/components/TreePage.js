@@ -1216,6 +1216,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           onEdit={openEdit}
           people={people}
           person={detailsPerson}
+          referenceKind={focusId ? 'branch' : 'home'}
+          referencePersonId={focusId || homePersonId}
         />
       )}
 

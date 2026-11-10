@@ -1,0 +1,98 @@
+import { describeRelationship, formatRelationship } from './relationships';
+
+function person(id, gender, extra = {}) {
+  return { id, firstName: `P${id}`, lastName: 'Test', gender, ...extra };
+}
+
+const people = [
+  person('R', 'male'),
+  person('F', 'male'),
+  person('M', 'female'),
+  person('M2', 'female'),
+  person('S', 'female'),
+  person('HS', 'female'),
+  person('HSH', 'male'),
+  person('U', 'male'),
+  person('C', 'male'),
+  person('CS', 'male'),
+  person('GF', 'male'),
+  person('GM', 'female'),
+  person('W', 'female'),
+  person('SWF', 'male'),
+  person('SWM', 'female'),
+];
+
+const families = [
+  { id: 'f1', husband: 'F', wife: 'M', children: ['R', 'S'] },
+  { id: 'f2', husband: 'F', wife: 'M2', children: ['HS'] },
+  { id: 'f3', husband: 'HSH', wife: 'HS', children: [] },
+  { id: 'f4', husband: 'GF', wife: 'GM', children: ['F', 'U'] },
+  { id: 'f5', husband: 'U', wife: null, children: ['C'] },
+  { id: 'f6', husband: 'C', wife: null, children: ['CS'] },
+  { id: 'f7', husband: 'R', wife: 'W', children: [] },
+  { id: 'f8', husband: 'SWF', wife: 'SWM', children: ['W'] },
+];
+
+function relation(targetId) {
+  return describeRelationship({
+    families,
+    people,
+    referenceId: 'R',
+    targetId,
+  });
+}
+
+const labels = {
+  'relation.father': 'Father',
+  'relation.mother': 'Mother',
+  'relation.sister': 'Sister',
+  'relation.halfSister': 'Half-sister',
+  'relation.uncle': 'Uncle',
+  'relation.cousinMale': 'Cousin',
+  'relation.cousinSon': 'Son of a cousin',
+  'relation.wife': 'Wife',
+  'relation.husband': 'Husband',
+  'relation.fatherInLaw': 'Father-in-law',
+  'relation.grandfather': 'Grandfather',
+  'relation.spouseOf': '{{relation}}’s {{spouse}}',
+};
+
+function t(key, values = {}) {
+  let value = labels[key] || key;
+  Object.entries(values).forEach(([name, replacement]) => {
+    value = value.replace(`{{${name}}}`, replacement);
+  });
+  return value;
+}
+
+describe('describeRelationship', () => {
+  it('identifies parents, siblings and half-siblings', () => {
+    expect(relation('F').key).toBe('relation.father');
+    expect(relation('M').key).toBe('relation.mother');
+    expect(relation('S').key).toBe('relation.sister');
+    expect(relation('HS').key).toBe('relation.halfSister');
+  });
+
+  it('identifies uncles, cousins and cousins children', () => {
+    expect(relation('U').key).toBe('relation.uncle');
+    expect(relation('C').key).toBe('relation.cousinMale');
+    expect(relation('CS').key).toBe('relation.cousinSon');
+  });
+
+  it('identifies spouses and in-laws', () => {
+    expect(relation('W').key).toBe('relation.wife');
+    expect(relation('SWF').key).toBe('relation.fatherInLaw');
+  });
+
+  it('builds a descriptive spouse-of-relative label', () => {
+    const descriptor = relation('HSH');
+    expect(descriptor).toEqual({
+      key: 'relation.spouseOf',
+      relation: { key: 'relation.halfSister' },
+      spouseGender: 'male',
+    });
+    expect(formatRelationship(descriptor, t, 'en')).toBe(
+      'Half-sister’s husband'
+    );
+  });
+});
