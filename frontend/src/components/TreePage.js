@@ -254,13 +254,22 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     [people, families, focusId, collapsedFamilyIds]
   );
 
+  // Only count children that are actually drawn, so a branch view does not
+  // offer to hide children it never shows. A collapsed marriage keeps its
+  // real count so the "show children" control stays available.
   const childCounts = useMemo(() => {
+    const visible = new Set(view.people.map((person) => String(person.id)));
+    const collapsedSet = new Set(collapsedFamilyIds.map(String));
     const counts = {};
     families.forEach((family) => {
-      counts[String(family.id)] = (family.children || []).length;
+      const id = String(family.id);
+      const children = family.children || [];
+      counts[id] = collapsedSet.has(id)
+        ? children.length
+        : children.filter((childId) => visible.has(String(childId))).length;
     });
     return counts;
-  }, [families]);
+  }, [families, view, collapsedFamilyIds]);
 
   const branchFlagsById = useMemo(() => {
     const flags = new Map();
