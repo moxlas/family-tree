@@ -763,7 +763,9 @@ export function buildScene(people, families, showFormerSpouses = true) {
   units.forEach((unit, unitIndex) => {
     const parents = [...(unit.parentUnits || [])].sort(
       (first, second) =>
-        depths[first] - depths[second] || orderInRow.get(first) - orderInRow.get(second) || first - second
+        depths[second] - depths[first] ||
+        orderInRow.get(first) - orderInRow.get(second) ||
+        first - second
     );
     if (parents.length) primaryParentOf.set(unitIndex, parents[0]);
   });
@@ -819,67 +821,62 @@ export function buildScene(people, families, showFormerSpouses = true) {
   const layoutX = new Map();
   let layoutCursor = 0;
 
-  function collectDescendants(unitIndex, seen = new Set()) {
-    if (seen.has(unitIndex)) return [];
-    seen.add(unitIndex);
-    const result = [unitIndex];
-    (primaryChildrenByParent.get(unitIndex) || []).forEach((childIndex) => {
-      result.push(...collectDescendants(childIndex, seen));
-    });
-    return result;
+  // Reserve a width for every subtree first, then place parents centred
+  // over their children's block. This is deterministic and cannot overlap.
+  const subtreeWidths = new Map();
+
+  function subtreeWidth(unitIndex) {
+    if (subtreeWidths.has(unitIndex)) return subtreeWidths.get(unitIndex);
+    const children = primaryChildrenByParent.get(unitIndex) || [];
+    const childrenTotal = children.reduce(
+      (sum, childIndex, index) =>
+        sum + subtreeWidth(childIndex) + (index > 0 ? UNIT_GAP : 0),
+      0
+    );
+    const width = Math.max(unitWidths[unitIndex], childrenTotal);
+    subtreeWidths.set(unitIndex, width);
+    return width;
   }
 
-  function layoutUnit(unitIndex, seen = new Set()) {
-    if (layoutX.has(unitIndex)) return layoutX.get(unitIndex);
-    if (seen.has(unitIndex)) return null;
+  function placeUnit(unitIndex, left, preferredX = null, seen = new Set()) {
+    if (layoutX.has(unitIndex) || seen.has(unitIndex)) return;
     seen.add(unitIndex);
 
-    const width = unitWidths[unitIndex];
     const children = primaryChildrenByParent.get(unitIndex) || [];
+    const width = subtreeWidth(unitIndex);
+    const unitWidth = unitWidths[unitIndex];
+    const minX = left + unitWidth / 2;
+    const maxX = left + width - unitWidth / 2;
+    let center = left + width / 2;
 
-    if (!children.length) {
-      const center = layoutCursor + width / 2;
-      layoutX.set(unitIndex, center);
-      layoutCursor += width + UNIT_GAP;
-      return center;
+    if (preferredX != null) {
+      center = Math.min(Math.max(preferredX, minX), maxX);
     }
 
-    const subtreeStart = layoutCursor;
-    const childCenters = [];
+    layoutX.set(unitIndex, center);
+
+    if (!children.length) return;
+
+    const childrenTotal = children.reduce(
+      (sum, childIndex, index) =>
+        sum + subtreeWidth(childIndex) + (index > 0 ? UNIT_GAP : 0),
+      0
+    );
+    let childLeft = Math.min(
+      Math.max(center - childrenTotal / 2, left),
+      left + width - childrenTotal
+    );
+
     children.forEach((childIndex) => {
-      const childCenter = layoutUnit(childIndex, new Set(seen));
-      if (childCenter != null) childCenters.push(childCenter);
+      const context = units[childIndex].parentLinks?.get(unitIndex)?.relationshipContext;
+      const anchorOffset =
+        context?.firstId && context?.secondId
+          ? marriageAnchorOffset(unitIndex, context)
+          : 0;
+
+      placeUnit(childIndex, childLeft, center + anchorOffset, seen);
+      childLeft += subtreeWidth(childIndex) + UNIT_GAP;
     });
-
-    if (!childCenters.length) {
-      const center = layoutCursor + width / 2;
-      layoutX.set(unitIndex, center);
-      layoutCursor += width + UNIT_GAP;
-      return center;
-    }
-
-    let desiredCenter =
-      (childCenters[0] + childCenters[childCenters.length - 1]) / 2;
-    let desiredLeft = desiredCenter - width / 2;
-
-    if (desiredLeft < subtreeStart) {
-      const shift = subtreeStart - desiredLeft;
-      collectDescendants(unitIndex).forEach((descendantIndex) => {
-        if (descendantIndex !== unitIndex) {
-          layoutX.set(descendantIndex, layoutX.get(descendantIndex) + shift);
-        }
-      });
-      layoutCursor += shift;
-      desiredCenter += shift;
-      desiredLeft += shift;
-    }
-
-    const subtreeEnd = layoutCursor - UNIT_GAP;
-    const parentRight = desiredCenter + width / 2;
-    if (parentRight > subtreeEnd) layoutCursor = parentRight + UNIT_GAP;
-
-    layoutX.set(unitIndex, desiredCenter);
-    return desiredCenter;
   }
 
   // Roots are laid out component by component so unrelated families never
@@ -887,6 +884,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
   const rootUnits = units
     .map((_unit, unitIndex) => unitIndex)
     .filter((unitIndex) => !primaryParentOf.has(unitIndex));
+
+  rootUnits.sort((first, second) => labelOf(first).localeCompare(labelOf(second)));
 
   const componentOrder = [
     ...new Set(rootUnits.map((unitIndex) => componentOf[unitIndex])),
@@ -906,7 +905,9 @@ export function buildScene(people, families, showFormerSpouses = true) {
     rootUnits
       .filter((unitIndex) => componentOf[unitIndex] === componentIndex)
       .forEach((unitIndex) => {
-        if (!layoutX.has(unitIndex)) layoutUnit(unitIndex);
+        if (layoutX.has(unitIndex)) return;
+        placeUnit(unitIndex, layoutCursor);
+        layoutCursor += subtreeWidth(unitIndex) + UNIT_GAP;
       });
   });
 
@@ -1182,10 +1183,16 @@ export default function SpouseTreeComponent({
         descriptor.junctionY + 16 + laneIndex * laneStep
       );
 
+      // Links that skip a generation (a parent two or more rows above the
+      // child) keep their long run in the empty gap directly above the
+      // child, so the visible line does not cut across a card row.
+      const skipsRows = descriptor.childDepth - descriptor.parentDepth > 1;
+      const skipLaneY = Math.max(descriptor.junctionY + 12, descriptor.endY - 14);
+      const middleY = skipsRows ? skipLaneY : laneY;
       const path =
         Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
           ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${descriptor.endY}`
-          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
+          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${middleY} H ${descriptor.endX} V ${descriptor.endY}`;
 
       return {
         id: descriptor.id,
