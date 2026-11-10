@@ -924,6 +924,27 @@ textarea {
   height: 0;
 }
 
+/* Lines for non-adjacent partners run behind the cards, as agreed. */
+.spouse-link-behind {
+  border-top: 2px solid var(--line);
+  height: 0;
+  position: absolute;
+  top: 50%;
+  z-index: 0;
+}
+
+.spouse-link-behind.is-former {
+  border-top: 2px dashed #c4a7b3;
+}
+
+.spouse-gap-heart {
+  display: flex;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
+}
+
 .spouse-link::before {
   background: var(--line);
   content: "";
@@ -950,26 +971,6 @@ textarea {
 
 .heart-icon {
   display: block;
-}
-
-.spouse-heart-float {
-  display: flex;
-  position: absolute;
-  top: calc(100% + 14px);
-  transform: translate(-50%, -50%);
-  z-index: 3;
-}
-
-.spouse-rail {
-  border-top: 2px solid var(--line);
-  height: 0;
-  position: absolute;
-  top: calc(100% + 14px);
-  z-index: 2;
-}
-
-.spouse-rail.is-former {
-  border-top: 2px dashed #c4a7b3;
 }
 
 .family-toggle {

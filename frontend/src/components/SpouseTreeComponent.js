@@ -638,22 +638,21 @@ export function buildScene(people, families, showFormerSpouses = true) {
     });
   });
 
-  // 5. Compute depths
+  // 5. Compute depths. Generations are strictly parent-based so every child
+  // sits exactly one row below its parents. A spouse's depth is only used
+  // for people who have no recorded parents.
   const unitParents = units.map((u) => [...(u.parentUnits || [])]);
   const depths = new Array(units.length).fill(0);
   const resolved = new Array(units.length).fill(false);
   const visiting = new Set();
 
-  function resolveDepth(unitIndex) {
+  function resolveParentDepth(unitIndex) {
     if (resolved[unitIndex]) return depths[unitIndex];
     if (visiting.has(unitIndex)) return 0;
     visiting.add(unitIndex);
     let depth = 0;
     for (const parentIndex of unitParents[unitIndex]) {
-      depth = Math.max(depth, resolveDepth(parentIndex) + 1);
-    }
-    for (const partnerIndex of unitPartners[unitIndex]) {
-      depth = Math.max(depth, resolveDepth(partnerIndex));
+      depth = Math.max(depth, resolveParentDepth(parentIndex) + 1);
     }
     visiting.delete(unitIndex);
     resolved[unitIndex] = true;
@@ -661,7 +660,27 @@ export function buildScene(people, families, showFormerSpouses = true) {
     return depth;
   }
 
-  units.forEach((_u, i) => resolveDepth(i));
+  units.forEach((_unit, unitIndex) => resolveParentDepth(unitIndex));
+
+  // Units without parents follow the deepest partner so a spouse is never
+  // placed above the family they married into.
+  let partnerChanged = true;
+  let partnerPasses = 0;
+
+  while (partnerChanged && partnerPasses <= units.length) {
+    partnerChanged = false;
+    partnerPasses += 1;
+
+    for (let unitIndex = 0; unitIndex < units.length; unitIndex += 1) {
+      if (unitParents[unitIndex].length) continue;
+      for (const partnerIndex of unitPartners[unitIndex]) {
+        if (depths[partnerIndex] > depths[unitIndex]) {
+          depths[unitIndex] = depths[partnerIndex];
+          partnerChanged = true;
+        }
+      }
+    }
+  }
 
   // 6. Build rows
   const maxDepth = depths.reduce((m, d) => Math.max(m, d), 0);
@@ -696,32 +715,49 @@ export function buildScene(people, families, showFormerSpouses = true) {
     row.forEach((ui, order) => orderInRow.set(ui, order));
   });
 
-  // Layout: assign each unit a horizontal center. A contiguous subtree
-  // block is allocated for every parent, so descendants stay underneath
-  // their ancestors and unrelated branches do not overlap. Roots and
-  // sibling subtrees are laid out left-to-right as one block each.
+  // Layout: every connected family is laid out as one block and children
+  // are reserved bottom-up, so each parent is centred over its descendants
+  // without any later shifting.
   const CARD_WIDTH = 232;
   const SPOUSE_LINK_WIDTH = 36;
   const UNIT_GAP = 44;
-  // Links to a former partner are wider so ex-spouses never look adjacent
-  // to the current spouse.
-  const FORMER_LINK_WIDTH = 72;
+  const COMPONENT_GAP = 140;
+
   units.forEach((unit) => {
-    unit.linkWidths = unit.members.slice(1).map((member, index) => {
-      const previous = unit.members[index];
-      const relationship = unit.relationshipByPair?.get(
-        pairKeyOf(previous.id, member.id)
-      );
-      return relationship?.status === 'former'
-        ? FORMER_LINK_WIDTH
-        : SPOUSE_LINK_WIDTH;
-    });
+    unit.linkWidths = unit.members.slice(1).map(() => SPOUSE_LINK_WIDTH);
   });
   const unitWidths = units.map(
     (unit) =>
       unit.members.length * CARD_WIDTH +
       unit.linkWidths.reduce((sum, width) => sum + width, 0)
   );
+
+  function memberCenterOffset(unitIndex, memberIndex) {
+    const width = unitWidths[unitIndex];
+    const linkWidths = units[unitIndex].linkWidths;
+    let left = 0;
+    for (let index = 0; index < memberIndex; index += 1) {
+      left += CARD_WIDTH + (linkWidths[index] || 0);
+    }
+    return left + CARD_WIDTH / 2 - width / 2;
+  }
+
+  function marriageAnchorOffset(unitIndex, relationship) {
+    const members = units[unitIndex].members;
+    const firstIndex = members.findIndex(
+      (member) => String(member.id) === String(relationship.firstId)
+    );
+    const secondIndex = members.findIndex(
+      (member) => String(member.id) === String(relationship.secondId)
+    );
+    if (firstIndex < 0 || secondIndex < 0) return 0;
+    return (
+      (memberCenterOffset(unitIndex, Math.min(firstIndex, secondIndex)) +
+        memberCenterOffset(unitIndex, Math.max(firstIndex, secondIndex))) /
+      2
+    );
+  }
+
   const primaryParentOf = new Map();
 
   units.forEach((unit, unitIndex) => {
@@ -738,14 +774,47 @@ export function buildScene(people, families, showFormerSpouses = true) {
     if (!primaryChildrenByParent.has(parentIndex)) primaryChildrenByParent.set(parentIndex, []);
     primaryChildrenByParent.get(parentIndex).push(childIndex);
   });
-  primaryChildrenByParent.forEach((children) => {
+
+  // Children are ordered by the marriage that produced them (left to right
+  // by partner order), then by name so siblings stay together.
+  primaryChildrenByParent.forEach((children, parentIndex) => {
+    const groupOffset = (childIndex) => {
+      const context = units[childIndex].parentLinks?.get(parentIndex)?.relationshipContext;
+      if (!context?.firstId || !context?.secondId) return 0;
+      return marriageAnchorOffset(parentIndex, context);
+    };
     children.sort(
       (first, second) =>
-        depths[first] - depths[second] ||
+        groupOffset(first) - groupOffset(second) ||
         orderInRow.get(first) - orderInRow.get(second) ||
         labelOf(first).localeCompare(labelOf(second))
     );
   });
+
+  // Connected components keep one family's rows contiguous, so unrelated
+  // families never interleave and produce long cross-tree lines.
+  const componentOf = new Array(units.length).fill(-1);
+  let componentCursor = 0;
+
+  for (let unitIndex = 0; unitIndex < units.length; unitIndex += 1) {
+    if (componentOf[unitIndex] >= 0) continue;
+    const componentId = componentCursor;
+    const queue = [unitIndex];
+    componentOf[unitIndex] = componentId;
+    while (queue.length) {
+      const current = queue.shift();
+      const neighbours = [
+        ...(unitParents[current] || []),
+        ...(primaryChildrenByParent.get(current) || []),
+      ];
+      neighbours.forEach((neighbourIndex) => {
+        if (componentOf[neighbourIndex] >= 0) return;
+        componentOf[neighbourIndex] = componentId;
+        queue.push(neighbourIndex);
+      });
+    }
+    componentCursor += 1;
+  }
 
   const layoutX = new Map();
   let layoutCursor = 0;
@@ -813,176 +882,32 @@ export function buildScene(people, families, showFormerSpouses = true) {
     return desiredCenter;
   }
 
-  const layoutRootOrder = units
+  // Roots are laid out component by component so unrelated families never
+  // interleave inside a generation row.
+  const rootUnits = units
     .map((_unit, unitIndex) => unitIndex)
-    .sort(
-      (first, second) =>
-        depths[first] - depths[second] ||
-        orderInRow.get(first) - orderInRow.get(second) ||
-        labelOf(first).localeCompare(labelOf(second))
-    );
+    .filter((unitIndex) => !primaryParentOf.has(unitIndex));
 
-  layoutRootOrder.forEach((unitIndex) => {
-    if (!layoutX.has(unitIndex)) layoutUnit(unitIndex);
+  const componentOrder = [
+    ...new Set(rootUnits.map((unitIndex) => componentOf[unitIndex])),
+  ];
+  componentOrder.sort((first, second) => {
+    const firstRoot = rootUnits.find(
+      (unitIndex) => componentOf[unitIndex] === first
+    );
+    const secondRoot = rootUnits.find(
+      (unitIndex) => componentOf[unitIndex] === second
+    );
+    return labelOf(firstRoot).localeCompare(labelOf(secondRoot));
   });
 
-  // Align every direct child under the relationship heart that produced it.
-  // Child subtrees are kept in left-to-right heart order, so a former
-  // partner's children collect under the broken heart and current
-  // partner's children under the normal heart. Current subtree-relative
-  // dimensions are preserved while the whole subtree is shifted as one.
-  const ALIGNED_GAP = 8;
-
-  function memberCenterOffset(unitIndex, memberIndex) {
-    const width = unitWidths[unitIndex];
-    const linkWidths = units[unitIndex].linkWidths;
-    let left = 0;
-    for (let index = 0; index < memberIndex; index += 1) {
-      left += CARD_WIDTH + (linkWidths[index] || 0);
-    }
-    return left + CARD_WIDTH / 2 - width / 2;
-  }
-
-  // Children are centred under their parents. When the two parents sit
-  // beside each other this is the heart between their cards; when they are
-  // not adjacent (a partner with several marriages), the children collect
-  // under the linked parent's card instead so lineage stays unambiguous.
-  function childAnchorOffset(parentIndex, childIndex) {
-    const parentUnit = units[parentIndex];
-    const parentLink = units[childIndex].parentLinks?.get(parentIndex);
-    const relationshipContext = parentLink?.relationshipContext;
-    const members = parentUnit.members;
-
-    const linkedParentIndex = parentLink?.parentId
-      ? members.findIndex(
-          (member) => String(member.id) === String(parentLink.parentId)
-        )
-      : -1;
-
-    if (relationshipContext?.firstId && relationshipContext?.secondId) {
-      const firstIndex = members.findIndex(
-        (member) => String(member.id) === String(relationshipContext.firstId)
-      );
-      const secondIndex = members.findIndex(
-        (member) => String(member.id) === String(relationshipContext.secondId)
-      );
-
-      if (firstIndex >= 0 && secondIndex >= 0) {
-        if (Math.abs(firstIndex - secondIndex) === 1) {
-          return (
-            (memberCenterOffset(parentIndex, Math.min(firstIndex, secondIndex)) +
-              memberCenterOffset(parentIndex, Math.max(firstIndex, secondIndex))) /
-            2
-          );
-        }
-
-        const anchorIndex = linkedParentIndex >= 0 ? linkedParentIndex : firstIndex;
-        return memberCenterOffset(parentIndex, anchorIndex);
-      }
-    }
-
-    if (linkedParentIndex >= 0) {
-      return memberCenterOffset(parentIndex, linkedParentIndex);
-    }
-
-    return 0;
-  }
-
-  function descendantsSpan(unitIndex) {
-    let left = Number.POSITIVE_INFINITY;
-    let right = Number.NEGATIVE_INFINITY;
-
-    collectDescendants(unitIndex).forEach((descendantIndex) => {
-      const center = layoutX.get(descendantIndex) || 0;
-      const halfWidth = unitWidths[descendantIndex] / 2;
-      left = Math.min(left, center - halfWidth);
-      right = Math.max(right, center + halfWidth);
-    });
-
-    return { left, right, width: right - left };
-  }
-
-  layoutRootOrder.forEach((parentIndex) => {
-    const children = primaryChildrenByParent.get(parentIndex) || [];
-    if (!children.length) return;
-
-    const parentX = layoutX.get(parentIndex) || 0;
-
-    // Group direct children by the heart that produced them, then centre
-    // each relationship group underneath its own current or broken heart.
-    const groups = new Map();
-    children.forEach((childIndex) => {
-      const offset = Math.round(childAnchorOffset(parentIndex, childIndex));
-      if (!groups.has(offset)) groups.set(offset, []);
-      groups.get(offset).push(childIndex);
-    });
-
-    const orderedGroups = [...groups.entries()].sort(
-      (first, second) => first[0] - second[0]
-    );
-    let cursor = Number.NEGATIVE_INFINITY;
-
-    orderedGroups.forEach(([offset, groupChildren]) => {
-      let left = Number.POSITIVE_INFINITY;
-      let right = Number.NEGATIVE_INFINITY;
-
-      groupChildren.forEach((childIndex) => {
-        const span = descendantsSpan(childIndex);
-        left = Math.min(left, span.left);
-        right = Math.max(right, span.right);
+  componentOrder.forEach((componentIndex, index) => {
+    if (index > 0) layoutCursor += COMPONENT_GAP;
+    rootUnits
+      .filter((unitIndex) => componentOf[unitIndex] === componentIndex)
+      .forEach((unitIndex) => {
+        if (!layoutX.has(unitIndex)) layoutUnit(unitIndex);
       });
-
-      const groupWidth = right - left;
-      const desiredCenter = parentX + offset;
-      let newLeft = desiredCenter - groupWidth / 2;
-      if (cursor !== Number.NEGATIVE_INFINITY) {
-        newLeft = Math.max(newLeft, cursor);
-      }
-
-      const shift = newLeft - left;
-      if (shift) {
-        groupChildren.forEach((childIndex) => {
-          collectDescendants(childIndex).forEach((descendantIndex) => {
-            layoutX.set(
-              descendantIndex,
-              (layoutX.get(descendantIndex) || 0) + shift
-            );
-          });
-        });
-      }
-
-      cursor = newLeft + groupWidth + ALIGNED_GAP;
-    });
-  });
-
-  // Last-resort clearance pass: if two card units in one generation end
-  // up too close after heart alignment (or from an unusual ancestor graph),
-  // move the later unit and all of its descendants further right as one
-  // block. This keeps every generation horizontally collision-free while
-  // preserving the internal structure of each subtree.
-  const MIN_HORIZONTAL_GAP = 8;
-  rows.forEach((row) => {
-    const orderedRow = [...row].sort(
-      (first, second) => layoutX.get(first) - layoutX.get(second)
-    );
-    let nextLeft = Number.NEGATIVE_INFINITY;
-
-    orderedRow.forEach((unitIndex) => {
-      const currentCenter = layoutX.get(unitIndex) || 0;
-      const currentLeft = currentCenter - unitWidths[unitIndex] / 2;
-      const shift = nextLeft - currentLeft;
-
-      if (shift > 0) {
-        collectDescendants(unitIndex).forEach((descendantIndex) => {
-          layoutX.set(descendantIndex, (layoutX.get(descendantIndex) || 0) + shift);
-        });
-      }
-
-      nextLeft =
-        (layoutX.get(unitIndex) || 0) +
-        unitWidths[unitIndex] / 2 +
-        MIN_HORIZONTAL_GAP;
-    });
   });
 
   // Normalize the finished layout so the leftmost card starts just inside
@@ -1220,47 +1145,54 @@ export default function SpouseTreeComponent({
       });
     });
 
-    // A family branch gets its own track within the gap. Nesting sibling
-    // tracks lower toward the child keeps each child stub at most one
-    // quarter of the full parent-child gap while preventing horizontal
-    // paths for different branches from sharing a line.
-    const trackGroups = new Map();
+    // Each child link drops from its marriage anchor into the gap below the
+    // parent row and travels to the child on a lane dedicated to that
+    // parent, so lanes never overlap and never pass through a card.
+    const parentsByDepth = new Map();
     descriptorById.forEach((descriptor) => {
-      const key = `${descriptor.parentDepth}->${descriptor.childDepth}`;
-      if (!trackGroups.has(key)) trackGroups.set(key, []);
-      trackGroups.get(key).push(descriptor);
+      if (!parentsByDepth.has(descriptor.parentDepth)) {
+        parentsByDepth.set(descriptor.parentDepth, new Set());
+      }
+      parentsByDepth.get(descriptor.parentDepth).add(descriptor.parentIndex);
     });
 
-    trackGroups.forEach((track) => {
-      const ordered = [...track].sort(
-        (first, second) => first.endX - second.endX || first.parentIndex - second.parentIndex
+    const laneIndexByParent = new Map();
+    parentsByDepth.forEach((parents, depth) => {
+      const ordered = [...parents].sort(
+        (first, second) =>
+          (scene.units[first].x || 0) - (scene.units[second].x || 0)
       );
-      const averageGap = ordered.reduce(
-        (sum, descriptor) => sum + (descriptor.endY - descriptor.junctionY),
-        0
-      ) / ordered.length;
-      const longestChildStub = Math.max(0, averageGap) / 4;
-      const shortestChildStub = Math.max(2, longestChildStub / 3.5);
-      const stubStep =
-        ordered.length > 1
-          ? Math.min(4, (longestChildStub - shortestChildStub) / (ordered.length - 1))
-          : 0;
-
-      ordered.forEach((descriptor, index) => {
-        const childStubLength = longestChildStub - index * stubStep;
-        const branchY = descriptor.endY - childStubLength;
-        descriptor.path =
-          Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
-            ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${branchY} M ${descriptor.endX} ${descriptor.endY} V ${branchY}`
-            : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${branchY} M ${descriptor.endX} ${descriptor.endY} V ${branchY} M ${descriptor.junctionX} ${branchY} H ${descriptor.endX}`;
+      ordered.forEach((parentIndex, index) => {
+        laneIndexByParent.set(`${depth}:${parentIndex}`, index);
       });
     });
 
-    const nextEdges = [...descriptorById.values()].map((descriptor) => ({
-      id: descriptor.id,
-      path: descriptor.path,
-      isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
-    }));
+    const laneCountByDepth = new Map(
+      [...parentsByDepth.entries()].map(([depth, parents]) => [depth, parents.size])
+    );
+
+    const nextEdges = [...descriptorById.values()].map((descriptor) => {
+      const laneIndex =
+        laneIndexByParent.get(`${descriptor.parentDepth}:${descriptor.parentIndex}`) || 0;
+      const laneCount = laneCountByDepth.get(descriptor.parentDepth) || 1;
+      const gap = Math.max(24, descriptor.endY - descriptor.junctionY);
+      const laneStep = Math.min(7, Math.max(3, (gap - 24) / Math.max(1, laneCount)));
+      const laneY = Math.min(
+        descriptor.endY - 8,
+        descriptor.junctionY + 16 + laneIndex * laneStep
+      );
+
+      const path =
+        Math.abs(descriptor.endX - descriptor.junctionX) < 0.5
+          ? `M ${descriptor.junctionX} ${descriptor.junctionY} V ${descriptor.endY}`
+          : `M ${descriptor.junctionX} ${descriptor.junctionY} V ${laneY} H ${descriptor.endX} V ${descriptor.endY}`;
+
+      return {
+        id: descriptor.id,
+        path,
+        isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
+      };
+    });
 
     setEdges(nextEdges);
 
@@ -1361,18 +1293,47 @@ export default function SpouseTreeComponent({
               familyIds.length > 0 &&
               familyIds.some((familyId) => collapsedSet.has(String(familyId)));
 
-            // Partners who are not beside each other are joined by a dashed
-            // rail under the cards, with the broken heart on the ex-spouse.
-            const railRelationships = unitRelationships.filter((relationship) => {
-              const firstIndex = unit.members.findIndex(
-                (member) => String(member.id) === String(relationship.firstId)
-              );
-              const secondIndex = unit.members.findIndex(
-                (member) => String(member.id) === String(relationship.secondId)
-              );
-              if (firstIndex < 0 || secondIndex < 0) return false;
-              return Math.abs(firstIndex - secondIndex) > 1;
-            });
+            // Partners who are not beside each other get a line that runs
+            // behind the cards, with the heart in the visible gap beside the
+            // ex-spouse (or the first partner for a current marriage).
+            const behindLinks = unitRelationships
+              .map((relationship) => {
+                const firstIndex = unit.members.findIndex(
+                  (member) => String(member.id) === String(relationship.firstId)
+                );
+                const secondIndex = unit.members.findIndex(
+                  (member) => String(member.id) === String(relationship.secondId)
+                );
+                if (firstIndex < 0 || secondIndex < 0) return null;
+                if (Math.abs(firstIndex - secondIndex) === 1) return null;
+
+                const leftIndex = Math.min(firstIndex, secondIndex);
+                const rightIndex = Math.max(firstIndex, secondIndex);
+                const exIndex = formerMemberIds.has(
+                  String(unit.members[firstIndex].id)
+                )
+                  ? firstIndex
+                  : secondIndex;
+                const gapIndex =
+                  exIndex + 1 < unit.members.length
+                    ? exIndex
+                    : Math.max(0, exIndex - 1);
+                const gapX =
+                  (unit.memberCenters[gapIndex] +
+                    unit.memberCenters[gapIndex + 1]) /
+                  2;
+
+                return {
+                  key: `behind-${relationship.firstId}-${relationship.secondId}`,
+                  heartKey: `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
+                  left: unit.memberCenters[leftIndex],
+                  width: unit.memberCenters[rightIndex] - unit.memberCenters[leftIndex],
+                  heartX: gapX,
+                  broken: relationship.status === 'former',
+                  former: relationship.status === 'former',
+                };
+              })
+              .filter(Boolean);
 
             return (
               <div
@@ -1381,6 +1342,14 @@ export default function SpouseTreeComponent({
                 role="listitem"
                 style={{ left: `${unit.x || 0}px` }}
               >
+                {behindLinks.map((link) => (
+                  <span
+                    aria-hidden="true"
+                    className={`spouse-link-behind${link.former ? ' is-former' : ''}`}
+                    key={`${link.key}-line`}
+                    style={{ left: `${link.left}px`, width: `${link.width}px` }}
+                  />
+                ))}
                 {childCount > 0 && onToggleFamily && (
                   <button
                     aria-expanded={!isCollapsed}
@@ -1416,7 +1385,6 @@ export default function SpouseTreeComponent({
                         <span
                           aria-hidden="true"
                           className={`spouse-link${isFormerLink ? ' is-former' : ''}`}
-                          style={{ width: `${unit.linkWidths[memberIndex - 1]}px` }}
                         >
                           {relationship && (
                             <span
@@ -1447,50 +1415,19 @@ export default function SpouseTreeComponent({
                     </Fragment>
                   );
                 })}
-                {railRelationships.map((relationship) => {
-                  const firstIndex = unit.members.findIndex(
-                    (member) => String(member.id) === String(relationship.firstId)
-                  );
-                  const secondIndex = unit.members.findIndex(
-                    (member) => String(member.id) === String(relationship.secondId)
-                  );
-                  const leftIndex = Math.min(firstIndex, secondIndex);
-                  const rightIndex = Math.max(firstIndex, secondIndex);
-                  const exIndex = formerMemberIds.has(
-                    String(unit.members[firstIndex].id)
-                  )
-                    ? firstIndex
-                    : secondIndex;
-                  const leftX = unit.memberCenters[leftIndex];
-                  const rightX = unit.memberCenters[rightIndex];
-                  const exX = unit.memberCenters[exIndex];
-                  const former = relationship.status === 'former';
-
-                  return (
-                    <Fragment key={`rail-${relationship.firstId}-${relationship.secondId}`}>
-                      <span
-                        aria-hidden="true"
-                        className={`spouse-rail${former ? ' is-former' : ''}`}
-                        style={{ left: `${leftX}px`, width: `${rightX - leftX}px` }}
-                      />
-                      <span
-                        aria-hidden="true"
-                        className="spouse-heart-float"
-                        ref={(node) =>
-                          setHeartRef(
-                            `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
-                            node
-                          )
-                        }
-                        style={{ left: `${exX}px` }}
-                      >
-                        <span className="spouse-link-heart">
-                          <HeartIcon broken={former} />
-                        </span>
-                      </span>
-                    </Fragment>
-                  );
-                })}
+                {behindLinks.map((link) => (
+                  <span
+                    aria-hidden="true"
+                    className="spouse-gap-heart"
+                    key={`${link.key}-heart`}
+                    ref={(node) => setHeartRef(link.heartKey, node)}
+                    style={{ left: `${link.heartX}px` }}
+                  >
+                    <span className="spouse-link-heart">
+                      <HeartIcon broken={link.broken} />
+                    </span>
+                  </span>
+                ))}
               </div>
             );
           })}

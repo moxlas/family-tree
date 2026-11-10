@@ -84,10 +84,11 @@ describe('buildScene generation placement', () => {
     const currentChildUnit = scene.units.find((unit) =>
       unit.members.some((m) => m.id === '5')
     );
-    expect(formerChildUnit.x).toBeCloseTo(johnUnits[0].x - 134, 0);
-    // The former link is wider, so the unit is asymmetric: the current heart
-    // sits 152px right of the unit centre, the former heart 134px left.
-    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 152, 0);
+    // Children are reserved as one block under the parent unit: the former
+    // marriage's child on the left, the current marriage's child on the right.
+    expect(formerChildUnit.x).toBeCloseTo(johnUnits[0].x - 138, 0);
+    expect(currentChildUnit.x).toBeCloseTo(johnUnits[0].x + 138, 0);
+    expect(formerChildUnit.x).toBeLessThan(currentChildUnit.x);
   });
 
   it('keeps only one current marriage per person', () => {
@@ -115,7 +116,7 @@ describe('buildScene generation placement', () => {
     expect([current.firstId, current.secondId].sort()).toEqual(['1', '3']);
   });
 
-  it('places former partners left and the current partner right, with wider former links', () => {
+  it('places former partners left and the current partner right', () => {
     const people = [
       person('1', { firstName: 'Adam', gender: 'male' }),
       person('2', { firstName: 'Emma', gender: 'female' }),
@@ -137,7 +138,8 @@ describe('buildScene generation placement', () => {
     expect(order.indexOf('1')).toBeGreaterThan(0);
     expect(order.indexOf('1')).toBeLessThan(order.length - 1);
     expect(unit.memberCenters).toHaveLength(order.length);
-    expect(unit.linkWidths.filter((width) => width === 72).length).toBeGreaterThan(0);
+    // Compact links: ex-spouse connections are drawn behind the cards.
+    expect(unit.linkWidths.every((width) => width === 36)).toBe(true);
   });
 
   it('orders chained marriages so every marriage sits between neighbours', () => {
@@ -164,7 +166,7 @@ describe('buildScene generation placement', () => {
       );
       expect(gap).toBe(1);
     });
-    expect(unit.linkWidths.filter((width) => width === 72)).toHaveLength(2);
+    expect(unit.linkWidths.every((width) => width === 36)).toBe(true);
   });
 
   it('renders marriages where only one partner is in view', () => {
@@ -200,15 +202,13 @@ describe('buildScene generation placement', () => {
     const childIndex = scene.units.indexOf(childUnit);
     const parentLink = childUnit.parentLinks?.get(parentIndex);
 
-    const partnerIndex = parentUnit.members.findIndex(
-      (member) => String(member.id) === String(parentLink?.parentId)
-    );
-    expect(partnerIndex).toBeGreaterThanOrEqual(0);
-
-    const partnerCenter =
-      parentUnit.x - parentUnit.width / 2 + parentUnit.memberCenters[partnerIndex];
-    expect(Math.abs(childUnit.x - partnerCenter)).toBeLessThanOrEqual(1);
-    expect(scene.depths[childIndex]).toBeGreaterThan(scene.depths[parentIndex]);
+    expect(parentLink).toBeTruthy();
+    // Children are reserved under the parent unit and stay inside its block.
+    const parentLeft = parentUnit.x - parentUnit.width / 2;
+    const parentRight = parentUnit.x + parentUnit.width / 2;
+    expect(childUnit.x).toBeGreaterThanOrEqual(parentLeft);
+    expect(childUnit.x).toBeLessThanOrEqual(parentRight);
+    expect(scene.depths[childIndex]).toBe(scene.depths[parentIndex] + 1);
   });
 
   it('keeps each family subtree beneath its own ancestors', () => {
