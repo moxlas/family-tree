@@ -7,7 +7,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useI18n } from '../i18n';
 import PersonCard from './PersonCard';
 
 // A previous marriage with children needs room for those children to hang
@@ -1212,8 +1211,8 @@ export function buildScene(people, families, showFormerSpouses = true) {
 
 export default function SpouseTreeComponent({
   branchFlagsById,
-  childCounts = {},
-  collapsedFamilyIds = [],
+  childrenByPerson,
+  collapsedPersonIds = [],
   families = [],
   onAddChild,
   onAddParent,
@@ -1222,14 +1221,13 @@ export default function SpouseTreeComponent({
   onDelete,
   onEdit,
   onFocus,
-  onToggleFamily,
+  onToggleChildren,
   onView,
   people,
   showFormerSpouses = true,
   suppressClickRef,
   zoom = 1,
 }) {
-  const { t } = useI18n();
   const scene = useMemo(
     () => buildScene(people, families, showFormerSpouses),
     [people, families, showFormerSpouses]
@@ -1239,6 +1237,10 @@ export default function SpouseTreeComponent({
   const cardRefs = useRef(new Map());
   const cardRefCallbacks = useRef(new Map());
   const heartRefs = useRef(new Map());
+  const collapsedPersonSet = useMemo(
+    () => new Set((collapsedPersonIds || []).map(String)),
+    [collapsedPersonIds]
+  );
   const [edges, setEdges] = useState([]);
   const [rowHeights, setRowHeights] = useState({});
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -1736,15 +1738,6 @@ export default function SpouseTreeComponent({
             const unitRelationships = unit.relationships || [];
             const formerMemberIds =
               unit.formerMemberIds || new Set();
-            const familyIds = unit.familyIds || [];
-            const childCount = familyIds.reduce(
-              (sum, familyId) => sum + (childCounts[String(familyId)] || 0),
-              0
-            );
-            const collapsedSet = new Set(collapsedFamilyIds.map(String));
-            const isCollapsed =
-              familyIds.length > 0 &&
-              familyIds.some((familyId) => collapsedSet.has(String(familyId)));
 
             // Partners who are not beside each other are connected behind the
             // cards. The line is drawn only inside the gaps between cards, on
@@ -1813,23 +1806,6 @@ export default function SpouseTreeComponent({
                     />
                   ))
                 )}
-                {childCount > 0 && onToggleFamily && (
-                  <button
-                    aria-expanded={!isCollapsed}
-                    className={`family-toggle${isCollapsed ? ' is-collapsed' : ''}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleFamily(familyIds);
-                    }}
-                    type="button"
-                  >
-                    {isCollapsed
-                      ? childCount === 1
-                        ? t('branch.showChild')
-                        : t('branch.showChildren', { count: childCount })
-                      : t('branch.hideChildren')}
-                  </button>
-                )}
                 {unit.members.map((member, memberIndex) => {
                   const previousMember = memberIndex > 0 ? unit.members[memberIndex - 1] : null;
                   const relationship = previousMember
@@ -1847,7 +1823,9 @@ export default function SpouseTreeComponent({
                       {previousMember && (
                         <span
                           aria-hidden="true"
-                          className={`spouse-link${isFormerLink ? ' is-former' : ''}`}
+                          className={`spouse-link${
+                            relationship ? '' : ' is-empty'
+                          }${isFormerLink ? ' is-former' : ''}`}
                           style={{
                             width: `${
                               unit.linkWidths?.[memberIndex - 1] ||
@@ -1867,6 +1845,10 @@ export default function SpouseTreeComponent({
                       )}
                       <PersonCard
                         cardRef={getCardRef(member.id)}
+                        childCount={
+                          childrenByPerson?.get(String(member.id))?.size || 0
+                        }
+                        childrenHidden={collapsedPersonSet.has(String(member.id))}
                         hasBranch={Boolean(branchFlagsById?.get(String(member.id))?.hasBranch)}
                         muted={formerMemberIds.has(String(member.id))}
                         onAddChild={onAddChild}
@@ -1876,6 +1858,7 @@ export default function SpouseTreeComponent({
                         onDelete={onDelete}
                         onEdit={onEdit}
                         onFocus={onFocus}
+                        onToggleChildren={onToggleChildren}
                         onView={onView}
                         person={member}
                         showSpouseName={false}

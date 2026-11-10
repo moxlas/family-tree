@@ -17,7 +17,10 @@ export default function PersonCard({
   onDelete,
   onEdit,
   onFocus,
+  onToggleChildren,
   onView,
+  childCount = 0,
+  childrenHidden = false,
   hasBranch = false,
   muted = false,
   person,
@@ -263,6 +266,31 @@ export default function PersonCard({
             document.body
           ) : null}
         </div>
+        {onToggleChildren && (
+          <button
+            aria-label={
+              childrenHidden
+                ? t('person.showChildrenAria', { name: fullName })
+                : t('person.hideChildrenAria', { name: fullName })
+            }
+            className={`icon-button children${childrenHidden ? ' is-collapsed' : ''}`}
+            disabled={childCount === 0}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (childCount > 0) onToggleChildren(person);
+            }}
+            title={
+              childCount === 0
+                ? t('person.noChildren')
+                : childrenHidden
+                  ? t('person.showChildren')
+                  : t('person.hideChildren')
+            }
+            type="button"
+          >
+            {childrenHidden ? '▸' : '▾'}
+          </button>
+        )}
         <button
           aria-label={t('person.edit', { name: fullName })}
           className="icon-button"

@@ -19,7 +19,7 @@ import TreesModal from './TreesModal';
 import { branchFlags, defaultHomePersonId, viewPeople } from '../treeView';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
-const COLLAPSED_KEY = 'familyTreeCollapsedMarriages';
+const COLLAPSED_KEY = 'familyTreeCollapsedPeople';
 
 function readCollapsed() {
   try {
@@ -253,7 +253,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     return fallbackHomePersonId;
   }, [activeTree, people, fallbackHomePersonId]);
 
-  const collapsedFamilyIds = useMemo(
+  const collapsedPersonIds = useMemo(
     () => (activeTreeId && collapsedByTree[activeTreeId]) || [],
     [activeTreeId, collapsedByTree]
   );
@@ -263,27 +263,27 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       viewPeople(people, families, {
         focusId,
         homePersonId,
-        collapsedFamilyIds,
+        collapsedPersonIds,
       }),
-    [people, families, focusId, homePersonId, collapsedFamilyIds]
+    [people, families, focusId, homePersonId, collapsedPersonIds]
   );
 
-  // Only count children that are actually drawn, so a branch view does not
-  // offer to hide children it never shows. A collapsed marriage keeps its
-  // real count so the "show children" control stays available.
-  const childCounts = useMemo(() => {
-    const visible = new Set(view.people.map((person) => String(person.id)));
-    const collapsedSet = new Set(collapsedFamilyIds.map(String));
-    const counts = {};
+  // Direct children per person, used by the card's hide-children control.
+  // Only the person's own children count, never a co-parent's other children.
+  const childrenByPerson = useMemo(() => {
+    const map = new Map();
     families.forEach((family) => {
-      const id = String(family.id);
       const children = family.children || [];
-      counts[id] = collapsedSet.has(id)
-        ? children.length
-        : children.filter((childId) => visible.has(String(childId))).length;
+      if (!children.length) return;
+      [family.husband, family.wife].forEach((parentId) => {
+        if (!parentId) return;
+        const key = String(parentId);
+        if (!map.has(key)) map.set(key, new Set());
+        children.forEach((childId) => map.get(key).add(String(childId)));
+      });
     });
-    return counts;
-  }, [families, view, collapsedFamilyIds]);
+    return map;
+  }, [families]);
 
   const branchFlagsById = useMemo(() => {
     const flags = new Map();
@@ -297,17 +297,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     ? people.find((entry) => String(entry.id) === String(focusId)) || null
     : null;
 
-  const toggleFamilies = (familyIds) => {
-    const ids = (familyIds || []).map(String);
-    if (!ids.length || !activeTreeId) return;
+  const toggleChildren = (person) => {
+    const id = person ? String(person.id) : '';
+    if (!id || !activeTreeId) return;
 
     setCollapsedByTree((current) => {
       const existing = new Set((current[activeTreeId] || []).map(String));
-      const collapsing = ids.some((id) => !existing.has(id));
-      ids.forEach((id) => {
-        if (collapsing) existing.add(id);
-        else existing.delete(id);
-      });
+      if (existing.has(id)) existing.delete(id);
+      else existing.add(id);
       const next = { ...current, [activeTreeId]: [...existing] };
       try {
         localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
@@ -1003,8 +1000,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               ) : (
                 <SpouseTreeComponent
                   branchFlagsById={branchFlagsById}
-                  childCounts={childCounts}
-                  collapsedFamilyIds={collapsedFamilyIds}
+                  childrenByPerson={childrenByPerson}
+                  collapsedPersonIds={collapsedPersonIds}
                   families={view.families}
                   showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
@@ -1014,7 +1011,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onDelete={deletePerson}
                   onEdit={openEdit}
                   onFocus={(person) => setFocusId(String(person.id))}
-                  onToggleFamily={toggleFamilies}
+                  onToggleChildren={toggleChildren}
                   onView={(person) => setDetailsPerson(person)}
                   people={view.people}
                   suppressClickRef={suppressClickRef}

@@ -1013,32 +1013,9 @@ textarea {
   display: block;
 }
 
-.family-toggle {
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 700;
-  left: 0;
-  padding: 3px 9px;
-  position: absolute;
-  top: -30px;
-  white-space: nowrap;
-  z-index: 4;
-}
-
-.family-toggle:hover {
-  border-color: #b8cccd;
-  color: var(--ink);
-}
-
-.family-toggle.is-collapsed {
-  background: var(--brand-soft);
-  border-color: transparent;
-  color: var(--brand-deep);
+/* A gap between two cards that are not married has no connector line. */
+.spouse-link.is-empty::before {
+  display: none;
 }
 
 .focus-banner {
@@ -1289,6 +1266,18 @@ textarea {
 .icon-button:hover {
   background: #e8f1f1;
   color: var(--ink);
+}
+
+.icon-button:disabled,
+.icon-button:disabled:hover {
+  background: #f1f4f4;
+  color: #b3c0c8;
+  cursor: default;
+}
+
+.icon-button.children.is-collapsed {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
 }
 
 .icon-button.add {

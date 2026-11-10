@@ -47,9 +47,17 @@ describe('branch views', () => {
     expect(ids(view)).toEqual(['1', '6', '7']);
   });
 
-  it('hides children of a collapsed marriage inside the full tree', () => {
-    const view = viewPeople(people, families, { collapsedFamilyIds: ['f1'] });
+  it('hides the children of a collapsed person inside the full tree', () => {
+    const view = viewPeople(people, families, { collapsedPersonIds: ['1'] });
     expect(ids(view)).toEqual(['1', '2', '6']);
+  });
+
+  it('keeps a collapsed person out of the branch view', () => {
+    const view = viewPeople(people, families, {
+      focusId: '1',
+      collapsedPersonIds: ['1'],
+    });
+    expect(ids(view)).toEqual(['1', '2', '3', '4', '5', '6']);
   });
 
   it('reports parents and siblings for the branch button', () => {

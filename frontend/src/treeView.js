@@ -248,14 +248,15 @@ function filterToKeep(list, marriages, keep) {
 // Returns the people and families that should be drawn for the current view.
 // - focusId shows that person's own family branch (ancestors, siblings and
 //   their own descendants) in a separate view.
-// - collapsedFamilyIds hides the children of those marriages, with their
-//   descendants and any partners who are only linked to hidden people.
+// - collapsedPersonIds hides the children of those people (only their own
+//   children, not the children of a co-parent's other marriages), together
+//   with their descendants.
 export function viewPeople(people, families, options = {}) {
   const list = Array.isArray(people) ? people : [];
   const marriages = Array.isArray(families) ? families : [];
   const focusId = idOf(options.focusId);
   const homePersonId = idOf(options.homePersonId);
-  const collapsed = new Set((options.collapsedFamilyIds || []).map(idOf));
+  const collapsed = new Set((options.collapsedPersonIds || []).map(idOf));
   const all = new Set(list.map((person) => idOf(person.id)));
 
   let baseKeep;
@@ -270,10 +271,16 @@ export function viewPeople(people, families, options = {}) {
   const graph = buildGraph(list, marriages);
   let keep = baseKeep || new Set(all);
 
-  if (collapsed.size) {
+  // A branch view is always complete, so the collapsed state never removes
+  // people from it.
+  const collapsedActive = collapsed.size > 0 && !(focusId && all.has(focusId));
+
+  if (collapsedActive) {
     const seeds = [];
     marriages.forEach((family) => {
-      if (!collapsed.has(idOf(family.id))) return;
+      const husband = idOf(family.husband);
+      const wife = idOf(family.wife);
+      if (!collapsed.has(husband) && !collapsed.has(wife)) return;
       (family.children || []).map(idOf).forEach((childId) => seeds.push(childId));
     });
 
