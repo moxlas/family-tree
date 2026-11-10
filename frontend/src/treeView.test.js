@@ -65,3 +65,68 @@ describe('branch views', () => {
     expect(branchFlags(mixed, families, '2').hasBranch).toBe(false);
   });
 });
+
+// A wider family: grandparents 1 & 2 have children 3 and 4. 3 marries 5 and
+// has child 6, who marries 7 and has child 8. 4 marries 9 and has child 10.
+const wider = [
+  person('1', { spouseId: '2' }),
+  person('2', { spouseId: '1' }),
+  person('3', { parentId: '1', spouseId: '5' }),
+  person('4', { parentId: '1', spouseId: '9' }),
+  person('5', { spouseId: '3' }),
+  person('6', { parentId: '3', spouseId: '7' }),
+  person('7', { spouseId: '6' }),
+  person('8', { parentId: '6' }),
+  person('9', { spouseId: '4' }),
+  person('10', { parentId: '4' }),
+];
+
+const widerFamilies = [
+  { id: 'w1', husband: '1', wife: '2', status: 'current', children: ['3', '4'] },
+  { id: 'w2', husband: '3', wife: '5', status: 'current', children: ['6'] },
+  { id: 'w3', husband: '6', wife: '7', status: 'current', children: ['8'] },
+  { id: 'w4', husband: '4', wife: '9', status: 'current', children: ['10'] },
+];
+
+describe('branch views are narrower than the full tree', () => {
+  it('focusing a grandchild leaves out the uncle and cousin lines', () => {
+    expect(ids(viewPeople(wider, widerFamilies))).toEqual([
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ]);
+
+    const branch = ids(viewPeople(wider, widerFamilies, { focusId: '6' }));
+    // Ancestors 3 & 5, grandparents 1 & 2, child 8, partner 7. No uncle 4,
+    // aunt 9 or cousin 10.
+    expect(branch).toEqual(['1', '2', '3', '5', '6', '7', '8']);
+  });
+
+  it('focusing a parent keeps their siblings but not the siblings children', () => {
+    const branch = ids(viewPeople(wider, widerFamilies, { focusId: '3' }));
+    expect(branch).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+  });
+
+  it('focusing the root keeps the whole line below them', () => {
+    const branch = ids(viewPeople(wider, widerFamilies, { focusId: '1' }));
+    expect(branch).toEqual([
+      '1',
+      '10',
+      '2',
+      '3',
+      '4',
+      '5',
+      '6',
+      '7',
+      '8',
+      '9',
+    ]);
+  });
+});

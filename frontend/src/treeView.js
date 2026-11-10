@@ -143,21 +143,37 @@ function fullTreeKeep(people, families) {
   return keep;
 }
 
-// A person's branch: their blood component (parents, grandparents, siblings,
-// cousins) together with the partners of those members.
+// A person's branch is their own line, not their whole blood component:
+// ancestors (parents, grandparents, ...), their siblings, and their own
+// descendants (children, grandchildren, ...). Partners of those people are
+// added as spouse cards, but nobody else's line is pulled in - that is what
+// keeps the branch view different from the full tree.
 function branchKeep(focusId, people, families) {
   const graph = buildGraph(people, families);
-  const { componentOf, members } = parentComponents(people, graph);
-  const componentId = componentOf.get(focusId);
+  const parents = new Map();
 
-  if (componentId == null) return new Set([focusId]);
+  graph.children.forEach((childrenIds, parentId) => {
+    childrenIds.forEach((childId) => addEdge(parents, childId, parentId));
+  });
 
-  const keep = new Set(members.get(componentId) || []);
+  const keep = new Set([focusId]);
+
+  closure([focusId], parents).forEach((personId) => keep.add(personId));
+  closure([focusId], graph.children).forEach((personId) => keep.add(personId));
+
+  // Siblings: the other children of the focused person's parents.
+  (parents.get(focusId) || new Set()).forEach((parentId) => {
+    (graph.children.get(parentId) || new Set()).forEach((siblingId) => {
+      keep.add(siblingId);
+    });
+  });
+
   [...keep].forEach((personId) => {
     (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
       keep.add(partnerId);
     });
   });
+
   return keep;
 }
 
@@ -178,7 +194,8 @@ function filterToKeep(list, marriages, keep) {
 }
 
 // Returns the people and families that should be drawn for the current view.
-// - focusId shows that person's own family branch in a separate view.
+// - focusId shows that person's own family branch (ancestors, siblings and
+//   their own descendants) in a separate view.
 // - collapsedFamilyIds hides the children of those marriages, with their
 //   descendants and any partners who are only linked to hidden people.
 export function viewPeople(people, families, options = {}) {

@@ -327,6 +327,8 @@ const translations = {
     'branch.focusHasFamily': 'Open this family branch',
     'branch.focusAria': 'Show only the branch of {{name}}',
     'branch.focusBanner': 'Showing the branch of {{name}}',
+    'branch.focusHint':
+      'This view shows their ancestors, siblings and descendants only.',
     'branch.fullTreeNote':
       'In-laws are hidden here; use the ◎ button to open a spouse’s own branch.',
     'branch.backToFull': 'Back to full tree',
@@ -690,6 +692,8 @@ const translations = {
     'branch.focusHasFamily': 'Atidaryti šią šeimos šaką',
     'branch.focusAria': 'Rodyti tik {{name}} šaką',
     'branch.focusBanner': 'Rodoma {{name}} šaka',
+    'branch.focusHint':
+      'Čia rodomi tik jų protėviai, broliai ir seserys bei palikuonys.',
     'branch.fullTreeNote':
       'Svainiai čia nerodomi; naudokite ◎ mygtuką, kad atidarytumėte sutuoktinio šaką.',
     'branch.backToFull': 'Grįžti prie viso medžio',

@@ -349,6 +349,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     setPeople([]);
     setLoading(true);
     setError('');
+    setFocusId('');
   };
 
   const handleTreeUpdated = (tree) => {
@@ -365,6 +366,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       setActiveTreeId(remaining[0]?.id || '');
       setPeople([]);
       setLoading(true);
+      setFocusId('');
     }
   };
 
@@ -376,6 +378,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     setModal(null);
     setNotice('');
     setError('');
+    setFocusId('');
   };
 
   const openCreate = (parentId = '') => {
@@ -853,9 +856,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   {bloodlineOnly
                     ? t('tree.headingHint')
                     : focusedPerson
-                      ? t('branch.focusBanner', {
-                          name: `${focusedPerson.firstName} ${focusedPerson.lastName}`.trim(),
-                        })
+                      ? t('branch.focusHint')
                       : `${t('tree.headingHintSpouses')} ${t('branch.fullTreeNote')}`}
                 </p>
               </div>
