@@ -189,17 +189,15 @@ export default function PublicTreePage({ token }) {
       const deltaX =
         rect.left + rect.width / 2 - (viewport.left + viewport.width / 2);
       const deltaY =
-        rect.top + rect.height / 2 - window.innerHeight / 2;
+        rect.top + rect.height / 2 - (viewport.top + viewport.height / 2);
 
       if (Math.abs(deltaX) < 2 && Math.abs(deltaY) < 2) {
         stable += 1;
       } else {
         stable = 0;
-        card.scrollIntoView({
-          behavior: 'auto',
-          block: 'center',
-          inline: 'center',
-        });
+        // Scroll only the tree viewport so the page header stays in place.
+        scroll.scrollLeft += deltaX;
+        scroll.scrollTop += deltaY;
       }
 
       if (stable < 2 && attempts < 40) {
