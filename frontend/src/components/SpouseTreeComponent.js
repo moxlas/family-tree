@@ -261,21 +261,40 @@ function applyHomePedigree({
   });
 
   const homeDepth = depths[homeUnitIndex] || 0;
-  if (homeDepth <= 0) {
+
+  const centerHomeInScene = () => {
     const minLeft = units.reduce(
       (value, unit) => Math.min(value, unit.x - unit.width / 2),
       Number.POSITIVE_INFINITY
     );
-    if (Number.isFinite(minLeft)) {
-      units.forEach((unit) => {
-        unit.x += 34 - minLeft;
-      });
-    }
-    return;
+    if (!Number.isFinite(minLeft)) return 0;
+
+    units.forEach((unit) => {
+      unit.x -= minLeft;
+    });
+
+    const homeCentre = cardCenterX(units[homeUnitIndex], homeMemberIndex);
+    const maxRight = units.reduce(
+      (value, unit) => Math.max(value, unit.x + unit.width / 2),
+      Number.NEGATIVE_INFINITY
+    );
+    const half = Math.max(homeCentre, maxRight - homeCentre, 0) + 68;
+    const shift = half - homeCentre;
+
+    units.forEach((unit) => {
+      unit.x += shift;
+    });
+
+    return half * 2;
+  };
+
+  if (homeDepth <= 0) {
+    return centerHomeInScene();
   }
 
   const parentsCache = new Map();
-  const parentIdsOf = (personId) => {    const id = String(personId);
+  const parentIdsOf = (personId) => {
+    const id = String(personId);
     if (parentsCache.has(id)) return parentsCache.get(id);
 
     const parentIds = new Set();
@@ -478,15 +497,7 @@ function applyHomePedigree({
     level = nextLevel;
   }
 
-  const minLeft = units.reduce(
-    (value, unit) => Math.min(value, unit.x - unit.width / 2),
-    Number.POSITIVE_INFINITY
-  );
-  if (Number.isFinite(minLeft)) {
-    units.forEach((unit) => {
-      unit.x += 34 - minLeft;
-    });
-  }
+  return centerHomeInScene();
 }
 
 export function buildScene(
@@ -1618,15 +1629,17 @@ export function buildScene(
     );
   });
 
+  let pedigreeWidth = 0;
   if (pedigreePersonId) {
-    applyHomePedigree({
-      byId,
-      depths,
-      families,
-      homePersonId: pedigreePersonId,
-      rows,
-      units,
-    });
+    pedigreeWidth =
+      applyHomePedigree({
+        byId,
+        depths,
+        families,
+        homePersonId: pedigreePersonId,
+        rows,
+        units,
+      }) || 0;
     units.forEach((unit) => {
       unit.layoutCenter = unit.x;
     });
@@ -1636,10 +1649,11 @@ export function buildScene(
     row.sort((first, second) => units[first].x - units[second].x);
   });
 
-  const layoutWidth = Math.max(
+  const contentWidth = Math.max(
     68,
     ...units.map((unit) => unit.x + unit.width / 2)
   ) + 68;
+  const layoutWidth = Math.max(contentWidth, pedigreeWidth);
 
   return { units, rows, depths, treeWidth: layoutWidth };
 }

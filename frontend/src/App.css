@@ -985,6 +985,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 92px;
+  margin: 0 auto;
   min-width: max-content;
   padding: 26px 34px 0;
   position: relative;
@@ -1091,7 +1092,7 @@ textarea {
 
 .heart-icon {
   display: block;
-  transform: translateY(-0.5px);
+  transform: translate(0.7px, -0.5px);
 }
 
 /* A gap between two cards that are not married has no connector line. */
@@ -2188,17 +2189,30 @@ textarea {
   width: 100%;
 }
 
-.person-add-options button:hover {
-  background: var(--surface-soft);
+.person-add-options button:hover,
+.person-add-options button:focus-visible {
+  background: var(--brand-soft);
+  color: var(--brand-deep);
+  outline: none;
 }
 
 /* Zoom toolbar */
 .tree-zoom-toolbar {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 24px 0;
+}
+
+.tree-zoom-controls {
   align-items: center;
   display: flex;
   gap: 8px;
-  justify-content: flex-end;
-  padding: 12px 24px 0;
+}
+
+.tree-centre-button {
+  margin-right: 0;
 }
 
 .zoom-level {

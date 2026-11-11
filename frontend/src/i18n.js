@@ -64,6 +64,7 @@ const translations = {
     'tree.addRoot': 'Add another root',
     'tree.zoom': 'Tree zoom',
     'tree.zoomReset': 'Reset',
+    'tree.centreView': 'Centre view',
     'tree.loading': 'Growing your tree…',
     'tree.dismissError': 'Dismiss error',
 
@@ -550,6 +551,7 @@ const translations = {
     'tree.addRoot': 'Pridėti dar vieną šaknį',
     'tree.zoom': 'Medžio mastelis',
     'tree.zoomReset': 'Atstatyti',
+    'tree.centreView': 'Centruoti vaizdą',
     'tree.loading': 'Auginamas jūsų medis…',
     'tree.dismissError': 'Uždaryti klaidos pranešimą',
 

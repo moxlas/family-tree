@@ -70,6 +70,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [centreSignal, setCentreSignal] = useState(0);
   const [treesOpen, setTreesOpen] = useState(false);
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const [focusId, setFocusId] = useState('');
@@ -371,7 +372,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       cancelled = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [centreTargetId, people.length, bloodlineOnly]);
+  }, [centreTargetId, people.length, bloodlineOnly, centreSignal]);
 
   const toggleChildren = (person) => {
     const id = person ? String(person.id) : '';
@@ -1075,27 +1076,36 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               </div>
             )}
             <div className="tree-zoom-toolbar" aria-label={t('tree.zoom')}>
+              <div className="tree-zoom-controls">
+                <button
+                  className="button ghost small"
+                  onClick={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))}
+                  type="button"
+                >
+                  −
+                </button>
+                <span className="zoom-level">{Math.round(zoom * 100)}%</span>
+                <button
+                  className="button ghost small"
+                  onClick={() => setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10))}
+                  type="button"
+                >
+                  +
+                </button>
+                <button
+                  className="button ghost small"
+                  onClick={() => setZoom(1)}
+                  type="button"
+                >
+                  {t('tree.zoomReset')}
+                </button>
+              </div>
               <button
-                className="button ghost small"
-                onClick={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))}
+                className="button secondary small tree-centre-button"
+                onClick={() => setCentreSignal((value) => value + 1)}
                 type="button"
               >
-                −
-              </button>
-              <span className="zoom-level">{Math.round(zoom * 100)}%</span>
-              <button
-                className="button ghost small"
-                onClick={() => setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10))}
-                type="button"
-              >
-                +
-              </button>
-              <button
-                className="button ghost small"
-                onClick={() => setZoom(1)}
-                type="button"
-              >
-                {t('tree.zoomReset')}
+                {t('tree.centreView')}
               </button>
             </div>
             <div
