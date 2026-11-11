@@ -1,6 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import api from '../api';
 import { useI18n } from '../i18n';
+import { buildShareUrl } from '../share';
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) throw new Error('Copy failed');
+}
 
 function initials(name) {
   const parts = String(name || '')
@@ -14,7 +33,13 @@ function initials(name) {
     .toUpperCase() || '?';
 }
 
-export default function SettingsModal({ user, onClose, onUserUpdate }) {
+export default function SettingsModal({
+  onClose,
+  onTreeUpdated,
+  onUserUpdate,
+  trees = [],
+  user,
+}) {
   const { language, t, translateApiError } = useI18n();
   const [profile, setProfile] = useState({
     name: user.name || '',
@@ -30,6 +55,9 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
   const [settingsError, setSettingsError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [sharingBusyId, setSharingBusyId] = useState('');
+  const [copiedTreeId, setCopiedTreeId] = useState('');
+  const [shareError, setShareError] = useState('');
   const [notice, setNotice] = useState('');
 
   useEffect(() => {
@@ -135,6 +163,56 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
       );
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!copiedTreeId) return undefined;
+    const timer = window.setTimeout(() => setCopiedTreeId(''), 2500);
+    return () => window.clearTimeout(timer);
+  }, [copiedTreeId]);
+
+  const updateSharing = async (tree, body) => {
+    setSharingBusyId(tree.id);
+    setShareError('');
+    setNotice('');
+
+    try {
+      const response = await api.put(`/trees/${tree.id}/sharing`, body);
+      onTreeUpdated?.(response.data);
+      setNotice(
+        body.rotate
+          ? t('settings.shareRotatedNotice')
+          : body.enabled
+            ? t('settings.shareEnabledNotice')
+            : t('settings.shareDisabledNotice')
+      );
+    } catch (requestError) {
+      setShareError(translateApiError(requestError, 'errors.saveSettings'));
+    } finally {
+      setSharingBusyId('');
+    }
+  };
+
+  const toggleSharing = (tree, enabled) => {
+    updateSharing(tree, { enabled });
+  };
+
+  const rotateSharing = (tree) => {
+    if (!window.confirm(t('settings.shareRotateConfirm'))) return;
+    updateSharing(tree, { rotate: true });
+  };
+
+  const copyShareLink = async (tree) => {
+    const url = buildShareUrl(tree.sharing?.token);
+    if (!url) return;
+
+    setShareError('');
+    try {
+      await copyToClipboard(url);
+      setCopiedTreeId(tree.id);
+    } catch (_error) {
+      setShareError(t('settings.shareCopyError'));
     }
   };
 
@@ -307,6 +385,117 @@ export default function SettingsModal({ user, onClose, onUserUpdate }) {
               {settingsError}
             </div>
           )}
+        </section>
+
+        <section
+          className="settings-section"
+          aria-labelledby="sharing-heading"
+        >
+          <h3 id="sharing-heading">{t('settings.sharingTitle')}</h3>
+          <p className="settings-copy">{t('settings.sharingCopy')}</p>
+
+          {shareError && (
+            <div className="form-error" role="alert">
+              {shareError}
+            </div>
+          )}
+
+          <ul className="share-tree-list">
+            {trees.map((tree) => {
+              const token = tree.sharing?.token || '';
+              const enabled = Boolean(tree.sharing?.enabled && token);
+              const url = enabled ? buildShareUrl(token) : '';
+              const busy = sharingBusyId === tree.id;
+
+              return (
+                <li className="share-tree-item" key={tree.id}>
+                  <div className="share-tree-top">
+                    <div className="tree-list-copy">
+                      <div className="tree-list-title">
+                        <strong>{tree.name}</strong>
+                        <span className="mode-badge">
+                          {enabled
+                            ? t('settings.sharingOn')
+                            : t('settings.sharingOff')}
+                        </span>
+                      </div>
+                      <span className="tree-list-meta">
+                        {enabled
+                          ? t('settings.sharingOnHint')
+                          : t('settings.sharingOffHint')}
+                      </span>
+                    </div>
+
+                    <label className="switch">
+                      <input
+                        aria-label={t('settings.shareToggleAria', {
+                          name: tree.name,
+                        })}
+                        checked={enabled}
+                        disabled={busy}
+                        onChange={(event) =>
+                          toggleSharing(tree, event.target.checked)
+                        }
+                        type="checkbox"
+                      />
+                      <span className="switch-track" aria-hidden="true">
+                        <span className="switch-thumb" />
+                      </span>
+                    </label>
+                  </div>
+
+                  {enabled && (
+                    <>
+                      <div className="share-link-row">
+                        <input
+                          aria-label={t('settings.shareLinkLabel', {
+                            name: tree.name,
+                          })}
+                          onFocus={(event) => event.target.select()}
+                          readOnly
+                          value={url}
+                        />
+                        <button
+                          className="button secondary small"
+                          onClick={() => copyShareLink(tree)}
+                          type="button"
+                        >
+                          {copiedTreeId === tree.id
+                            ? t('settings.shareCopied')
+                            : t('settings.shareCopy')}
+                        </button>
+                      </div>
+
+                      <div className="share-link-actions">
+                        <button
+                          className="button ghost small"
+                          onClick={() =>
+                            window.open(url, '_blank', 'noopener,noreferrer')
+                          }
+                          type="button"
+                        >
+                          {t('settings.shareOpen')}
+                        </button>
+                        <button
+                          className="button ghost small"
+                          disabled={busy}
+                          onClick={() => rotateSharing(tree)}
+                          type="button"
+                        >
+                          {t('settings.shareNewLink')}
+                        </button>
+                        {busy && (
+                          <span className="settings-saving" role="status">
+                            {t('settings.savingPreferences')}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </section>
 
         <section className="settings-section" aria-labelledby="account-heading">

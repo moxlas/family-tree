@@ -60,6 +60,10 @@ function serializeTree(tree, peopleCount = 0) {
     name: tree.name,
     peopleCount,
     homePersonId: tree.homePersonId ? String(tree.homePersonId) : '',
+    sharing: {
+      enabled: Boolean(tree.sharing?.enabled),
+      token: tree.sharing?.token || '',
+    },
     createdAt: tree.createdAt,
     updatedAt: tree.updatedAt,
   };

@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Tree = require('../models/Tree');
 const Person = require('../models/Person');
@@ -120,8 +121,66 @@ router.put('/:id', async (req, res) => {
   return res.json(serializeTree(tree, peopleCount));
 });
 
-router.delete('/:id', async (req, res) => {
+function createShareToken() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+router.put('/:id/sharing', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ error: 'Tree not found' });
+  }
+
+  const tree = await Tree.findOne({
+    _id: req.params.id,
+    owner: req.user.id,
+  });
+
+  if (!tree) {
+    return res.status(404).json({ error: 'Tree not found' });
+  }
+
+  const hasEnabled = typeof req.body.enabled === 'boolean';
+  const rotate = req.body.rotate === true;
+
+  if (!hasEnabled && !rotate) {
+    return res.status(400).json({ error: 'Nothing to update' });
+  }
+
+  if (!tree.sharing) tree.sharing = {};
+
+  if (hasEnabled) {
+    tree.sharing.enabled = req.body.enabled;
+  }
+
+  const needsToken =
+    rotate || (hasEnabled && req.body.enabled && !tree.sharing.token);
+
+  if (needsToken) {
+    // The sparse unique index makes a collision practically impossible, but
+    // retry once instead of failing the request if it ever happens.
+    let saved = false;
+    for (let attempt = 0; attempt < 2 && !saved; attempt += 1) {
+      tree.sharing.token = createShareToken();
+      try {
+        await tree.save();
+        saved = true;
+      } catch (error) {
+        if (error.code !== 11000 || attempt === 1) throw error;
+      }
+    }
+  } else {
+    await tree.save();
+  }
+
+  const peopleCount = await Person.countDocuments({
+    owner: req.user.id,
+    tree: tree._id,
+  });
+
+  return res.json(serializeTree(tree, peopleCount));
+});
+
+router.delete('/:id', async (req, res) => {  if (!mongoose.isValidObjectId(req.params.id)) {
     return res.status(404).json({ error: 'Tree not found' });
   }
 

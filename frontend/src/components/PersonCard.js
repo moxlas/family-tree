@@ -34,6 +34,9 @@ export default function PersonCard({
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   const effectiveSpouseStatus = spouseStatus || person.spouseStatus || 'current';
   const deceasedLabel = personDeceasedLabel(t, person);
+  const hasAddActions = Boolean(
+    onAddChild || onAddParent || onAddSibling || onAddSpouse
+  );
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
@@ -207,6 +210,7 @@ export default function PersonCard({
             ◎
           </button>
         )}
+        {hasAddActions && (
         <div className="person-add-menu" ref={menuRef}>
           <button
             aria-expanded={menuOpen}
@@ -284,6 +288,7 @@ export default function PersonCard({
             document.body
           ) : null}
         </div>
+        )}
         {onToggleChildren && (
           <button
             aria-label={
@@ -309,30 +314,34 @@ export default function PersonCard({
             {childrenHidden ? '▸' : '▾'}
           </button>
         )}
-        <button
-          aria-label={t('person.edit', { name: fullName })}
-          className="icon-button"
-          onClick={(event) => {
+        {onEdit && (
+          <button
+            aria-label={t('person.edit', { name: fullName })}
+            className="icon-button"
+            onClick={(event) => {
               event.stopPropagation();
               onEdit(person);
             }}
-          title={t('person.editTitle')}
-          type="button"
-        >
-          ✎
-        </button>
-        <button
-          aria-label={t('person.delete', { name: fullName })}
-          className="icon-button danger"
-          onClick={(event) => {
+            title={t('person.editTitle')}
+            type="button"
+          >
+            ✎
+          </button>
+        )}
+        {onDelete && (
+          <button
+            aria-label={t('person.delete', { name: fullName })}
+            className="icon-button danger"
+            onClick={(event) => {
               event.stopPropagation();
               onDelete(person);
             }}
-          title={t('person.deleteTitle')}
-          type="button"
-        >
-          ×
-        </button>
+            title={t('person.deleteTitle')}
+            type="button"
+          >
+            ×
+          </button>
+        )}
       </div>
     </article>
   );

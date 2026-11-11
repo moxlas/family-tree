@@ -218,6 +218,11 @@ export default function TreesModal({
                             {t('trees.currentBadge')}
                           </span>
                         )}
+                        {tree.sharing?.enabled && (
+                          <span className="mode-badge share-badge">
+                            {t('settings.sharingOn')}
+                          </span>
+                        )}
                       </div>
                       <span className="tree-list-meta">
                         {tn('trees.people', tree.peopleCount || 0)}

@@ -442,11 +442,43 @@ const translations = {
       'When off, ex-spouses are hidden and children stay connected to the current parent.',
     'settings.showFormerSpousesNotice': 'Former spouses are shown.',
     'settings.hideFormerSpousesNotice': 'Former spouses are hidden.',
+    'settings.sharingTitle': 'Public sharing',
+    'settings.sharingCopy':
+      'Publish a read-only link to a tree. Anyone with the link can view it. Birth dates and places are shown only for deceased people, and notes stay private.',
+    'settings.sharingOn': 'Shared',
+    'settings.sharingOff': 'Private',
+    'settings.sharingOnHint': 'Anyone with the link can view this tree.',
+    'settings.sharingOffHint': 'Only you can see this tree.',
+    'settings.shareToggleAria': 'Share {{name}} publicly',
+    'settings.shareLinkLabel': 'Public link for {{name}}',
+    'settings.shareCopy': 'Copy link',
+    'settings.shareCopied': 'Copied',
+    'settings.shareOpen': 'Open',
+    'settings.shareNewLink': 'New link',
+    'settings.shareCopyError':
+      'Could not copy the link. Select it and copy it manually.',
+    'settings.shareEnabledNotice': 'Public link enabled.',
+    'settings.shareDisabledNotice': 'Public link disabled.',
+    'settings.shareRotatedNotice':
+      'A new public link was created. The old link no longer works.',
+    'settings.shareRotateConfirm':
+      'Create a new link? The current link will stop working.',
     'settings.accountTitle': 'Account',
     'settings.memberSince': 'Member since',
     'settings.privacy': 'Privacy',
-    'settings.privateTree': 'Your tree is private to this account.',
+    'settings.privateTree':
+      'Your tree is private unless you share a public link.',
     'settings.unknownDate': 'Unknown',
+
+    'share.publicView': 'Public view',
+    'share.livingNote':
+      'Read-only shared tree. Living people’s birth details are kept private.',
+    'share.openApp': 'Open Family Tree',
+    'share.unavailableTitle': 'This link is not available',
+    'share.unavailableCopy':
+      'The link may have been turned off or replaced. Ask the tree owner for a new link.',
+    'share.emptyTitle': 'This shared tree is empty',
+    'share.emptyCopy': 'The owner has not added any people to this tree yet.',
 
     'branch.hideChildren': 'Hide children',
     'branch.showChild': 'Show 1 child',
@@ -1010,11 +1042,45 @@ const translations = {
       'Kai išjungta, buvę sutuoktiniai yra nerodomi ir bendri vaikai yra susiejami su esamu sutuoktiniu.',
     'settings.showFormerSpousesNotice': 'Buvę sutuoktiniai rodomi.',
     'settings.hideFormerSpousesNotice': 'Buvę sutuoktiniai nerodomi.',
+    'settings.sharingTitle': 'Viešas bendrinimas',
+    'settings.sharingCopy':
+      'Paskelbkite tik skaitymo nuorodą į medį. Kiekvienas, turintis nuorodą, gali jį peržiūrėti. Gimimo datos ir vietos rodomos tik mirusiems asmenims, o pastabos lieka privačios.',
+    'settings.sharingOn': 'Bendrinamas',
+    'settings.sharingOff': 'Privatus',
+    'settings.sharingOnHint':
+      'Kiekvienas, turintis nuorodą, gali peržiūrėti šį medį.',
+    'settings.sharingOffHint': 'Šį medį matote tik jūs.',
+    'settings.shareToggleAria': 'Viešai bendrinti „{{name}}“',
+    'settings.shareLinkLabel': 'Vieša „{{name}}“ nuoroda',
+    'settings.shareCopy': 'Nukopijuoti nuorodą',
+    'settings.shareCopied': 'Nukopijuota',
+    'settings.shareOpen': 'Atidaryti',
+    'settings.shareNewLink': 'Nauja nuoroda',
+    'settings.shareCopyError':
+      'Nepavyko nukopijuoti nuorodos. Pažymėkite ją ir nukopijuokite rankiniu būdu.',
+    'settings.shareEnabledNotice': 'Vieša nuoroda įjungta.',
+    'settings.shareDisabledNotice': 'Vieša nuoroda išjungta.',
+    'settings.shareRotatedNotice':
+      'Sukurta nauja vieša nuoroda. Senoji nebeveikia.',
+    'settings.shareRotateConfirm':
+      'Sukurti naują nuorodą? Dabartinė nuoroda nustos veikti.',
     'settings.accountTitle': 'Paskyra',
     'settings.memberSince': 'Narys nuo',
     'settings.privacy': 'Privatumas',
-    'settings.privateTree': 'Jūsų medis matomas tik šiai paskyrai.',
+    'settings.privateTree':
+      'Jūsų medis privatus, nebent bendrinate viešą nuorodą.',
     'settings.unknownDate': 'Nežinoma',
+
+    'share.publicView': 'Viešas vaizdas',
+    'share.livingNote':
+      'Bendrinamas tik skaitymo medis. Gyvų žmonių gimimo duomenys nerodomi.',
+    'share.openApp': 'Atidaryti šeimos medį',
+    'share.unavailableTitle': 'Ši nuoroda nebegalioja',
+    'share.unavailableCopy':
+      'Nuoroda galėjo būti išjungta arba pakeista. Paprašykite medžio savininko naujos nuorodos.',
+    'share.emptyTitle': 'Šis bendrinamas medis dar tuščias',
+    'share.emptyCopy':
+      'Savininkas dar nepridėjo žmonių į šį medį.',
 
     'branch.hideChildren': 'Slėpti vaikus',
     'branch.showChild': 'Rodyti 1 vaiką',

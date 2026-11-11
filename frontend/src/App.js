@@ -3,7 +3,9 @@ import api from './api';
 import { useI18n } from './i18n';
 import ErrorBoundary from './components/ErrorBoundary';
 import Login from './components/Login';
+import PublicTreePage from './components/PublicTreePage';
 import TreePage from './components/TreePage';
+import { readShareToken } from './share';
 import './App.css';
 
 const TOKEN_KEY = 'familyTreeToken';
@@ -13,9 +15,10 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(null);
   const [checkingSession, setCheckingSession] = useState(Boolean(token));
+  const shareToken = readShareToken(window.location.search);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || shareToken) {
       setCheckingSession(false);
       setUser(null);
       return undefined;
@@ -42,7 +45,7 @@ function App() {
     return () => {
       active = false;
     };
-  }, [token]);
+  }, [token, shareToken]);
 
   const handleAuth = (data) => {
     localStorage.setItem(TOKEN_KEY, data.token);
@@ -55,6 +58,14 @@ function App() {
     setToken(null);
     setUser(null);
   };
+
+  if (shareToken) {
+    return (
+      <ErrorBoundary>
+        <PublicTreePage token={shareToken} />
+      </ErrorBoundary>
+    );
+  }
 
   if (checkingSession) {
     return (

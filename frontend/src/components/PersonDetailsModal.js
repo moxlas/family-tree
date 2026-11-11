@@ -13,6 +13,7 @@ function genderLabel(t, gender) {
 
 export default function PersonDetailsModal({
   families,
+  hideNotes = false,
   onClose,
   onEdit,
   people,
@@ -300,12 +301,14 @@ export default function PersonDetailsModal({
               <dd>{childNames.join(', ')}</dd>
             </div>
           )}
-          <div>
-            <dt>{t('details.notes')}</dt>
-            <dd className="details-notes">
-              {person.notes || t('details.noNotes')}
-            </dd>
-          </div>
+          {!hideNotes && (
+            <div>
+              <dt>{t('details.notes')}</dt>
+              <dd className="details-notes">
+                {person.notes || t('details.noNotes')}
+              </dd>
+            </div>
+          )}
         </dl>
 
         <div className="modal-actions">
