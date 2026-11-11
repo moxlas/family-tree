@@ -183,14 +183,31 @@ function homeTreeKeep(homeId, people, families) {
   const { componentOf, members } = parentComponents(people, graph);
   const homeComponent = componentOf.get(homeId);
 
+  // Exclude every component reachable through any number of marriage links,
+  // not just the direct spouses of the home component. Otherwise a spouse's
+  // relative who has no children forms a separate one-person component and
+  // gets mistaken for a genuinely unrelated standalone family.
+  const relatedComponents = new Set();
+  if (homeComponent != null) {
+    relatedComponents.add(homeComponent);
+    const queue = [homeComponent];
+
+    while (queue.length) {
+      const componentId = queue.shift();
+      (members.get(componentId) || []).forEach((personId) => {
+        (graph.partners.get(personId) || new Set()).forEach((partnerId) => {
+          const partnerComponent = componentOf.get(partnerId);
+          if (partnerComponent == null) return;
+          if (relatedComponents.has(partnerComponent)) return;
+          relatedComponents.add(partnerComponent);
+          queue.push(partnerComponent);
+        });
+      });
+    }
+  }
+
   members.forEach((personIds, componentId) => {
-    if (componentId === homeComponent) return;
-    const linkedByMarriage = personIds.some((personId) =>
-      [...(graph.partners.get(personId) || new Set())].some(
-        (partnerId) => componentOf.get(partnerId) === homeComponent
-      )
-    );
-    if (linkedByMarriage) return;
+    if (relatedComponents.has(componentId)) return;
     personIds.forEach((personId) => keep.add(personId));
   });
 

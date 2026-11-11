@@ -456,3 +456,41 @@ describe('computeTreeStats', () => {  it('uses both parent fields when finding t
     });
   });
 });
+
+describe('home tree in-law component closure', () => {
+  it('excludes spouse-only components connected through an in-law family', () => {
+    const familyPeople = [
+      person('H', { spouseId: 'W' }),
+      person('W', { spouseId: 'H' }),
+      person('X', { parentId: 'H' }),
+      person('D', { spouseId: 'H' }),
+      person('DP'),
+      person('DS'),
+      person('S'),
+      person('U', { spouseId: 'V' }),
+      person('V', { spouseId: 'U' }),
+      person('Z', { parentId: 'U' }),
+    ];
+    const familyRows = [
+      { id: 'f1', husband: 'H', wife: 'W', status: 'current', children: ['X'] },
+      { id: 'f2', husband: 'H', wife: 'D', status: 'current', children: [] },
+      { id: 'f3', husband: 'DP', wife: 'DS', status: 'current', children: ['D'] },
+      { id: 'f4', husband: 'DP', wife: 'S', status: 'current', children: [] },
+      { id: 'f5', husband: 'U', wife: 'V', status: 'current', children: ['Z'] },
+    ];
+
+    const view = viewPeople(familyPeople, familyRows, { homePersonId: 'H' });
+    const viewIds = new Set(view.people.map((entry) => entry.id));
+
+    expect(viewIds.has('H')).toBe(true);
+    expect(viewIds.has('D')).toBe(true);
+    expect(viewIds.has('DP')).toBe(false);
+    expect(viewIds.has('DS')).toBe(false);
+    expect(viewIds.has('S')).toBe(false);
+
+    // A genuinely disconnected family is still shown as its own tree.
+    expect(viewIds.has('U')).toBe(true);
+    expect(viewIds.has('V')).toBe(true);
+    expect(viewIds.has('Z')).toBe(true);
+  });
+});
