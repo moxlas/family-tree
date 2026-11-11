@@ -470,7 +470,7 @@ const translations = {
       'Your tree is private unless you share a public link.',
     'settings.unknownDate': 'Unknown',
 
-    'share.publicView': 'Public view',
+    'share.publicView': 'Shared tree',
     'share.livingNote':
       'Read-only shared tree. Living people’s birth details are kept private.',
     'share.openApp': 'Open Family Tree',
@@ -1071,9 +1071,9 @@ const translations = {
       'Jūsų medis privatus, nebent bendrinate viešą nuorodą.',
     'settings.unknownDate': 'Nežinoma',
 
-    'share.publicView': 'Viešas vaizdas',
+    'share.publicView': 'Bendrinamas medis',
     'share.livingNote':
-      'Bendrinamas tik skaitymo medis. Gyvų žmonių gimimo duomenys nerodomi.',
+      'Bendrinamo medžio negalima redaguoti. Gyvų žmonių gimimo informacija nerodoma.',
     'share.openApp': 'Atidaryti šeimos medį',
     'share.unavailableTitle': 'Ši nuoroda nebegalioja',
     'share.unavailableCopy':

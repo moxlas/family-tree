@@ -17,6 +17,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "icons": "node scripts/generate-favicon.js",
     "eject": "react-scripts eject",
     "predeploy": "npm run build && node -e \"require('fs').writeFileSync('build/.nojekyll', '')\"",
     "deploy": "gh-pages -d build --dotfiles"
