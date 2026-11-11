@@ -17,8 +17,7 @@ const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
 const MAX_ROUTING_LANES = 6;
 
-function pairKeyOf(firstId, secondId) {
-  const first = String(firstId);
+function pairKeyOf(firstId, secondId) {  const first = String(firstId);
   const second = String(secondId);
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
 }
@@ -159,11 +158,343 @@ function relativePersonDepths(people, families, anchorId) {
   return depths;
 }
 
+function cardCenterX(unit, memberIndex) {
+  return unit.x - unit.width / 2 + unit.memberCenters[memberIndex];
+}
+
+function alignUnitMembers(unit, memberIds, targetX) {
+  const memberIndexes = memberIds
+    .map((personId) =>
+      unit.members.findIndex((member) => String(member.id) === String(personId))
+    )
+    .filter((index) => index >= 0);
+
+  if (!memberIndexes.length) return [];
+
+  const currentCenter =
+    memberIndexes.reduce(
+      (sum, index) => sum + cardCenterX(unit, index),
+      0
+    ) / memberIndexes.length;
+
+  unit.x += targetX - currentCenter;
+  return memberIndexes.map((index) => cardCenterX(unit, index));
+}
+
+function packRow(units, row, pinned, gap) {
+  if (!row || row.length < 2) return;
+  const ordered = [...row].sort((first, second) => units[first].x - units[second].x);
+
+  for (let index = 1; index < ordered.length; index += 1) {
+    const previous = units[ordered[index - 1]];
+    const current = units[ordered[index]];
+    const minimumLeft = previous.x + previous.width / 2 + gap;
+    const overlap = minimumLeft - (current.x - current.width / 2);
+    if (overlap <= 0) continue;
+
+    if (pinned.has(ordered[index]) && !pinned.has(ordered[index - 1])) {
+      previous.x -= overlap;
+      for (let back = index - 1; back > 0; back -= 1) {
+        const before = units[ordered[back - 1]];
+        const after = units[ordered[back]];
+        const needed =
+          before.x + before.width / 2 + gap - (after.x - after.width / 2);
+        if (needed > 0) before.x -= needed;
+      }
+    } else {
+      current.x += overlap;
+    }
+  }
+
+  for (let index = ordered.length - 2; index >= 0; index -= 1) {
+    const current = units[ordered[index]];
+    const next = units[ordered[index + 1]];
+    const maximumRight = next.x - next.width / 2 - gap;
+    const overlap = current.x + current.width / 2 - maximumRight;
+    if (overlap <= 0) continue;
+
+    if (pinned.has(ordered[index]) && !pinned.has(ordered[index + 1])) {
+      next.x += overlap;
+    } else {
+      current.x -= overlap;
+    }
+  }
+}
+
+// Re-seat the home person's direct ancestry as a pedigree: the father side
+// above-left, the mother side above-right, and each grandparent couple above
+// the parent card it belongs to. Everything else keeps its existing order.
+function applyHomePedigree({
+  byId,
+  depths,
+  families,
+  homePersonId,
+  rows,
+  units,
+}) {
+  const homeId = String(homePersonId || '');
+  if (!homeId || !byId.has(homeId)) return;
+
+  const personUnits = new Map();
+  units.forEach((unit, unitIndex) => {
+    unit.members.forEach((member) => {
+      const id = String(member.id);
+      if (!personUnits.has(id)) personUnits.set(id, []);
+      personUnits.get(id).push(unitIndex);
+    });
+  });
+
+  const homeUnits = personUnits.get(homeId) || [];
+  if (!homeUnits.length) return;
+
+  const homeUnitIndex = homeUnits[0];
+  const homeMemberIndex = units[homeUnitIndex].members.findIndex(
+    (member) => String(member.id) === homeId
+  );
+  if (homeMemberIndex < 0) return;
+
+  const homeCenter = cardCenterX(units[homeUnitIndex], homeMemberIndex);
+  if (!Number.isFinite(homeCenter)) return;
+
+  units.forEach((unit) => {
+    unit.x -= homeCenter;
+  });
+
+  const homeDepth = depths[homeUnitIndex] || 0;
+  if (homeDepth <= 0) {
+    const minLeft = units.reduce(
+      (value, unit) => Math.min(value, unit.x - unit.width / 2),
+      Number.POSITIVE_INFINITY
+    );
+    if (Number.isFinite(minLeft)) {
+      units.forEach((unit) => {
+        unit.x += 34 - minLeft;
+      });
+    }
+    return;
+  }
+
+  const parentsCache = new Map();
+  const parentIdsOf = (personId) => {    const id = String(personId);
+    if (parentsCache.has(id)) return parentsCache.get(id);
+
+    const parentIds = new Set();
+    const person = byId.get(id);
+    if (person) {
+      [person.parentId, person.secondParentId]
+        .filter(Boolean)
+        .forEach((parentId) => parentIds.add(String(parentId)));
+    }
+
+    (families || []).forEach((family) => {
+      const isChild = (family.children || []).some(
+        (childId) => String(childId) === id
+      );
+      if (!isChild) return;
+      [family.husband, family.wife]
+        .filter(Boolean)
+        .forEach((parentId) => parentIds.add(String(parentId)));
+    });
+
+    const result = [...parentIds].filter((parentId) => byId.has(parentId));
+    parentsCache.set(id, result);
+    return result;
+  };
+
+  const ancestorUnitFor = (personId, depth) => {
+    const ancestorIds = parentIdsOf(personId);
+    if (!ancestorIds.length) return null;
+    const candidates = [];
+    ancestorIds.forEach((ancestorId) => {
+      (personUnits.get(ancestorId) || []).forEach((unitIndex) => {
+        if ((depths[unitIndex] || 0) !== depth) return;
+        if (!candidates.includes(unitIndex)) candidates.push(unitIndex);
+      });
+    });
+    if (!candidates.length) return null;
+
+    return (
+      candidates.find(
+        (unitIndex) =>
+          units[unitIndex].members.filter((member) =>
+            ancestorIds.includes(String(member.id))
+          ).length >= 2
+      ) || candidates[0]
+    );
+  };
+
+  const widenParentUnit = (unitIndex, parentIds, depth) => {
+    if (parentIds.length < 2) return;
+    const unit = units[unitIndex];
+    const indexes = parentIds
+      .map((personId) =>
+        unit.members.findIndex(
+          (member) => String(member.id) === String(personId)
+        )
+      )
+      .filter((index) => index >= 0);
+    if (indexes.length < 2) return;
+
+    const [firstIndex, secondIndex] = indexes;
+    if (Math.abs(firstIndex - secondIndex) !== 1) return;
+
+    const firstAncestorUnit = ancestorUnitFor(parentIds[0], depth - 1);
+    const secondAncestorUnit = ancestorUnitFor(parentIds[1], depth - 1);
+    if (firstAncestorUnit == null || secondAncestorUnit == null) return;
+
+    const required =
+      (units[firstAncestorUnit].width + units[secondAncestorUnit].width) / 2 +
+      44;
+    const current = Math.abs(
+      cardCenterX(unit, firstIndex) - cardCenterX(unit, secondIndex)
+    );
+    if (current >= required) return;
+
+    const gapIndex = Math.min(firstIndex, secondIndex);
+    const cardWidth = unit.cardWidth || 248;
+    unit.linkWidths[gapIndex] =
+      (unit.linkWidths[gapIndex] || 0) + (required - current);
+
+    unit.width =
+      unit.members.length * cardWidth +
+      unit.linkWidths.reduce((sum, width) => sum + width, 0);
+
+    let left = 0;
+    unit.memberCenters = unit.members.map((_member, index) => {
+      if (index > 0) {
+        left += cardWidth + (unit.linkWidths[index - 1] || 0);
+      }
+      return left + cardWidth / 2;
+    });
+  };
+
+  const pinned = new Set();
+  const visited = new Set([homeId]);
+  let level = [{ center: 0, id: homeId }];
+
+  for (let depth = homeDepth - 1; depth >= 0 && level.length; depth -= 1) {
+    const alignRequests = [];
+    const nextIds = new Set();
+
+    level.forEach(({ center, id }) => {
+      const parentIds = parentIdsOf(id).filter(
+        (parentId) => !visited.has(parentId)
+      );
+      if (!parentIds.length) return;
+
+      const groups = new Map();
+      parentIds.forEach((parentId) => {
+        const candidates = (personUnits.get(parentId) || []).filter(
+          (unitIndex) => (depths[unitIndex] || 0) === depth
+        );
+        if (!candidates.length) return;
+
+        const shared = candidates.find((unitIndex) =>
+          units[unitIndex].members.some(
+            (member) =>
+              String(member.id) !== String(parentId) &&
+              parentIds.includes(String(member.id))
+          )
+        );
+        const unitIndex = shared == null ? candidates[0] : shared;
+        if (!groups.has(unitIndex)) groups.set(unitIndex, []);
+        groups.get(unitIndex).push(parentId);
+      });
+
+      if (!groups.size) return;
+
+      const ordered = [...groups.entries()].sort((first, second) => {
+        const score = (ids) => {
+          const genders = ids.map((parentId) => byId.get(parentId)?.gender);
+          if (genders.includes('male')) return 0;
+          if (genders.includes('female')) return 1;
+          return 2;
+        };
+        return score(first[1]) - score(second[1]);
+      });
+
+      if (ordered.length === 1) {
+        const [unitIndex, ids] = ordered[0];
+        alignRequests.push({ ids, target: center, unitIndex });
+        ids.forEach((parentId) => nextIds.add(parentId));
+        return;
+      }
+
+      const offset = Math.max(
+        160,
+        (units[ordered[0][0]].width + units[ordered[1][0]].width) / 4 + 30
+      );
+      ordered.slice(0, 2).forEach(([unitIndex, ids], index) => {
+        alignRequests.push({
+          ids,
+          target: center + (index === 0 ? -offset : offset),
+          unitIndex,
+        });
+        ids.forEach((parentId) => nextIds.add(parentId));
+      });
+    });
+
+    const requestsByUnit = new Map();
+    alignRequests.forEach((request) => {
+      if (!requestsByUnit.has(request.unitIndex)) {
+        requestsByUnit.set(request.unitIndex, { ids: new Set(), targets: [] });
+      }
+      const entry = requestsByUnit.get(request.unitIndex);
+      entry.targets.push(request.target);
+      request.ids.forEach((personId) => entry.ids.add(personId));
+    });
+
+    requestsByUnit.forEach((entry, unitIndex) => {
+      const ids = [...entry.ids];
+      widenParentUnit(unitIndex, ids, depth);
+      const target =
+        entry.targets.reduce((sum, value) => sum + value, 0) /
+        entry.targets.length;
+      alignUnitMembers(units[unitIndex], ids, target);
+      pinned.add(unitIndex);
+    });
+
+    packRow(units, rows[depth], pinned, 44);
+
+    const nextLevel = [];
+    nextIds.forEach((personId) => {
+      const candidates = (personUnits.get(personId) || []).filter(
+        (unitIndex) => (depths[unitIndex] || 0) === depth
+      );
+      if (!candidates.length) return;
+      const unitIndex =
+        candidates.find((candidate) => pinned.has(candidate)) || candidates[0];
+      const unit = units[unitIndex];
+      const memberIndex = unit.members.findIndex(
+        (member) => String(member.id) === String(personId)
+      );
+      if (memberIndex < 0) return;
+      nextLevel.push({
+        center: cardCenterX(unit, memberIndex),
+        id: personId,
+      });
+      visited.add(personId);
+    });
+    level = nextLevel;
+  }
+
+  const minLeft = units.reduce(
+    (value, unit) => Math.min(value, unit.x - unit.width / 2),
+    Number.POSITIVE_INFINITY
+  );
+  if (Number.isFinite(minLeft)) {
+    units.forEach((unit) => {
+      unit.x += 34 - minLeft;
+    });
+  }
+}
+
 export function buildScene(
   people,
   families,
   showFormerSpouses = true,
-  anchorPersonId = ''
+  anchorPersonId = '',
+  pedigreePersonId = ''
 ) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
@@ -1287,6 +1618,20 @@ export function buildScene(
     );
   });
 
+  if (pedigreePersonId) {
+    applyHomePedigree({
+      byId,
+      depths,
+      families,
+      homePersonId: pedigreePersonId,
+      rows,
+      units,
+    });
+    units.forEach((unit) => {
+      unit.layoutCenter = unit.x;
+    });
+  }
+
   rows.forEach((row) => {
     row.sort((first, second) => units[first].x - units[second].x);
   });
@@ -1315,6 +1660,7 @@ export default function SpouseTreeComponent({
   onFocus,
   onToggleChildren,
   onView,
+  pedigreePersonId = '',
   people,
   showFormerSpouses = true,
   suppressClickRef,
@@ -1326,9 +1672,17 @@ export default function SpouseTreeComponent({
         people,
         families,
         showFormerSpouses,
-        focusId || homePersonId || ''
+        focusId || homePersonId || '',
+        pedigreePersonId
       ),
-    [people, families, showFormerSpouses, focusId, homePersonId]
+    [
+      people,
+      families,
+      showFormerSpouses,
+      focusId,
+      homePersonId,
+      pedigreePersonId,
+    ]
   );
 
   const containerRef = useRef(null);

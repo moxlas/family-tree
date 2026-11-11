@@ -1,4 +1,5 @@
 import {
+  bloodlinePersonIds,
   branchMemberIds,
   branchFlags,
   computeTreeStats,
@@ -358,8 +359,54 @@ describe('home person tree', () => {
   });
 });
 
-describe('computeTreeStats', () => {
-  it('uses both parent fields when finding the deepest generation', () => {
+describe('bloodlinePersonIds', () => {
+  it('keeps blood relatives and excludes spouses who married in', () => {
+    const familyPeople = [
+      person('home'),
+      person('father'),
+      person('mother'),
+      person('sibling'),
+      person('aunt'),
+      person('cousin'),
+      person('spouse'),
+    ];
+    const familyRows = [
+      {
+        id: 'f1',
+        husband: 'father',
+        wife: 'mother',
+        status: 'current',
+        children: ['home', 'sibling'],
+      },
+      {
+        id: 'f2',
+        husband: null,
+        wife: 'aunt',
+        status: 'current',
+        children: ['cousin'],
+      },
+      {
+        id: 'f3',
+        husband: 'home',
+        wife: 'spouse',
+        status: 'current',
+        children: [],
+      },
+    ];
+    // The aunt is the mother's sister.
+    familyPeople[2] = { ...familyPeople[2], parentId: 'grandparent' };
+    familyPeople[4] = { ...familyPeople[4], parentId: 'grandparent' };
+    familyPeople.push(person('grandparent', { spouseId: null }));
+
+    const ids = bloodlinePersonIds(familyPeople, familyRows, 'home');
+    expect([...ids].sort()).toEqual(
+      ['aunt', 'cousin', 'father', 'grandparent', 'home', 'mother', 'sibling'].sort()
+    );
+    expect(ids.has('spouse')).toBe(false);
+  });
+});
+
+describe('computeTreeStats', () => {  it('uses both parent fields when finding the deepest generation', () => {
     const statsPeople = [
       person('child', { parentId: 'father', secondParentId: 'mother' }),
       person('father'),

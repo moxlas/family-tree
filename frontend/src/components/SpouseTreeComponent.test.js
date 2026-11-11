@@ -479,3 +479,57 @@ describe('buildScene anchored generations', () => {
     expect(rowOf('AUNT')).toBe(rowOf('C') - 1);
   });
 });
+
+describe('home-centred pedigree layout', () => {
+  const pedigreePeople = [
+    person('H', { firstName: 'Home', gender: 'male', parentId: 'F', secondParentId: 'M' }),
+    person('S', { firstName: 'Sibling', gender: 'female', parentId: 'F', secondParentId: 'M' }),
+    person('F', { firstName: 'Father', gender: 'male' }),
+    person('M', { firstName: 'Mother', gender: 'female' }),
+    person('PF', { firstName: 'PaternalGrandfather', gender: 'male' }),
+    person('PM', { firstName: 'PaternalGrandmother', gender: 'female' }),
+    person('MF', { firstName: 'MaternalGrandfather', gender: 'male' }),
+    person('MM', { firstName: 'MaternalGrandmother', gender: 'female' }),
+  ];
+  const pedigreeFamilies = [
+    { id: 'f1', husband: 'F', wife: 'M', status: 'current', children: ['H', 'S'] },
+    { id: 'f2', husband: 'PF', wife: 'PM', status: 'current', children: ['F'] },
+    { id: 'f3', husband: 'MF', wife: 'MM', status: 'current', children: ['M'] },
+  ];
+
+  const cardCentre = (unit, personId) => {
+    const index = unit.members.findIndex((member) => member.id === personId);
+    return unit.x - unit.width / 2 + unit.memberCenters[index];
+  };
+
+  it('puts the home card between both parent sides and grandparents above each parent', () => {
+    const scene = buildScene(
+      pedigreePeople,
+      pedigreeFamilies,
+      true,
+      'H',
+      'H'
+    );
+    const unitFor = (personId) =>
+      scene.units.find((unit) =>
+        unit.members.some((member) => member.id === personId)
+      );
+
+    const home = unitFor('H');
+    const parents = unitFor('F');
+    const paternal = unitFor('PF');
+    const maternal = unitFor('MF');
+
+    const homeCentre = cardCentre(home, 'H');
+    const fatherCentre = cardCentre(parents, 'F');
+    const motherCentre = cardCentre(parents, 'M');
+
+    expect((fatherCentre + motherCentre) / 2).toBeCloseTo(homeCentre, 1);
+    expect(
+      (cardCentre(paternal, 'PF') + cardCentre(paternal, 'PM')) / 2
+    ).toBeCloseTo(fatherCentre, 1);
+    expect(
+      (cardCentre(maternal, 'MF') + cardCentre(maternal, 'MM')) / 2
+    ).toBeCloseTo(motherCentre, 1);
+  });
+});

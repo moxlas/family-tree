@@ -14,9 +14,9 @@ import PersonDetailsModal from './PersonDetailsModal';
 import PersonModal from './PersonModal';
 import SettingsModal from './SettingsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
-import TreeComponent from './TreeComponent';
 import TreesModal from './TreesModal';
 import {
+  bloodlinePersonIds,
   branchMemberIds,
   computeTreeStats,
   defaultHomePersonId,
@@ -213,58 +213,6 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const bloodlinePeople = useMemo(() => {
-    const byId = new Map(people.map((person) => [person.id, person]));
-    const secondaryIds = new Set();
-    const remap = new Map();
-    const visited = new Set();
-
-    people.forEach((person) => {
-      if (visited.has(person.id)) return;
-
-      const spouseId = person.spouseId ? String(person.spouseId) : null;
-      if (!spouseId) return;
-
-      const spouse = byId.get(spouseId);
-      if (!spouse) return;
-      if (String(spouse.spouseId || '') !== person.id) return;
-
-      visited.add(person.id);
-      visited.add(spouse.id);
-      secondaryIds.add(spouse.id);
-      remap.set(spouse.id, person.id);
-
-      // If the primary person has no parent but the spouse does, keep the
-      // couple in the spouse's generation instead of making it a root.
-      if (!person.parentId && spouse.parentId) {
-        remap.set(`parent:${person.id}`, String(spouse.parentId));
-      }
-    });
-
-    return people
-      .filter((person) => !secondaryIds.has(person.id))
-      .map((person) => {
-        let parentId = person.parentId ? String(person.parentId) : null;
-
-        if (!parentId && remap.has(`parent:${person.id}`)) {
-          const spouseParentId = remap.get(`parent:${person.id}`);
-          parentId = remap.has(spouseParentId)
-            ? remap.get(spouseParentId)
-            : spouseParentId;
-        }
-
-        if (parentId && remap.has(parentId)) {
-          return { ...person, parentId: remap.get(parentId) };
-        }
-
-        return parentId === person.parentId
-          ? person
-          : { ...person, parentId };
-      });
-  }, [people]);
-
-  const displayPeople = bloodlineOnly ? bloodlinePeople : people;
-
   const fallbackHomePersonId = useMemo(
     () => defaultHomePersonId(people, families),
     [people, families]
@@ -277,6 +225,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     }
     return fallbackHomePersonId;
   }, [activeTree, people, fallbackHomePersonId]);
+
+  const bloodlinePeople = useMemo(() => {
+    if (!homePersonId) return people;
+    const ids = bloodlinePersonIds(people, families, homePersonId);
+    return people.filter((person) => ids.has(String(person.id)));
+  }, [people, families, homePersonId]);
+
+  const displayPeople = bloodlineOnly ? bloodlinePeople : people;
 
   const collapsedPersonIds = useMemo(
     () => (activeTreeId && collapsedByTree[activeTreeId]) || [],
@@ -359,12 +315,13 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     if (bloodlineOnly) setFocusId('');
   }, [bloodlineOnly]);
 
-  // Put the focused card in the middle of the tree viewport once the branch
-  // has rendered, so nobody has to scroll around to find the person. The
-  // branch lays out in a few passes, so keep re-centring until the card stays
-  // put for a frame.
+  // Put the focused card, or the home card in the full tree, in the middle
+  // of the tree viewport once the scene has rendered. The branch lays out in
+  // a few passes, so keep re-centring until the card stays put for a frame.
+  const centreTargetId = focusId || homePersonId;
+
   useEffect(() => {
-    if (!focusId) return undefined;
+    if (!centreTargetId || !people.length) return undefined;
 
     let frame = 0;
     let attempts = 0;
@@ -377,7 +334,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
       const scroll = scrollRef.current;
       const card = scroll?.querySelector(
-        `[data-person-id="${String(focusId).replace(/"/g, '\\"')}"]`
+        `[data-person-id="${String(centreTargetId).replace(/"/g, '\\"')}"]`
       );
 
       if (!scroll || !card) {
@@ -414,7 +371,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       cancelled = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [focusId]);
+  }, [centreTargetId, people.length, bloodlineOnly]);
 
   const toggleChildren = (person) => {
     const id = person ? String(person.id) : '';
@@ -1152,8 +1109,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               style={{ cursor: 'grab', zoom }}
             >
               {bloodlineOnly ? (
-                <TreeComponent
+                <SpouseTreeComponent
+                  families={families}
+                  focusId=""
                   homePersonId={homePersonId}
+                  pedigreePersonId={homePersonId}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}
@@ -1163,6 +1123,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   onView={(person) => setDetailsPerson(person)}
                   people={bloodlinePeople}
                   suppressClickRef={suppressClickRef}
+                  zoom={zoom}
                 />
               ) : (
                 <SpouseTreeComponent
@@ -1172,6 +1133,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   families={view.families}
                   focusId={focusId}
                   homePersonId={homePersonId}
+                  pedigreePersonId={focusId ? '' : homePersonId}
                   showFormerSpouses={showFormerSpouses}
                   onAddChild={(person) => openAddChild(person)}
                   onAddParent={(person) => openAddParent(person)}

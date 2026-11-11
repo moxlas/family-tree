@@ -318,8 +318,19 @@ export function branchMemberIds(people, families, personId) {
 
 // Picks a sensible trunk for the main tree when the user has not chosen one:
 // the youngest person with recorded parents, then the deepest generation.
-export function computeTreeStats(people, families = []) {
+export function bloodlinePersonIds(people, families, personId) {
+  const id = idOf(personId);
   const ids = new Set(people.map((person) => idOf(person.id)));
+  if (!id || !ids.has(id)) return new Set();
+
+  const graph = buildGraph(people, families || []);
+  const parents = reverseEdges(graph.children);
+  const ancestors = closure([id], parents);
+  const bloodline = closure([...ancestors], graph.children);
+  return new Set([...ancestors, ...bloodline]);
+}
+
+export function computeTreeStats(people, families = []) {  const ids = new Set(people.map((person) => idOf(person.id)));
   const parentsByChild = new Map();
 
   const addParent = (childId, parentId) => {
