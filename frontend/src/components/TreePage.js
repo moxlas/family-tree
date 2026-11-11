@@ -803,7 +803,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               </span>
             </span>
             <button
-              className="button ghost small"
+              className="button secondary small"
               onClick={() => setTreesOpen(true)}
               type="button"
             >
@@ -1101,7 +1101,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 </button>
               </div>
               <button
-                className="button secondary small tree-centre-button"
+                className="button ghost small tree-centre-button"
                 onClick={() => setCentreSignal((value) => value + 1)}
                 type="button"
               >

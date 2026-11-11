@@ -64,7 +64,7 @@ const translations = {
     'tree.addRoot': 'Add another root',
     'tree.zoom': 'Tree zoom',
     'tree.zoomReset': 'Reset',
-    'tree.centreView': 'Centre view',
+    'tree.centreView': 'Centre',
     'tree.loading': 'Growing your tree…',
     'tree.dismissError': 'Dismiss error',
 
@@ -551,7 +551,7 @@ const translations = {
     'tree.addRoot': 'Pridėti dar vieną šaknį',
     'tree.zoom': 'Medžio mastelis',
     'tree.zoomReset': 'Atstatyti',
-    'tree.centreView': 'Centruoti vaizdą',
+    'tree.centreView': 'Centruoti',
     'tree.loading': 'Auginamas jūsų medis…',
     'tree.dismissError': 'Uždaryti klaidos pranešimą',
 
@@ -1005,11 +1005,11 @@ const translations = {
     'settings.bloodlineEnabledNotice': 'Įjungtas tik kraujo linijos medis.',
     'settings.spouseModeEnabledNotice':
       'Įjungtos atskiros sutuoktinių kortelės.',
-    'settings.showFormerSpouses': 'Rodyti ištisusius santykius',
+    'settings.showFormerSpouses': 'Rodyti buvusius sutuoktinius',
     'settings.showFormerSpousesHint':
-      'Kai išjungta, ištisusi santykiuose yra pasmerkti ir vaikai lieka susieti su dabartiniu tėvu.',
-    'settings.showFormerSpousesNotice': 'Ištisusi santykiuose rodomi.',
-    'settings.hideFormerSpousesNotice': 'Ištisusi santykiuose nerydomi.',
+      'Kai išjungta, buvę sutuoktiniai yra nerodomi ir bendri vaikai yra susiejami su esamu sutuoktiniu.',
+    'settings.showFormerSpousesNotice': 'Buvę sutuoktiniai rodomi.',
+    'settings.hideFormerSpousesNotice': 'Buvę sutuoktiniai nerodomi.',
     'settings.accountTitle': 'Paskyra',
     'settings.memberSince': 'Narys nuo',
     'settings.privacy': 'Privatumas',
