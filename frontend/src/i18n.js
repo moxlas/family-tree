@@ -52,7 +52,7 @@ const translations = {
     'stats.roots.one': 'Family root',
     'stats.roots.other': 'Family roots',
     'tree.heading': 'Family tree',
-    'tree.homePerson': 'Home person',
+    'tree.homePerson': 'Main person',
     'tree.homePersonHint':
       'The tree shows this person’s ancestors and their descendants.',
     'tree.headingHint':
@@ -80,7 +80,7 @@ const translations = {
     'notice.demoLoaded': 'Example family loaded.',
     'notice.treeCreated': 'Tree created.',
     'notice.treeRenamed': 'Tree renamed.',
-    'notice.homePersonSet': 'Home person updated.',
+    'notice.homePersonSet': 'Main person updated.',
     'notice.treeDeleted': 'Tree deleted.',
     'notice.gedcomExported': 'GEDCOM file exported.',
 
@@ -101,8 +101,8 @@ const translations = {
     'person.noChildren': 'This person has no children',
     'person.hideChildrenAria': 'Hide the children of {{name}}',
     'person.showChildrenAria': 'Show the children of {{name}}',
-    'person.homeBadge': 'Home',
-    'person.homePerson': 'Home person',
+    'person.homeBadge': 'MAIN',
+    'person.homePerson': 'Main person',
     'person.datesUnknown': 'Dates not added',
     'person.spouseLabel': 'Spouse or partner: {{name}}',
     'person.addChild': 'Add a child of {{name}}',
@@ -137,7 +137,7 @@ const translations = {
     'details.noNotes': 'No notes yet.',
     'details.close': 'Close',
     'details.relationTo': '{{relation}} of {{name}}',
-    'relation.homePerson': 'Home person',
+    'relation.homePerson': 'Main person',
     'relation.branchPerson': 'Branch person',
     'relation.self': 'This person',
     'relation.father': 'Father',
@@ -412,7 +412,7 @@ const translations = {
     'errors.createTree': 'Could not create this tree. Please try again.',
     'errors.renameTree': 'Could not rename this tree. Please try again.',
     'errors.deleteTree': 'Could not delete this tree. Please try again.',
-    'errors.homePerson': 'Could not change the home person. Please try again.',
+    'errors.homePerson': 'Could not change the main person. Please try again.',
     'errors.importGedcom':
       'Could not import this GEDCOM file. Please try again.',
 
