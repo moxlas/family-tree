@@ -278,6 +278,7 @@ async function syncRelationshipDetails(person, body, ownerId, treeId) {
     if (partner && String(partner._id) !== String(person._id)) {
       if (
         partner.deceased &&
+        !person.deceased &&
         ACTIVE_RELATIONSHIP_STATUSES.has(current.status)
       ) {
         current.status = 'widowed';

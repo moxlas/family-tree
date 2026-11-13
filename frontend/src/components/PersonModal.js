@@ -23,7 +23,7 @@ const ENDED_RELATIONSHIP_STATUSES = new Set([
   'separated',
 ]);
 
-function relationshipStatusForFamily(family, partner) {
+function relationshipStatusForFamily(family, partner, person) {
   let status = RELATIONSHIP_STATUSES.includes(family.relationshipStatus)
     ? family.relationshipStatus
     : '';
@@ -35,11 +35,16 @@ function relationshipStatusForFamily(family, partner) {
       else if (partner?.deceased) status = 'widowed';
       else status = 'divorced';
     } else {
-      status = partner?.deceased ? 'widowed' : 'married';
+      status =
+        partner?.deceased && !person?.deceased ? 'widowed' : 'married';
     }
   }
 
-  if (ACTIVE_RELATIONSHIP_STATUSES.has(status) && partner?.deceased) {
+  if (
+    ACTIVE_RELATIONSHIP_STATUSES.has(status) &&
+    partner?.deceased &&
+    !person?.deceased
+  ) {
     return 'widowed';
   }
 
@@ -56,7 +61,7 @@ function relationshipBlockForFamily(family, person, byId) {
   return {
     key: `family-${family.id}-${String(partnerId || '')}`,
     partnerId: partnerId ? String(partnerId) : '',
-    status: relationshipStatusForFamily(family, partner),
+    status: relationshipStatusForFamily(family, partner, person),
     startDate: family.marriageDate || '',
     startPlace: family.marriagePlace || '',
     endDate: family.separationDate || family.divorceDate || '',
@@ -134,7 +139,7 @@ function relationshipsForPerson(person, families, people, initialSpouseId) {
               ? partner?.deceased
                 ? 'widowed'
                 : 'divorced'
-              : partner?.deceased
+              : partner?.deceased && !person?.deceased
                 ? 'widowed'
                 : 'married',
           startDate: '',
@@ -152,7 +157,9 @@ function relationshipsForPerson(person, families, people, initialSpouseId) {
   } else if (initialSpouseId) {
     const partner = byId.get(String(initialSpouseId));
     current = {
-      ...emptyRelationship(partner?.deceased ? 'widowed' : 'married'),
+      ...emptyRelationship(
+        partner?.deceased && !person?.deceased ? 'widowed' : 'married'
+      ),
       key: `initial-${String(initialSpouseId)}`,
       partnerId: String(initialSpouseId),
     };
@@ -356,7 +363,7 @@ export default function PersonModal({
       let status = current.currentRelationship.status;
 
       if (!nextPartnerId) status = 'married';
-      else if (partner?.deceased) status = 'widowed';
+      else if (partner?.deceased) status = current.deceased ? 'married' : 'widowed';
 
       return {
         ...current,
@@ -385,7 +392,9 @@ export default function PersonModal({
           String(entry.id) === String(current.currentRelationship.partnerId)
       );
       const status =
-        partner?.deceased && ACTIVE_RELATIONSHIP_STATUSES.has(nextStatus)
+        partner?.deceased &&
+        !current.deceased &&
+        ACTIVE_RELATIONSHIP_STATUSES.has(nextStatus)
           ? 'widowed'
           : nextStatus;
 
