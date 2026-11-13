@@ -9,33 +9,43 @@ preserving the details that make a family story.
 - **API (Vercel):** https://backend-kappa-wine-51.vercel.app
 - **Repository:** https://github.com/moxlas/family-tree
 
+## What you can do
+
+- Create a private account and keep your own trees
+- Build and edit people, parents, children, spouses, and former spouses
+- Switch between a bloodline-only view and a view that shows spouse cards
+- Focus on any person's branch to explore ancestors, descendants, and relatives
+- Collapse or expand a person's children directly on their card
+- Record birth and death dates and places, gender, and notes
+- View relationship summaries (parents, siblings, grandparents, aunts/uncles,
+  cousins, in-laws, step-relations, former spouses)
+- Create and switch between multiple family trees
+- Import and export GEDCOM 5.5.1 files
+- Share a read-only link to a tree with visitors
+- Use the app in English or Lithuanian
+
+## Using the app
+
+1. Register or sign in.
+2. Create a family tree (or load the example family to explore).
+3. Add people and connect them as parents, children, or spouses.
+4. Choose a home person; the tree is centred on them.
+5. Use the view toggle to show or hide spouse cards.
+6. Open a person's card for details, or edit them from the person form.
+7. Export your tree as GEDCOM, or share a read-only link from Settings.
+
+Shared trees are read-only for visitors and can be turned on or off at any
+time. A new link can be generated if an old one should stop working.
+
 ## Stack
 
 - React 18 (Create React App)
-- Node.js + Express 5
+- Node.js + Express
 - MongoDB Atlas with Mongoose
 - JWT authentication
 - GitHub Pages for the frontend
 - Vercel serverless functions for the API
 
-## Features
-
-- Register and sign in with a private account
-- Profile settings for name, email, and tree display preferences
-- Add, edit and remove relatives
-- Connect children to parents across multiple generations
-- Link spouses as people in the tree; each spouse can have their own parents
-  and children
-- Choose a bloodline-only view (spouses shown inline) or separate spouse cards
-  (the default)
-- Record birth/death dates, spouse or partner, and notes
-- Load an example family to explore the visualization
-- Responsive family tree with an overflow-friendly canvas
-- English and Lithuanian interface with a language switcher
-- Each account only sees its own tree
-- Create and switch between multiple family trees per account
-- Import GEDCOM 5.5.1 files with merge matching and a warning report
-- Export the current tree as a GEDCOM 5.5.1 file
 ## Project structure
 
 ```text
@@ -43,17 +53,20 @@ backend/
   api/               Vercel serverless entry points
   database/          Cached MongoDB connection
   middleware/        JWT authentication
-  models/            User, Person and Tree schemas
-  routes/            Auth, people and tree endpoints
+  models/            User, Person, Tree and Family schemas
+  routes/            Auth, people, trees, families and public endpoints
   services/          GEDCOM import service
   utils/             Shared helpers
   app.js             Express application
   server.js          Local server
 frontend/
-  public/
-  src/components/    Login, tree, person form, trees and GEDCOM modals
+  public/            Static assets and favicon set
+  src/components/    Login, tree, person form, details, sharing and modals
   src/gedcom.js      GEDCOM 5.5.1 parser and exporter
+  src/i18n.js        English and Lithuanian strings
+  src/share.js       Share link helpers
   src/api.js         Axios client and token handling
+  scripts/           Asset generation scripts
 ```
 
 ## Local development
@@ -94,34 +107,37 @@ The frontend opens at `http://localhost:3000` and uses the API at
 
 ## API
 
+A compact overview of the main endpoints (additional endpoints are available):
+
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/api/health` | API and database health |
 | `POST` | `/api/auth/register` | Create an account |
 | `POST` | `/api/auth/login` | Sign in |
 | `GET` | `/api/auth/me` | Current user |
-| `PUT` | `/api/auth/profile` | Update the current user's name and email |
-| `PUT` | `/api/auth/settings` | Update tree display preferences |
+| `PUT` | `/api/auth/profile` | Update name and email |
+| `PUT` | `/api/auth/settings` | Update display preferences |
 | `GET` | `/api/people` | List people in a tree (`?treeId=`) |
-| `POST` | `/api/people` | Add a person to a tree |
-| `POST` | `/api/people/demo` | Replace a tree with example data |
+| `POST` | `/api/people` | Add a person |
 | `PUT` | `/api/people/:id` | Update a person |
-| `DELETE` | `/api/people/:id` | Delete a person and descendants |
+| `DELETE` | `/api/people/:id` | Delete a person |
 | `GET` | `/api/trees` | List the signed-in user's trees |
 | `POST` | `/api/trees` | Create a tree |
-| `PUT` | `/api/trees/:id` | Rename a tree |
-| `DELETE` | `/api/trees/:id` | Delete a tree and its people |
-| `POST` | `/api/trees/:id/import` | Merge a GEDCOM 5.5.1 file into a tree |
+| `PUT` | `/api/trees/:id` | Rename a tree or set its home person |
+| `DELETE` | `/api/trees/:id` | Delete a tree |
+| `POST` | `/api/trees/:id/import` | Merge a GEDCOM file into a tree |
 
 Authenticated requests use `Authorization: Bearer <token>`.
 
 ## GEDCOM notes
 
-- Only GEDCOM 5.5.1 is supported. GEDCOM 7.0 may be added later.
+- Only GEDCOM 5.5.1 is supported.
 - Import merges into the selected tree. Existing people are matched by name and
   birth year; missing details are filled in.
-- This app stores one parent and one spouse per person, so GEDCOM families with
-  two parents produce a warning and children are linked to the first parent.
+- The app supports two parents per person and multiple spouses, recorded as
+  families.
+- Maiden and previous names are stored as surnames and round-trip through
+  GEDCOM.
 - Up to 3,000 people can be imported in one file.
 
 ## Deployment
@@ -155,3 +171,4 @@ npm run deploy
 
 The `predeploy` script builds the app and `gh-pages` publishes the `build`
 folder to the `gh-pages` branch. Set GitHub Pages to serve from that branch.
+```
