@@ -442,26 +442,26 @@ const translations = {
       'When off, ex-spouses are hidden and children stay connected to the current parent.',
     'settings.showFormerSpousesNotice': 'Former spouses are shown.',
     'settings.hideFormerSpousesNotice': 'Former spouses are hidden.',
-    'settings.sharingTitle': 'Public sharing',
-    'settings.sharingCopy':
+    'trees.sharingTitle': 'Public sharing',
+    'trees.sharingCopy':
       'Publish a read-only link to a tree. Anyone with the link can view it. Birth dates and places are shown only for deceased people, and notes stay private.',
-    'settings.sharingOn': 'Shared',
-    'settings.sharingOff': 'Private',
-    'settings.sharingOnHint': 'Anyone with the link can view this tree.',
-    'settings.sharingOffHint': 'Only you can see this tree.',
-    'settings.shareToggleAria': 'Share {{name}} publicly',
-    'settings.shareLinkLabel': 'Public link for {{name}}',
-    'settings.shareCopy': 'Copy link',
-    'settings.shareCopied': 'Copied',
-    'settings.shareOpen': 'Open',
-    'settings.shareNewLink': 'New link',
-    'settings.shareCopyError':
+    'trees.sharingOn': 'Shared',
+    'trees.sharingOff': 'Private',
+    'trees.sharingOnHint': 'Anyone with the link can view this tree.',
+    'trees.sharingOffHint': 'Only you can see this tree.',
+    'trees.shareToggleAria': 'Share {{name}} publicly',
+    'trees.shareLinkLabel': 'Public link for {{name}}',
+    'trees.shareCopy': 'Copy link',
+    'trees.shareCopied': 'Copied',
+    'trees.shareOpen': 'Open',
+    'trees.shareNewLink': 'New link',
+    'trees.shareCopyError':
       'Could not copy the link. Select it and copy it manually.',
-    'settings.shareEnabledNotice': 'Public link enabled.',
-    'settings.shareDisabledNotice': 'Public link disabled.',
-    'settings.shareRotatedNotice':
+    'trees.shareEnabledNotice': 'Public link enabled.',
+    'trees.shareDisabledNotice': 'Public link disabled.',
+    'trees.shareRotatedNotice':
       'A new public link was created. The old link no longer works.',
-    'settings.shareRotateConfirm':
+    'trees.shareRotateConfirm':
       'Create a new link? The current link will stop working.',
     'settings.accountTitle': 'Account',
     'settings.memberSince': 'Member since',
@@ -1042,27 +1042,27 @@ const translations = {
       'Kai išjungta, buvę sutuoktiniai yra nerodomi ir bendri vaikai yra susiejami su esamu sutuoktiniu.',
     'settings.showFormerSpousesNotice': 'Buvę sutuoktiniai rodomi.',
     'settings.hideFormerSpousesNotice': 'Buvę sutuoktiniai nerodomi.',
-    'settings.sharingTitle': 'Viešas bendrinimas',
-    'settings.sharingCopy':
+    'trees.sharingTitle': 'Viešas bendrinimas',
+    'trees.sharingCopy':
       'Paskelbkite tik skaitymo nuorodą į medį. Kiekvienas, turintis nuorodą, gali jį peržiūrėti. Gimimo datos ir vietos rodomos tik mirusiems asmenims, o pastabos lieka privačios.',
-    'settings.sharingOn': 'Bendrinamas',
-    'settings.sharingOff': 'Privatus',
-    'settings.sharingOnHint':
+    'trees.sharingOn': 'Bendrinamas',
+    'trees.sharingOff': 'Privatus',
+    'trees.sharingOnHint':
       'Kiekvienas, turintis nuorodą, gali peržiūrėti šį medį.',
-    'settings.sharingOffHint': 'Šį medį matote tik jūs.',
-    'settings.shareToggleAria': 'Viešai bendrinti „{{name}}“',
-    'settings.shareLinkLabel': 'Vieša „{{name}}“ nuoroda',
-    'settings.shareCopy': 'Nukopijuoti nuorodą',
-    'settings.shareCopied': 'Nukopijuota',
-    'settings.shareOpen': 'Atidaryti',
-    'settings.shareNewLink': 'Nauja nuoroda',
-    'settings.shareCopyError':
+    'trees.sharingOffHint': 'Šį medį matote tik jūs.',
+    'trees.shareToggleAria': 'Viešai bendrinti „{{name}}“',
+    'trees.shareLinkLabel': 'Vieša „{{name}}“ nuoroda',
+    'trees.shareCopy': 'Nukopijuoti nuorodą',
+    'trees.shareCopied': 'Nukopijuota',
+    'trees.shareOpen': 'Atidaryti',
+    'trees.shareNewLink': 'Nauja nuoroda',
+    'trees.shareCopyError':
       'Nepavyko nukopijuoti nuorodos. Pažymėkite ją ir nukopijuokite rankiniu būdu.',
-    'settings.shareEnabledNotice': 'Vieša nuoroda įjungta.',
-    'settings.shareDisabledNotice': 'Vieša nuoroda išjungta.',
-    'settings.shareRotatedNotice':
+    'trees.shareEnabledNotice': 'Vieša nuoroda įjungta.',
+    'trees.shareDisabledNotice': 'Vieša nuoroda išjungta.',
+    'trees.shareRotatedNotice':
       'Sukurta nauja vieša nuoroda. Senoji nebeveikia.',
-    'settings.shareRotateConfirm':
+    'trees.shareRotateConfirm':
       'Sukurti naują nuorodą? Dabartinė nuoroda nustos veikti.',
     'settings.accountTitle': 'Paskyra',
     'settings.memberSince': 'Narys nuo',

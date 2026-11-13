@@ -1,6 +1,25 @@
 import React, { useEffect, useRef, useState } from 'react';
 import api from '../api';
 import { useI18n } from '../i18n';
+import { buildShareUrl } from '../share';
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) throw new Error('Copy failed');
+}
 
 export default function TreesModal({
   trees,
@@ -20,6 +39,9 @@ export default function TreesModal({
   const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [sharingBusyId, setSharingBusyId] = useState('');
+  const [copiedTreeId, setCopiedTreeId] = useState('');
+  const [shareError, setShareError] = useState('');
   const renameRef = useRef(null);
 
   useEffect(() => {
@@ -39,6 +61,12 @@ export default function TreesModal({
     const timer = window.setTimeout(() => setNotice(''), 3500);
     return () => window.clearTimeout(timer);
   }, [notice]);
+
+  useEffect(() => {
+    if (!copiedTreeId) return undefined;
+    const timer = window.setTimeout(() => setCopiedTreeId(''), 2500);
+    return () => window.clearTimeout(timer);
+  }, [copiedTreeId]);
 
   useEffect(() => {
     if (renameId && renameRef.current) renameRef.current.focus();
@@ -117,6 +145,50 @@ export default function TreesModal({
       setError(translateApiError(requestError, 'errors.deleteTree'));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const updateSharing = async (tree, body) => {
+    setSharingBusyId(tree.id);
+    setShareError('');
+    setNotice('');
+
+    try {
+      const response = await api.put(`/trees/${tree.id}/sharing`, body);
+      onUpdated(response.data);
+      setNotice(
+        body.rotate
+          ? t('trees.shareRotatedNotice')
+          : body.enabled
+            ? t('trees.shareEnabledNotice')
+            : t('trees.shareDisabledNotice')
+      );
+    } catch (requestError) {
+      setShareError(translateApiError(requestError, 'errors.saveSettings'));
+    } finally {
+      setSharingBusyId('');
+    }
+  };
+
+  const toggleSharing = (tree, enabled) => {
+    updateSharing(tree, { enabled });
+  };
+
+  const rotateSharing = (tree) => {
+    if (!window.confirm(t('trees.shareRotateConfirm'))) return;
+    updateSharing(tree, { rotate: true });
+  };
+
+  const copyShareLink = async (tree) => {
+    const url = buildShareUrl(tree.sharing?.token);
+    if (!url) return;
+
+    setShareError('');
+    try {
+      await copyToClipboard(url);
+      setCopiedTreeId(tree.id);
+    } catch (_error) {
+      setShareError(t('trees.shareCopyError'));
     }
   };
 
@@ -220,7 +292,7 @@ export default function TreesModal({
                         )}
                         {tree.sharing?.enabled && (
                           <span className="mode-badge share-badge">
-                            {t('settings.sharingOn')}
+                            {t('trees.sharingOn')}
                           </span>
                         )}
                       </div>
@@ -257,6 +329,106 @@ export default function TreesModal({
                       >
                         {t('trees.delete')}
                       </button>
+                    </div>
+
+                    <div className="share-tree-item share-tree-inline">
+                      <div className="share-tree-top">
+                        <div className="tree-list-copy">
+                          <div className="tree-list-title">
+                            <strong>{t('trees.sharingTitle')}</strong>
+                            <span className="mode-badge">
+                              {tree.sharing?.enabled && tree.sharing?.token
+                                ? t('trees.sharingOn')
+                                : t('trees.sharingOff')}
+                            </span>
+                          </div>
+                          <span className="tree-list-meta">
+                            {tree.sharing?.enabled && tree.sharing?.token
+                              ? t('trees.sharingOnHint')
+                              : t('trees.sharingOffHint')}
+                          </span>
+                        </div>
+
+                        <label className="switch">
+                          <input
+                            aria-label={t('trees.shareToggleAria', {
+                              name: tree.name,
+                            })}
+                            checked={Boolean(
+                              tree.sharing?.enabled && tree.sharing?.token
+                            )}
+                            disabled={sharingBusyId === tree.id}
+                            onChange={(event) =>
+                              toggleSharing(tree, event.target.checked)
+                            }
+                            type="checkbox"
+                          />
+                          <span className="switch-track" aria-hidden="true">
+                            <span className="switch-thumb" />
+                          </span>
+                        </label>
+                      </div>
+
+                      <p className="settings-copy">{t('trees.sharingCopy')}</p>
+
+                      {shareError && sharingBusyId === '' && (
+                        <div className="form-error" role="alert">
+                          {shareError}
+                        </div>
+                      )}
+
+                      {tree.sharing?.enabled && tree.sharing?.token && (
+                        <>
+                          <div className="share-link-row">
+                            <input
+                              aria-label={t('trees.shareLinkLabel', {
+                                name: tree.name,
+                              })}
+                              onFocus={(event) => event.target.select()}
+                              readOnly
+                              value={buildShareUrl(tree.sharing.token)}
+                            />
+                            <button
+                              className="button secondary small"
+                              onClick={() => copyShareLink(tree)}
+                              type="button"
+                            >
+                              {copiedTreeId === tree.id
+                                ? t('trees.shareCopied')
+                                : t('trees.shareCopy')}
+                            </button>
+                          </div>
+
+                          <div className="share-link-actions">
+                            <button
+                              className="button ghost small"
+                              onClick={() =>
+                                window.open(
+                                  buildShareUrl(tree.sharing.token),
+                                  '_blank',
+                                  'noopener,noreferrer'
+                                )
+                              }
+                              type="button"
+                            >
+                              {t('trees.shareOpen')}
+                            </button>
+                            <button
+                              className="button ghost small"
+                              disabled={sharingBusyId === tree.id}
+                              onClick={() => rotateSharing(tree)}
+                              type="button"
+                            >
+                              {t('trees.shareNewLink')}
+                            </button>
+                            {sharingBusyId === tree.id && (
+                              <span className="settings-saving" role="status">
+                                {t('settings.savingPreferences')}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   </>
                 )}

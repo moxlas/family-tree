@@ -1199,9 +1199,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
-          onTreeUpdated={handleTreeUpdated}
           onUserUpdate={onUserUpdate}
-          trees={trees}
           user={user}
         />
       )}
