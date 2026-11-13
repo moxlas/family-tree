@@ -2198,11 +2198,17 @@ textarea {
 
 /* Zoom toolbar */
 .tree-zoom-toolbar {
-  align-items: flex-end;
+  align-items: center;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 24px 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: space-between;
+  margin: 12px 24px 16px;
+  padding: 10px 14px;
 }
 
 .tree-zoom-controls {
