@@ -8,7 +8,7 @@ import React, {
 import api from '../api';
 import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
-import { personOptionLabel } from '../personLabel';
+import { personOptionLabels } from '../personLabel';
 import GedcomModal from './GedcomModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonDetailsModal from './PersonDetailsModal';
@@ -786,6 +786,11 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     event.preventDefault();
   };
 
+  const personLabels = useMemo(
+    () => personOptionLabels(people),
+    [people]
+  );
+
   const busy = treesLoading || loading;
 
   const accessibilityClass = [
@@ -1080,7 +1085,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                     >
                       {homePersonOptions.map((person) => (
                         <option key={person.id} value={String(person.id)}>
-                          {personOptionLabel(person)}
+                          {personLabels.get(person.id)}
                         </option>
                       ))}
                     </select>

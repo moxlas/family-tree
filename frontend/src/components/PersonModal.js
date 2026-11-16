@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeDateValue } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import DateField from './DateField';
-import { personOptionLabel } from '../personLabel';
+import { personOptionLabels } from '../personLabel';
 
 const RELATIONSHIP_STATUSES = [
   'married',
@@ -279,6 +279,7 @@ export default function PersonModal({
   relationship,
 }) {
   const { t, translateApiError } = useI18n();
+  const personLabels = useMemo(() => personOptionLabels(people), [people]);
   const [form, setForm] = useState(() => {
     const relationships = relationshipsForPerson(
       person,
@@ -731,7 +732,7 @@ export default function PersonModal({
                 <option value="">{t('modal.noFather')}</option>
                 {fatherOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {personOptionLabel(entry)}
+                    {personLabels.get(entry.id)}
                   </option>
                 ))}
               </select>
@@ -746,7 +747,7 @@ export default function PersonModal({
                 <option value="">{t('modal.noMother')}</option>
                 {motherOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {personOptionLabel(entry)}
+                    {personLabels.get(entry.id)}
                   </option>
                 ))}
               </select>
@@ -844,7 +845,7 @@ export default function PersonModal({
                     <option value="">{t('modal.noCurrentSpouse')}</option>
                     {spouseOptions.map((entry) => (
                       <option key={entry.id} value={entry.id}>
-                        {personOptionLabel(entry)}
+                        {personLabels.get(entry.id)}
                       </option>
                     ))}
                   </select>
@@ -958,7 +959,7 @@ export default function PersonModal({
                       <option value="">{t('modal.noPreviousSpouse')}</option>
                       {previousOptionsFor(block.key).map((entry) => (
                         <option key={entry.id} value={entry.id}>
-                          {personOptionLabel(entry)}
+                          {personLabels.get(entry.id)}
                         </option>
                       ))}
                     </select>

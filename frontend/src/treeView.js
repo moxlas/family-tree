@@ -98,10 +98,12 @@ function bloodlineKeep(personId, graph, maxDepth = 0) {
 
   let keep = allBlood;
   if (maxDepth > 0) {
+    const allowedDistance = maxDepth - 1;
     const mainGeneration = generationOf(graph, personId);
     keep = new Set(
       [...allBlood].filter(
-        (id) => Math.abs(generationOf(graph, id) - mainGeneration) <= maxDepth
+        (id) =>
+          Math.abs(generationOf(graph, id) - mainGeneration) <= allowedDistance
       )
     );
   }
@@ -379,12 +381,13 @@ export function bloodlinePersonIds(people, families, personId, maxDepth = 0) {
   const allBlood = new Set([...ancestors, ...bloodline]);
 
   if (maxDepth > 0) {
+    const allowedDistance = maxDepth - 1;
     const mainGeneration = generationOf(graph, id);
     return new Set(
       [...allBlood].filter(
         (personIdValue) =>
           Math.abs(generationOf(graph, personIdValue) - mainGeneration) <=
-          maxDepth
+          allowedDistance
       )
     );
   }
