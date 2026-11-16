@@ -3,6 +3,7 @@ import { normalizeDateValue } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import DateField from './DateField';
+import { personOptionLabel } from '../personLabel';
 
 const RELATIONSHIP_STATUSES = [
   'married',
@@ -730,7 +731,7 @@ export default function PersonModal({
                 <option value="">{t('modal.noFather')}</option>
                 {fatherOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {`${entry.firstName} ${entry.lastName}`.trim()}
+                    {personOptionLabel(entry)}
                   </option>
                 ))}
               </select>
@@ -745,7 +746,7 @@ export default function PersonModal({
                 <option value="">{t('modal.noMother')}</option>
                 {motherOptions.map((entry) => (
                   <option key={entry.id} value={entry.id}>
-                    {`${entry.firstName} ${entry.lastName}`.trim()}
+                    {personOptionLabel(entry)}
                   </option>
                 ))}
               </select>
@@ -843,7 +844,7 @@ export default function PersonModal({
                     <option value="">{t('modal.noCurrentSpouse')}</option>
                     {spouseOptions.map((entry) => (
                       <option key={entry.id} value={entry.id}>
-                        {`${entry.firstName} ${entry.lastName}`.trim()}
+                        {personOptionLabel(entry)}
                       </option>
                     ))}
                   </select>
@@ -957,7 +958,7 @@ export default function PersonModal({
                       <option value="">{t('modal.noPreviousSpouse')}</option>
                       {previousOptionsFor(block.key).map((entry) => (
                         <option key={entry.id} value={entry.id}>
-                          {`${entry.firstName} ${entry.lastName}`.trim()}
+                          {personOptionLabel(entry)}
                         </option>
                       ))}
                     </select>

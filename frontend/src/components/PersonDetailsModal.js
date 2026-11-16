@@ -3,6 +3,7 @@ import { formatLifeDateForDisplay } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import { describeRelationship, formatRelationship } from '../relationships';
+import { personGeneration } from '../treeView';
 
 function genderLabel(t, gender) {
   if (gender === 'male') return t('modal.genderMale');
@@ -40,6 +41,13 @@ export default function PersonDetailsModal({
   const fullName = `${person.firstName} ${person.lastName}`.trim();
   const previousSurname = previousSurnameFor(person);
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
+
+  const personGen = personGeneration(people, families, person.id);
+  const referenceGen = referencePersonId
+    ? personGeneration(people, families, referencePersonId)
+    : null;
+  const relativeDiff =
+    referenceGen === null ? null : personGen - referenceGen;
 
   const relatedFamilies = (families || []).filter(
     (family) =>
@@ -242,6 +250,30 @@ export default function PersonDetailsModal({
             <dt>{t('details.gender')}</dt>
             <dd>{genderLabel(t, person.gender)}</dd>
           </div>
+          <div>
+            <dt>{t('details.generation')}</dt>
+            <dd>{personGen}</dd>
+          </div>
+          {referencePersonId && relativeDiff !== null && (
+            <div>
+              <dt>
+                {t('details.generationRelative', {
+                  name: `${referencePerson.firstName} ${referencePerson.lastName}`.trim(),
+                })}
+              </dt>
+              <dd>
+                {String(referencePersonId) === String(person.id)
+                  ? t('details.generationMainPerson')
+                  : relativeDiff === 0
+                    ? t('details.generationSame')
+                    : relativeDiff > 0
+                      ? t('details.generationBelow', { count: relativeDiff })
+                      : t('details.generationAbove', {
+                          count: Math.abs(relativeDiff),
+                        })}
+              </dd>
+            </div>
+          )}
           {previousSurname && (
             <div>
               <dt>{t('details.previousName')}</dt>

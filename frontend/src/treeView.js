@@ -69,11 +69,42 @@ function reverseEdges(edges) {
 // every descendant of those ancestors (siblings, uncles, aunts, cousins,
 // nieces, nephews and their children). Spouses of all blood relatives are
 // added as separate cards, but a spouse's own family is not.
-function bloodlineKeep(personId, graph) {
+function generationOf(graph, personId) {
+  const parents = reverseEdges(graph.children);
+  const memo = new Map();
+  const visiting = new Set();
+
+  const compute = (node) => {
+    if (memo.has(node)) return memo.get(node);
+    if (visiting.has(node)) return 1;
+    visiting.add(node);
+    let depth = 1;
+    (parents.get(node) || new Set()).forEach((parentId) => {
+      depth = Math.max(depth, compute(parentId) + 1);
+    });
+    visiting.delete(node);
+    memo.set(node, depth);
+    return depth;
+  };
+
+  return compute(personId);
+}
+
+function bloodlineKeep(personId, graph, maxDepth = 0) {
   const parents = reverseEdges(graph.children);
   const ancestors = closure([personId], parents);
   const bloodline = closure([...ancestors], graph.children);
-  const keep = new Set([...ancestors, ...bloodline]);
+  const allBlood = new Set([...ancestors, ...bloodline]);
+
+  let keep = allBlood;
+  if (maxDepth > 0) {
+    const mainGeneration = generationOf(graph, personId);
+    keep = new Set(
+      [...allBlood].filter(
+        (id) => Math.abs(generationOf(graph, id) - mainGeneration) <= maxDepth
+      )
+    );
+  }
 
   [...keep].forEach((id) => {
     (graph.partners.get(id) || new Set()).forEach((partnerId) => {
@@ -173,9 +204,9 @@ function fullTreeKeep(people, families) {
 // The main tree follows one home person's whole bloodline, with the spouse
 // cards of every blood relative. A spouse's own parents and siblings are an
 // in-law branch and are only shown in that person's branch view.
-function homeTreeKeep(homeId, people, families) {
+function homeTreeKeep(homeId, people, families, maxDepth = 0) {
   const graph = buildGraph(people, families);
-  const keep = bloodlineKeep(homeId, graph);
+  const keep = bloodlineKeep(homeId, graph, maxDepth);
 
   // A family with no marriage link to the home person's component is its own
   // tree. In-law families of a spouse are not: they stay in that spouse's
@@ -252,13 +283,14 @@ export function viewPeople(people, families, options = {}) {
   const focusId = idOf(options.focusId);
   const homePersonId = idOf(options.homePersonId);
   const collapsed = new Set((options.collapsedPersonIds || []).map(idOf));
+  const maxDepth = Number(options.maxDepth) || 0;
   const all = new Set(list.map((person) => idOf(person.id)));
 
   let baseKeep;
   if (focusId && all.has(focusId)) {
     baseKeep = branchKeep(focusId, list, marriages);
   } else if (homePersonId && all.has(homePersonId)) {
-    baseKeep = homeTreeKeep(homePersonId, list, marriages);
+    baseKeep = homeTreeKeep(homePersonId, list, marriages, maxDepth);
   } else {
     baseKeep = fullTreeKeep(list, marriages);
   }
@@ -335,7 +367,7 @@ export function branchMemberIds(people, families, personId) {
 
 // Picks a sensible trunk for the main tree when the user has not chosen one:
 // the youngest person with recorded parents, then the deepest generation.
-export function bloodlinePersonIds(people, families, personId) {
+export function bloodlinePersonIds(people, families, personId, maxDepth = 0) {
   const id = idOf(personId);
   const ids = new Set(people.map((person) => idOf(person.id)));
   if (!id || !ids.has(id)) return new Set();
@@ -344,7 +376,20 @@ export function bloodlinePersonIds(people, families, personId) {
   const parents = reverseEdges(graph.children);
   const ancestors = closure([id], parents);
   const bloodline = closure([...ancestors], graph.children);
-  return new Set([...ancestors, ...bloodline]);
+  const allBlood = new Set([...ancestors, ...bloodline]);
+
+  if (maxDepth > 0) {
+    const mainGeneration = generationOf(graph, id);
+    return new Set(
+      [...allBlood].filter(
+        (personIdValue) =>
+          Math.abs(generationOf(graph, personIdValue) - mainGeneration) <=
+          maxDepth
+      )
+    );
+  }
+
+  return allBlood;
 }
 
 export function computeTreeStats(people, families = []) {  const ids = new Set(people.map((person) => idOf(person.id)));
@@ -399,6 +444,13 @@ export function computeTreeStats(people, families = []) {  const ids = new Set(p
   ).length;
 
   return { generations, roots };
+}
+
+export function personGeneration(people, families, personId) {
+  const list = Array.isArray(people) ? people : [];
+  const marriages = Array.isArray(families) ? families : [];
+  const graph = buildGraph(list, marriages);
+  return generationOf(graph, personId);
 }
 
 export function defaultHomePersonId(people, families) {  const list = Array.isArray(people) ? people : [];
