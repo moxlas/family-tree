@@ -23,6 +23,7 @@ export default function PublicTreePage({ token }) {
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [focusId, setFocusId] = useState('');
   const [zoom, setZoom] = useState(1);
+  const [generationDepth, setGenerationDepth] = useState('auto');
   const [centreSignal, setCentreSignal] = useState(0);
   const [bloodlineOnly, setBloodlineOnly] = useState(false);
   const [showFormerSpouses, setShowFormerSpouses] = useState(true);
@@ -98,11 +99,28 @@ export default function PublicTreePage({ token }) {
     return fallbackHomePersonId;
   }, [data, people, fallbackHomePersonId]);
 
+  const effectiveMaxDepth = useMemo(() => {
+    if (generationDepth !== 'auto') {
+      const numeric = Number(generationDepth);
+      return Number.isFinite(numeric) && numeric > 0 ? numeric : 0;
+    }
+    if (zoom >= 1) return 4;
+    if (zoom >= 0.8) return 5;
+    if (zoom >= 0.6) return 6;
+    if (zoom >= 0.4) return 8;
+    return 0;
+  }, [generationDepth, zoom]);
+
   const bloodlinePeople = useMemo(() => {
     if (!homePersonId) return people;
-    const ids = bloodlinePersonIds(people, families, homePersonId);
+    const ids = bloodlinePersonIds(
+      people,
+      families,
+      homePersonId,
+      effectiveMaxDepth
+    );
     return people.filter((person) => ids.has(String(person.id)));
-  }, [people, families, homePersonId]);
+  }, [people, families, homePersonId, effectiveMaxDepth]);
 
   const view = useMemo(
     () =>
@@ -110,8 +128,9 @@ export default function PublicTreePage({ token }) {
         focusId,
         homePersonId,
         collapsedPersonIds: collapsedIds,
+        maxDepth: effectiveMaxDepth,
       }),
-    [people, families, focusId, homePersonId, collapsedIds]
+    [people, families, focusId, homePersonId, collapsedIds, effectiveMaxDepth]
   );
 
   const childrenByPerson = useMemo(() => {
@@ -130,7 +149,10 @@ export default function PublicTreePage({ token }) {
   }, [families]);
 
   const branchFlagsById = useMemo(() => {
-    const base = viewPeople(people, families, { homePersonId });
+    const base = viewPeople(people, families, {
+      homePersonId,
+      maxDepth: effectiveMaxDepth,
+    });
     const baseIds = new Set(base.people.map((person) => String(person.id)));
     const flags = new Map();
 
@@ -143,7 +165,7 @@ export default function PublicTreePage({ token }) {
     });
 
     return flags;
-  }, [people, families, homePersonId]);
+  }, [people, families, homePersonId, effectiveMaxDepth]);
 
   const focusedPerson = focusId
     ? people.find((entry) => String(entry.id) === String(focusId)) || null
@@ -446,7 +468,15 @@ export default function PublicTreePage({ token }) {
               onMouseUp={finishTreeScrollDrag}
               onWheel={handleTreeScrollWheel}
               ref={scrollRef}
-              style={{ cursor: 'grab', zoom }}
+              style={{
+                cursor: 'grab',
+                zoom,
+                maxHeight:
+                  effectiveMaxDepth > 0
+                    ? `${effectiveMaxDepth * 150}px`
+                    : undefined,
+                overflowY: effectiveMaxDepth > 0 ? 'auto' : undefined,
+              }}
             >
               {bloodlineOnly ? (
                 <SpouseTreeComponent
@@ -481,6 +511,22 @@ export default function PublicTreePage({ token }) {
               )}
             </div>
             <div className="tree-zoom-toolbar" aria-label={t('tree.zoom')}>
+              <label className="home-person-control">
+                <span className="home-person-label">{t('tree.generations')}</span>
+                <span className="home-person-select">
+                  <select
+                    onChange={(event) => setGenerationDepth(event.target.value)}
+                    value={generationDepth}
+                  >
+                    <option value="auto">{t('tree.generationsAuto')}</option>
+                    <option value="4">4</option>
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option value="0">{t('tree.generationsAll')}</option>
+                  </select>
+                  <span className="select-chevron" aria-hidden="true">▾</span>
+                </span>
+              </label>
               <div className="tree-zoom-controls">
                 <button
                   className="button ghost small"

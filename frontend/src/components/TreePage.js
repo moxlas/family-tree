@@ -1127,7 +1127,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               onMouseUp={finishTreeScrollDrag}
               onWheel={handleTreeScrollWheel}
               ref={scrollRef}
-              style={{ cursor: 'grab', zoom }}
+              style={{
+                cursor: 'grab',
+                zoom,
+                maxHeight:
+                  effectiveMaxDepth > 0
+                    ? `${effectiveMaxDepth * 150}px`
+                    : undefined,
+                overflowY: effectiveMaxDepth > 0 ? 'auto' : undefined,
+              }}
             >
               {bloodlineOnly ? (
                 <SpouseTreeComponent
