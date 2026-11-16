@@ -30,6 +30,17 @@ export default function SettingsModal({
   const [showFormerSpouses, setShowFormerSpouses] = useState(
     user.settings?.showFormerSpouses !== false
   );
+  const [textSize, setTextSize] = useState(
+    ['normal', 'large', 'xlarge'].includes(user.settings?.textSize)
+      ? user.settings.textSize
+      : 'normal'
+  );
+  const [highContrast, setHighContrast] = useState(
+    Boolean(user.settings?.highContrast)
+  );
+  const [reducedMotion, setReducedMotion] = useState(
+    Boolean(user.settings?.reducedMotion)
+  );
   const [profileError, setProfileError] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -135,6 +146,28 @@ export default function SettingsModal({
       );
     } catch (requestError) {
       setShowFormerSpouses(previousValue);
+      setSettingsError(
+        translateApiError(requestError, 'errors.saveSettings')
+      );
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const saveAccessibility = async (patch) => {
+    setSettingsError('');
+    setNotice('');
+    setSavingSettings(true);
+
+    if (patch.textSize !== undefined) setTextSize(patch.textSize);
+    if (patch.highContrast !== undefined) setHighContrast(patch.highContrast);
+    if (patch.reducedMotion !== undefined) setReducedMotion(patch.reducedMotion);
+
+    try {
+      const response = await api.put('/auth/settings', patch);
+      onUserUpdate(response.data.user);
+      setNotice(t('settings.accessibilitySaved'));
+    } catch (requestError) {
       setSettingsError(
         translateApiError(requestError, 'errors.saveSettings')
       );
@@ -312,6 +345,90 @@ export default function SettingsModal({
               {settingsError}
             </div>
           )}
+        </section>
+
+        <section className="settings-section" aria-labelledby="accessibility-heading">
+          <h3 id="accessibility-heading">{t('settings.accessibilityTitle')}</h3>
+          <p className="settings-copy">{t('settings.accessibilityCopy')}</p>
+
+          <label className="settings-field">
+            <span>{t('settings.textSize')}</span>
+            <select
+              disabled={savingSettings}
+              onChange={(event) =>
+                saveAccessibility({ textSize: event.target.value })
+              }
+              value={textSize}
+            >
+              <option value="normal">{t('settings.textSizeNormal')}</option>
+              <option value="large">{t('settings.textSizeLarge')}</option>
+              <option value="xlarge">{t('settings.textSizeXLarge')}</option>
+            </select>
+          </label>
+
+          <div className="toggle-row">
+            <div className="toggle-copy">
+              <span
+                className="toggle-title"
+                id="high-contrast-toggle-label"
+              >
+                {t('settings.highContrast')}
+              </span>
+              <span
+                className="toggle-hint"
+                id="high-contrast-toggle-hint"
+              >
+                {t('settings.highContrastHint')}
+              </span>
+            </div>
+            <label className="switch">
+              <input
+                aria-describedby="high-contrast-toggle-hint"
+                aria-labelledby="high-contrast-toggle-label"
+                checked={highContrast}
+                disabled={savingSettings}
+                onChange={(event) =>
+                  saveAccessibility({ highContrast: event.target.checked })
+                }
+                type="checkbox"
+              />
+              <span className="switch-track" aria-hidden="true">
+                <span className="switch-thumb" />
+              </span>
+            </label>
+          </div>
+
+          <div className="toggle-row">
+            <div className="toggle-copy">
+              <span
+                className="toggle-title"
+                id="reduced-motion-toggle-label"
+              >
+                {t('settings.reducedMotion')}
+              </span>
+              <span
+                className="toggle-hint"
+                id="reduced-motion-toggle-hint"
+              >
+                {t('settings.reducedMotionHint')}
+              </span>
+            </div>
+            <label className="switch">
+              <input
+                aria-describedby="reduced-motion-toggle-hint"
+                aria-labelledby="reduced-motion-toggle-label"
+                checked={reducedMotion}
+                disabled={savingSettings}
+                onChange={(event) =>
+                  saveAccessibility({ reducedMotion: event.target.checked })
+                }
+                type="checkbox"
+              />
+              <span className="switch-track" aria-hidden="true">
+                <span className="switch-thumb" />
+              </span>
+            </label>
+          </div>
         </section>
 
         <section className="settings-section" aria-labelledby="account-heading">

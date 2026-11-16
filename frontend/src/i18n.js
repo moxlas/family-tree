@@ -1034,6 +1034,17 @@ const translations = {
     'settings.modeSpouseNote':
       'Įjungtos sutuoktinių kortelės. Kiekvienas sutuoktinis turi savo kortelę ir ryšius.',
     'settings.savingPreferences': 'Išsaugomos nuostatos…',
+    'settings.accessibilityTitle': 'Prieinamumas',
+    'settings.accessibilityCopy': 'Pritaikykite sąsają lengvesniam skaitymui.',
+    'settings.textSize': 'Teksto ir kortelių dydis',
+    'settings.textSizeNormal': 'Įprastas',
+    'settings.textSizeLarge': 'Didelis',
+    'settings.textSizeXLarge': 'Labai didelis',
+    'settings.highContrast': 'Didelis kontrastas',
+    'settings.highContrastHint': 'Stipresnis teksto, rėmelių ir linijų kontrastas.',
+    'settings.reducedMotion': 'Mažiau animacijų',
+    'settings.reducedMotionHint': 'Išjungia animacijas ir akimirksniu pereina.',
+    'settings.accessibilitySaved': 'Prieinamumo nuostatos išsaugotos.',
     'settings.bloodlineEnabledNotice': 'Įjungtas tik kraujo linijos medis.',
     'settings.spouseModeEnabledNotice':
       'Įjungtos atskiros sutuoktinių kortelės.',

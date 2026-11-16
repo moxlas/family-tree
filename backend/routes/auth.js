@@ -27,6 +27,11 @@ function publicUser(user) {
     settings: {
       bloodlineOnly: Boolean(user.settings?.bloodlineOnly),
       showFormerSpouses: user.settings?.showFormerSpouses !== false,
+      textSize: ['normal', 'large', 'xlarge'].includes(user.settings?.textSize)
+        ? user.settings.textSize
+        : 'normal',
+      highContrast: Boolean(user.settings?.highContrast),
+      reducedMotion: Boolean(user.settings?.reducedMotion),
     },
   };
 }
@@ -114,12 +119,21 @@ router.put('/profile', authenticate, async (req, res) => {
 });
 
 router.put('/settings', authenticate, async (req, res) => {
-  const settings = {
-    ...(req.user.settings || {}),
-    bloodlineOnly: Boolean(req.body.bloodlineOnly),
-  };
+  const settings = { ...(req.user.settings || {}) };
+  if (req.body.bloodlineOnly !== undefined) {
+    settings.bloodlineOnly = Boolean(req.body.bloodlineOnly);
+  }
   if (req.body.showFormerSpouses !== undefined) {
     settings.showFormerSpouses = Boolean(req.body.showFormerSpouses);
+  }
+  if (['normal', 'large', 'xlarge'].includes(req.body.textSize)) {
+    settings.textSize = req.body.textSize;
+  }
+  if (req.body.highContrast !== undefined) {
+    settings.highContrast = Boolean(req.body.highContrast);
+  }
+  if (req.body.reducedMotion !== undefined) {
+    settings.reducedMotion = Boolean(req.body.reducedMotion);
   }
   req.user.settings = settings;
   await req.user.save();

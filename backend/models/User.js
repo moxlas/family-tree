@@ -30,6 +30,19 @@ const userSchema = new mongoose.Schema(
         type: Boolean,
         default: true,
       },
+      textSize: {
+        type: String,
+        enum: ['normal', 'large', 'xlarge'],
+        default: 'normal',
+      },
+      highContrast: {
+        type: Boolean,
+        default: false,
+      },
+      reducedMotion: {
+        type: Boolean,
+        default: false,
+      },
     },
   },
   { timestamps: true }

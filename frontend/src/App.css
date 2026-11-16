@@ -387,6 +387,7 @@ textarea {
 
 /* Shell */
 .app-shell {
+  font-size: var(--font-size-base, 16px);
   min-height: 100vh;
 }
 
@@ -2583,4 +2584,66 @@ textarea {
   .share-link-row {
     flex-direction: column;
   }
+}
+
+/* Accessibility */
+.settings-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.settings-field span {
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.settings-field select {
+  min-height: 40px;
+}
+
+.app-shell.a11y-large {
+  --font-size-base: 17px;
+}
+
+.app-shell.a11y-xlarge {
+  --font-size-base: 20px;
+}
+
+.app-shell.a11y-large .person-card,
+.app-shell.a11y-xlarge .person-card {
+  min-width: 280px;
+}
+
+.app-shell.a11y-large .button,
+.app-shell.a11y-xlarge .button {
+  min-height: 40px;
+  padding: 10px 14px;
+}
+
+.app-shell.a11y-high-contrast {
+  --surface: #ffffff;
+  --surface-soft: #ffffff;
+  --line: #111827;
+  --muted: #1f2937;
+  --text: #000000;
+  --brand: #003366;
+  --brand-deep: #001a33;
+}
+
+.app-shell.a11y-high-contrast .tree-panel,
+.app-shell.a11y-high-contrast .person-card {
+  border-width: 2px;
+}
+
+.app-shell.a11y-high-contrast .tree-scroll svg line,
+.app-shell.a11y-high-contrast .tree-scroll svg path {
+  stroke-width: 2.5px;
+}
+
+.app-shell.a11y-reduced-motion *,
+.app-shell.a11y-reduced-motion *::before,
+.app-shell.a11y-reduced-motion *::after {
+  animation: none !important;
+  transition: none !important;
 }

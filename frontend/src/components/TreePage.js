@@ -8,6 +8,7 @@ import React, {
 import api from '../api';
 import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
+import { personOptionLabel } from '../personLabel';
 import GedcomModal from './GedcomModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonDetailsModal from './PersonDetailsModal';
@@ -759,8 +760,18 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
   const busy = treesLoading || loading;
 
+  const accessibilityClass = [
+    user?.settings?.textSize && user.settings.textSize !== 'normal'
+      ? `a11y-${user.settings.textSize}`
+      : '',
+    user?.settings?.highContrast ? 'a11y-high-contrast' : '',
+    user?.settings?.reducedMotion ? 'a11y-reduced-motion' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${accessibilityClass}`.trim()}>
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand-lockup compact">
@@ -1041,7 +1052,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                     >
                       {homePersonOptions.map((person) => (
                         <option key={person.id} value={String(person.id)}>
-                          {`${person.firstName} ${person.lastName}`.trim()}
+                          {personOptionLabel(person)}
                         </option>
                       ))}
                     </select>
