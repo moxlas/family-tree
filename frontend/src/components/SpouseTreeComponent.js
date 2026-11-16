@@ -1873,7 +1873,7 @@ export default function SpouseTreeComponent({
           isFormerSpouseEdge,
           personIds: [
             ...(parentUnit?.members || []).map((member) => String(member.id)),
-            ...(childUnit?.members || []).map((member) => String(member.id)),
+            ...(childMemberForEdge ? [String(childMemberForEdge.id)] : []),
           ],
         };
         descriptorById.set(connector.id, connector);
