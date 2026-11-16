@@ -2647,3 +2647,18 @@ textarea {
   animation: none !important;
   transition: none !important;
 }
+
+/* Highlight relation lines on card hover */
+.spouse-edges path {
+  transition: stroke 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
+}
+
+.spouse-edges path.is-highlighted {
+  opacity: 1;
+  stroke: var(--ink);
+  stroke-width: 2.2px;
+}
+
+.spouse-tree:hover .spouse-edges path:not(.is-highlighted) {
+  opacity: 0.45;
+}

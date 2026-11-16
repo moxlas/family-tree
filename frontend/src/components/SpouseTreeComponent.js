@@ -1708,6 +1708,7 @@ export default function SpouseTreeComponent({
     [collapsedPersonIds]
   );
   const [edges, setEdges] = useState([]);
+  const [hoveredPersonId, setHoveredPersonId] = useState('');
   const [rowHeights, setRowHeights] = useState({});
   const [size, setSize] = useState({ width: 0, height: 0 });
 
@@ -1870,6 +1871,10 @@ export default function SpouseTreeComponent({
           endX,
           endY,
           isFormerSpouseEdge,
+          personIds: [
+            ...(parentUnit?.members || []).map((member) => String(member.id)),
+            ...(childUnit?.members || []).map((member) => String(member.id)),
+          ],
         };
         descriptorById.set(connector.id, connector);
       });
@@ -2125,6 +2130,7 @@ export default function SpouseTreeComponent({
         id: descriptor.id,
         path,
         isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
+        personIds: descriptor.personIds || [],
       };
     });
 
@@ -2179,6 +2185,11 @@ export default function SpouseTreeComponent({
   return (
     <div
       className="spouse-tree"
+      onMouseLeave={() => setHoveredPersonId('')}
+      onMouseOver={(event) => {
+        const card = event.target.closest('[data-person-id]');
+        setHoveredPersonId(card ? card.getAttribute('data-person-id') : '');
+      }}
       ref={containerRef}
       role="list"
       style={scene.treeWidth ? { width: `${scene.treeWidth}px` } : undefined}
@@ -2191,7 +2202,14 @@ export default function SpouseTreeComponent({
       >
         {edges.map((edge) => (
           <path
-            className={edge.isFormerSpouseEdge ? 'is-former-spouse' : undefined}
+            className={[
+              edge.isFormerSpouseEdge ? 'is-former-spouse' : '',
+              hoveredPersonId && (edge.personIds || []).includes(hoveredPersonId)
+                ? 'is-highlighted'
+                : '',
+            ]
+              .filter(Boolean)
+              .join(' ') || undefined}
             d={edge.path}
             key={edge.id}
           />
