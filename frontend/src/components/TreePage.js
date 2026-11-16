@@ -1132,7 +1132,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 zoom,
                 maxHeight:
                   effectiveMaxDepth > 0
-                    ? `${effectiveMaxDepth * 150}px`
+                    ? `${effectiveMaxDepth * 220}px`
                     : undefined,
                 overflowY: effectiveMaxDepth > 0 ? 'auto' : undefined,
               }}
