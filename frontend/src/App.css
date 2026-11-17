@@ -1312,7 +1312,7 @@ textarea {
 .person-maiden {
   color: var(--muted);
   font-size: var(--a11y-meta, 11.5px);
-  margin: 0 0 4px;
+  font-weight: 400;
   overflow-wrap: anywhere;
 }
 

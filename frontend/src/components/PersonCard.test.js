@@ -33,6 +33,12 @@ function click(element) {
   });
 }
 
+function visibleText(element) {
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll('.sr-only').forEach((node) => node.remove());
+  return clone.textContent.replace(/\s+/g, ' ').trim();
+}
+
 beforeEach(() => {
   container = document.createElement('div');
   document.body.appendChild(container);
@@ -45,18 +51,32 @@ afterEach(() => {
 });
 
 describe('PersonCard', () => {
-  it('shows the previous surname under the name with an accessible label', () => {
+  it('shows the previous surname inline in parentheses after the name', () => {
     renderCard();
 
-    const maiden = container.querySelector('.person-maiden');
+    const name = container.querySelector('.person-details h3');
+    expect(visibleText(name)).toBe('Birutė Šiukščiuvienė (Strumskytė)');
+
+    const maiden = name.querySelector('.person-maiden');
     expect(maiden).not.toBeNull();
-    expect(maiden.textContent).toContain('Strumskytė');
     expect(maiden.textContent).toContain('Maiden / previous last name:');
+    expect(container.querySelector('p.person-maiden')).toBeNull();
   });
 
   it('does not repeat the previous surname when it matches the current one', () => {
     renderCard({ person: { ...basePerson, previousName: basePerson.lastName } });
     expect(container.querySelector('.person-maiden')).toBeNull();
+    expect(visibleText(container.querySelector('.person-details h3'))).toBe(
+      'Birutė Šiukščiuvienė'
+    );
+  });
+
+  it('shows no parenthetical when the previous surname is blank', () => {
+    renderCard({ person: { ...basePerson, previousName: '' } });
+    expect(container.querySelector('.person-maiden')).toBeNull();
+    expect(visibleText(container.querySelector('.person-details h3'))).toBe(
+      'Birutė Šiukščiuvienė'
+    );
   });
 
   it('keeps desktop action icons and exposes the compact More menu', () => {
