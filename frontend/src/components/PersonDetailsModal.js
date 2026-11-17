@@ -3,7 +3,7 @@ import { formatLifeDateForDisplay } from '../dates';
 import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 import { describeRelationship, formatRelationship } from '../relationships';
-import { personGeneration } from '../treeView';
+import { personGeneration, personRowMap } from '../treeView';
 
 function genderLabel(t, gender) {
   if (gender === 'male') return t('modal.genderMale');
@@ -21,6 +21,7 @@ export default function PersonDetailsModal({
   person,
   referenceKind = 'home',
   referencePersonId,
+  rowByPersonId,
 }) {
   const { language, t } = useI18n();
 
@@ -42,12 +43,18 @@ export default function PersonDetailsModal({
   const previousSurname = previousSurnameFor(person);
   const byId = new Map((people || []).map((entry) => [entry.id, entry]));
 
-  const personGen = personGeneration(people, families, person.id);
-  const referenceGen = referencePersonId
-    ? personGeneration(people, families, referencePersonId)
+  const rows =
+    rowByPersonId || personRowMap(people, families, referencePersonId);
+  const rowOf = (id) => {
+    const key = String(id);
+    return rows.has(key) ? rows.get(key) : rows.get(id);
+  };
+  const personRow = rowOf(person.id) ?? personGeneration(people, families, person.id);
+  const referenceRow = referencePersonId
+    ? rowOf(referencePersonId) ?? personGeneration(people, families, referencePersonId)
     : null;
   const relativeDiff =
-    referenceGen === null ? null : personGen - referenceGen;
+    referenceRow === null ? null : personRow - referenceRow;
 
   const relatedFamilies = (families || []).filter(
     (family) =>
@@ -273,7 +280,7 @@ export default function PersonDetailsModal({
           <div>
             <dt>{t('details.generation')}</dt>
             <dd>
-              {personGen}
+              {personRow}
               {generationDetail && (
                 <span className="details-generation-relative">
                   {' '}

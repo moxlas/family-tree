@@ -20,7 +20,7 @@ const reference = {
 let container;
 let root;
 
-function renderModal(people, referencePersonId) {
+function renderModal(people, referencePersonId, rowByPersonId) {
   act(() => {
     root = createRoot(container);
     root.render(
@@ -31,6 +31,7 @@ function renderModal(people, referencePersonId) {
           people={people}
           person={target}
           referencePersonId={referencePersonId}
+          rowByPersonId={rowByPersonId}
         />
       </LanguageProvider>
     );
@@ -100,5 +101,29 @@ describe('PersonDetailsModal generation', () => {
     const rows = generationRows();
     expect(rows).toHaveLength(1);
     expect(rows[0].querySelector('dd').textContent).toBe('1');
+  });
+
+  it('uses the canvas row and treats a same-row spouse as the same generation', () => {
+    const rowByPersonId = new Map([
+      ['target', 11],
+      ['ref', 11],
+    ]);
+    renderModal([target, reference], reference.id, rowByPersonId);
+
+    expect(generationRows()[0].querySelector('dd').textContent).toBe(
+      '11 (Same generation)'
+    );
+  });
+
+  it('derives above/below from the supplied row difference', () => {
+    const rowByPersonId = new Map([
+      ['target', 3],
+      ['ref', 6],
+    ]);
+    renderModal([target, reference], reference.id, rowByPersonId);
+
+    expect(generationRows()[0].querySelector('dd').textContent).toBe(
+      '3 (3 above Vytautas Mikėnas)'
+    );
   });
 });

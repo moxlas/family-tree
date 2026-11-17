@@ -277,11 +277,12 @@ export default function PersonModal({
   people,
   person,
   relationship,
+  rowByPersonId,
 }) {
   const { t, translateApiError } = useI18n();
   const personLabels = useMemo(
-    () => personOptionLabels(people, families, t),
-    [people, families, t]
+    () => personOptionLabels(people, families, t, rowByPersonId),
+    [people, families, t, rowByPersonId]
   );
   const [form, setForm] = useState(() => {
     const relationships = relationshipsForPerson(

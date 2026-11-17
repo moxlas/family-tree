@@ -4,6 +4,8 @@ import {
   branchFlags,
   computeTreeStats,
   defaultHomePersonId,
+  personRowMap,
+  relativeDepthsFrom,
   viewPeople,
 } from './treeView';
 
@@ -492,5 +494,62 @@ describe('home tree in-law component closure', () => {
     expect(viewIds.has('U')).toBe(true);
     expect(viewIds.has('V')).toBe(true);
     expect(viewIds.has('Z')).toBe(true);
+  });
+});
+
+describe('relative depths and person rows', () => {
+  const lineage = [
+    person('GF'),
+    person('GM'),
+    person('F', { parentId: 'GF' }),
+    person('M', { parentId: 'GM' }),
+    person('C', { parentId: 'F', spouseId: 'S' }),
+    person('S', { spouseId: 'C' }),
+    person('K', { parentId: 'C' }),
+  ];
+  const lineageFamilies = [
+    { id: 'f1', husband: 'GF', wife: 'GM', children: ['F', 'M'] },
+    { id: 'f2', husband: 'F', wife: 'M', children: ['C'] },
+    { id: 'f3', husband: 'C', wife: 'S', children: ['K'] },
+  ];
+
+  it('anchors the reference at zero, parents above and children below', () => {
+    const depths = relativeDepthsFrom(lineage, lineageFamilies, 'C');
+
+    expect(depths.get('C')).toBe(0);
+    expect(depths.get('F')).toBe(-1);
+    expect(depths.get('M')).toBe(-1);
+    expect(depths.get('GF')).toBe(-2);
+    expect(depths.get('GM')).toBe(-2);
+    expect(depths.get('K')).toBe(1);
+  });
+
+  it('puts partners on the same relative depth', () => {
+    const depths = relativeDepthsFrom(lineage, lineageFamilies, 'C');
+    expect(depths.get('S')).toBe(depths.get('C'));
+  });
+
+  it('starts rows at one and keeps partners on one row', () => {
+    const rows = personRowMap(lineage, lineageFamilies, 'C');
+
+    expect(Math.min(...rows.values())).toBe(1);
+    expect(rows.get('GF')).toBe(1);
+    expect(rows.get('C')).toBe(3);
+    expect(rows.get('S')).toBe(3);
+    expect(rows.get('K')).toBe(4);
+  });
+
+  it('falls back to absolute generation outside the reference component', () => {
+    const rows = personRowMap(
+      [...lineage, person('OTHER', { firstName: 'Unrelated' })],
+      lineageFamilies,
+      'C'
+    );
+    expect(rows.get('OTHER')).toBe(1);
+  });
+
+  it('returns no rows for an empty tree or stale reference', () => {
+    expect(personRowMap([], [], 'C').size).toBe(0);
+    expect(relativeDepthsFrom(lineage, lineageFamilies, 'missing').size).toBe(0);
   });
 });

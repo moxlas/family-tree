@@ -15,7 +15,7 @@ function generationLabel(generation, t) {
     : `gen. ${generation}`;
 }
 
-export function personOptionLabels(people, families, t) {
+export function personOptionLabels(people, families, t, rowByPersonId) {
   const labels = new Map();
   const groups = new Map();
   const list = Array.isArray(people) ? people : [];
@@ -27,6 +27,11 @@ export function personOptionLabels(people, families, t) {
   });
 
   const generations = personGenerationMap(list, families);
+  const generationOfPerson = (person) => {
+    const id = String(person.id);
+    const row = rowByPersonId?.get(id) ?? rowByPersonId?.get(String(id));
+    return row != null ? row : generations.get(id) || 1;
+  };
 
   groups.forEach((group, name) => {
     if (group.length === 1) {
@@ -52,7 +57,7 @@ export function personOptionLabels(people, families, t) {
 
       const generationCounts = new Map();
       members.forEach((person) => {
-        const generation = generations.get(String(person.id)) || 1;
+        const generation = generationOfPerson(person);
         generationCounts.set(
           generation,
           (generationCounts.get(generation) || 0) + 1
@@ -66,7 +71,7 @@ export function personOptionLabels(people, families, t) {
 
       members.forEach((person) => {
         counter += 1;
-        const generation = generations.get(String(person.id)) || 1;
+        const generation = generationOfPerson(person);
         const detail = useGeneration
           ? generationLabel(generation, t)
           : String(counter);
@@ -81,6 +86,9 @@ export function personOptionLabels(people, families, t) {
   return labels;
 }
 
-export function personOptionLabel(person, families, t) {
-  return personOptionLabels([person], families, t).get(person?.id) || baseName(person);
+export function personOptionLabel(person, families, t, rowByPersonId) {
+  return (
+    personOptionLabels([person], families, t, rowByPersonId).get(person?.id) ||
+    baseName(person)
+  );
 }

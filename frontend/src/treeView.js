@@ -478,6 +478,93 @@ export function personGeneration(people, families, personId) {
   return personGenerationMap(people, families).get(idOf(personId)) || 1;
 }
 
+// Generation depth relative to one reference person. Parent links move one
+// row up or down and partners share a row. This keeps both family sides on
+// the same horizontal level even when one side has fewer recorded ancestors.
+// This is the same calculation the canvas uses to lay out rows.
+export function relativeDepthsFrom(people, families, referenceId) {
+  const list = Array.isArray(people) ? people : [];
+  const anchorId = idOf(referenceId);
+  const ids = new Set(list.map((person) => idOf(person.id)));
+  if (!anchorId || !ids.has(anchorId)) return new Map();
+
+  const adjacency = new Map();
+  const addEdge = (from, to, delta) => {
+    if (!ids.has(from) || !ids.has(to)) return;
+    if (!adjacency.has(from)) adjacency.set(from, []);
+    adjacency.get(from).push([to, delta]);
+  };
+
+  (Array.isArray(families) ? families : []).forEach((family) => {
+    const husband = idOf(family.husband);
+    const wife = idOf(family.wife);
+    if (husband && wife) {
+      addEdge(husband, wife, 0);
+      addEdge(wife, husband, 0);
+    }
+    (family.children || []).map(idOf).forEach((childId) => {
+      [husband, wife].filter(Boolean).forEach((parentId) => {
+        addEdge(parentId, childId, 1);
+        addEdge(childId, parentId, -1);
+      });
+    });
+  });
+
+  list.forEach((person) => {
+    const id = idOf(person.id);
+    const spouseId = idOf(person.spouseId);
+    if (spouseId) {
+      addEdge(id, spouseId, 0);
+      addEdge(spouseId, id, 0);
+    }
+    [person.parentId, person.secondParentId]
+      .map(idOf)
+      .filter(Boolean)
+      .forEach((parentId) => {
+        addEdge(parentId, id, 1);
+        addEdge(id, parentId, -1);
+      });
+  });
+
+  const depths = new Map([[anchorId, 0]]);
+  const queue = [anchorId];
+  while (queue.length) {
+    const current = queue.shift();
+    (adjacency.get(current) || []).forEach(([next, delta]) => {
+      if (depths.has(next)) return;
+      depths.set(next, depths.get(current) + delta);
+      queue.push(next);
+    });
+  }
+
+  return depths;
+}
+
+// One-based row number for every person, matching what the canvas draws: the
+// topmost visible ancestor is row 1 and partners share a row. People outside
+// the reference's family component fall back to their absolute generation.
+export function personRowMap(people, families, referenceId) {
+  const list = Array.isArray(people) ? people : [];
+  const rows = new Map();
+  if (!list.length) return rows;
+
+  const absolute = personGenerationMap(list, families);
+  const relative = relativeDepthsFrom(list, families, referenceId);
+  const depths = [...relative.values()];
+  const topDepth = depths.length ? Math.min(...depths) : 0;
+
+  list.forEach((person) => {
+    const id = idOf(person.id);
+    rows.set(
+      id,
+      relative.has(id)
+        ? relative.get(id) - topDepth + 1
+        : absolute.get(id) || 1
+    );
+  });
+  return rows;
+}
+
 export function defaultHomePersonId(people, families) {  const list = Array.isArray(people) ? people : [];
   if (!list.length) return '';
 

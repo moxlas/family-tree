@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { relativeDepthsFrom } from '../treeView';
 import PersonCard from './PersonCard';
 
 // A previous marriage with children needs room for those children to hang
@@ -154,64 +155,6 @@ export function HeartIcon({ broken = false }) {
 function yearFromDate(value) {
   const match = String(value == null ? '' : value).match(/\b(\d{4})\b/);
   return match ? Number(match[1]) : 0;
-}
-
-// Generation depth relative to one reference person. Parent links move one
-// row up or down and partners share a row. This keeps both family sides on
-// the same horizontal level even when one side has fewer recorded ancestors.
-function relativePersonDepths(people, families, anchorId) {
-  const ids = new Set(people.map((person) => String(person.id)));
-  const adjacency = new Map();
-  const addEdge = (from, to, delta) => {
-    if (!ids.has(from) || !ids.has(to)) return;
-    if (!adjacency.has(from)) adjacency.set(from, []);
-    adjacency.get(from).push([to, delta]);
-  };
-
-  (families || []).forEach((family) => {
-    const husband = family.husband == null ? '' : String(family.husband);
-    const wife = family.wife == null ? '' : String(family.wife);
-    if (husband && wife) {
-      addEdge(husband, wife, 0);
-      addEdge(wife, husband, 0);
-    }
-    (family.children || []).forEach((childId) => {
-      const child = String(childId);
-      [husband, wife].filter(Boolean).forEach((parentId) => {
-        addEdge(parentId, child, 1);
-        addEdge(child, parentId, -1);
-      });
-    });
-  });
-
-  people.forEach((person) => {
-    const id = String(person.id);
-    const spouseId = person.spouseId ? String(person.spouseId) : '';
-    if (spouseId) {
-      addEdge(id, spouseId, 0);
-      addEdge(spouseId, id, 0);
-    }
-    [person.parentId, person.secondParentId]
-      .filter(Boolean)
-      .map(String)
-      .forEach((parentId) => {
-        addEdge(parentId, id, 1);
-        addEdge(id, parentId, -1);
-      });
-  });
-
-  const depths = new Map([[anchorId, 0]]);
-  const queue = [anchorId];
-  while (queue.length) {
-    const current = queue.shift();
-    (adjacency.get(current) || []).forEach(([next, delta]) => {
-      if (depths.has(next)) return;
-      depths.set(next, depths.get(current) + delta);
-      queue.push(next);
-    });
-  }
-
-  return depths;
 }
 
 function cardCenterX(unit, memberIndex) {
@@ -1189,7 +1132,7 @@ export function buildScene(
   // keep their own root-based depths.
   const anchorId = String(anchorPersonId || '');
   if (anchorId && byId.has(anchorId)) {
-    const relativeDepths = relativePersonDepths(people, families, anchorId);
+    const relativeDepths = relativeDepthsFrom(people, families, anchorId);
     const unitDepths = new Map();
 
     units.forEach((unit, unitIndex) => {
@@ -1726,7 +1669,20 @@ export function buildScene(
   ) + 68;
   const layoutWidth = Math.max(contentWidth, pedigreeWidth);
 
-  return { units, rows, depths, treeWidth: layoutWidth };
+  // One-based row for each person as actually drawn, so the details row and
+  // same-name pickers can show the same generation number as the canvas.
+  const rowByPersonId = new Map();
+  units.forEach((unit, unitIndex) => {
+    unit.members.forEach((member) => {
+      const id = String(member.id);
+      const row = depths[unitIndex] + 1;
+      if (!rowByPersonId.has(id) || row < rowByPersonId.get(id)) {
+        rowByPersonId.set(id, row);
+      }
+    });
+  });
+
+  return { units, rows, depths, rowByPersonId, treeWidth: layoutWidth };
 }
 
 export default function SpouseTreeComponent({

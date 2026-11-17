@@ -110,4 +110,27 @@ describe('personOptionLabels', () => {
     expect(labels.get('a')).toBe('Jonas Jonaitis (gen. 1)');
     expect(labels.get('c')).toBe('Jonas Jonaitis (gen. 2)');
   });
+
+  it('uses supplied canvas rows instead of absolute generations', () => {
+    const people = [
+      person('a'),
+      person('b', { firstName: 'Other', lastName: 'Person', parentId: 'a' }),
+      person('c', { parentId: 'b' }),
+    ];
+    const rows = new Map([['a', 7], ['c', 9]]);
+
+    const labels = personOptionLabels(people, [], en, rows);
+    expect(labels.get('a')).toBe('Jonas Jonaitis (gen. 7)');
+    expect(labels.get('c')).toBe('Jonas Jonaitis (gen. 9)');
+  });
+
+  it('falls back to counters when same-name people share a canvas row', () => {
+    const people = [person('a'), person('b', { parentId: 'a' })];
+    // Absolute generations differ (1 and 2), but the canvas draws both on row 5.
+    const rows = new Map([['a', 5], ['b', 5]]);
+
+    const labels = personOptionLabels(people, [], en, rows);
+    expect(labels.get('a')).toBe('Jonas Jonaitis (1)');
+    expect(labels.get('b')).toBe('Jonas Jonaitis (2)');
+  });
 });

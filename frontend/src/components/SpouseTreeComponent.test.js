@@ -1,3 +1,4 @@
+import { personRowMap } from '../treeView';
 import {
   buildScene,
   edgeInvolvesPerson,
@@ -501,6 +502,15 @@ describe('buildScene anchored generations', () => {
     expect(rowOf('AUNT')).toBe(rowOf('M'));
     expect(rowOf('AUNT')).toBe(rowOf('F'));
     expect(rowOf('AUNT')).toBe(rowOf('C') - 1);
+  });
+
+  it('exposes the same one-based rows as the shared generation helper', () => {
+    const scene = buildScene(anchoredPeople, anchoredFamilies, true, 'C');
+    const expected = personRowMap(anchoredPeople, anchoredFamilies, 'C');
+
+    ['A', 'B', 'M', 'AUNT', 'F', 'C', 'PGF', 'PGM', 'GG1', 'GG2'].forEach((id) => {
+      expect(scene.rowByPersonId.get(id)).toBe(expected.get(id));
+    });
   });
 });
 

@@ -21,6 +21,7 @@ import {
   branchMemberIds,
   computeTreeStats,
   defaultHomePersonId,
+  personRowMap,
   viewPeople,
 } from '../treeView';
 
@@ -290,6 +291,13 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
         maxDepth: effectiveMaxDepth,
       }),
     [people, families, focusId, homePersonId, collapsedPersonIds, effectiveMaxDepth]
+  );
+
+  // Same one-based rows the canvas draws, so details and pickers agree with
+  // the tree on screen.
+  const rowByPersonId = useMemo(
+    () => personRowMap(view.people, view.families, focusId || homePersonId),
+    [view, focusId, homePersonId]
   );
 
   // Direct children per person, used by the card's hide-children control.
@@ -803,8 +811,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   };
 
   const personLabels = useMemo(
-    () => personOptionLabels(people, families, t),
-    [people, families, t]
+    () => personOptionLabels(people, families, t, rowByPersonId),
+    [people, families, t, rowByPersonId]
   );
 
   const busy = treesLoading || loading;
@@ -1271,6 +1279,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           person={detailsPerson}
           referenceKind={focusId ? 'branch' : 'home'}
           referencePersonId={focusId || homePersonId}
+          rowByPersonId={rowByPersonId}
         />
       )}
 
@@ -1291,6 +1300,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
           people={people}
           person={modal.person}
           relationship={modal.relationship}
+          rowByPersonId={rowByPersonId}
         />
       )}
 

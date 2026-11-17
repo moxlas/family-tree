@@ -5,6 +5,7 @@ import {
   bloodlinePersonIds,
   branchMemberIds,
   defaultHomePersonId,
+  personRowMap,
   viewPeople,
 } from '../treeView';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -138,6 +139,11 @@ export default function PublicTreePage({ token }) {
         maxDepth: effectiveMaxDepth,
       }),
     [people, families, focusId, homePersonId, collapsedIds, effectiveMaxDepth]
+  );
+
+  const rowByPersonId = useMemo(
+    () => personRowMap(view.people, view.families, focusId || homePersonId),
+    [view, focusId, homePersonId]
   );
 
   const childrenByPerson = useMemo(() => {
@@ -589,6 +595,7 @@ export default function PublicTreePage({ token }) {
           person={detailsPerson}
           referenceKind={focusId ? 'branch' : 'home'}
           referencePersonId={focusId || homePersonId}
+          rowByPersonId={rowByPersonId}
         />
       )}
     </div>
