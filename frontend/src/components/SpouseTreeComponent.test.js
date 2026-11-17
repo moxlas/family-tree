@@ -1,6 +1,7 @@
 import {
   buildScene,
   edgeInvolvesPerson,
+  orderEdgesForHighlight,
   pairKeyOf,
   parentPairKeys,
 } from './SpouseTreeComponent';
@@ -576,6 +577,30 @@ describe('edgeInvolvesPerson', () => {
   it('ignores an empty hover', () => {
     expect(edgeInvolvesPerson(edge, '')).toBe(false);
     expect(edgeInvolvesPerson(null, '2')).toBe(false);
+  });
+});
+
+describe('orderEdgesForHighlight', () => {
+  const edges = [
+    { id: 'a', parentIds: ['1', '2'], childId: '9' },
+    { id: 'b', parentIds: ['3', '4'], childId: '7' },
+    { id: 'c', parentIds: ['5', '6'], childId: '9' },
+  ];
+
+  it('paints the hovered person edges last so siblings cannot cover them', () => {
+    const ordered = orderEdgesForHighlight(edges, '7');
+    expect(ordered.map((entry) => entry.edge.id)).toEqual(['a', 'c', 'b']);
+    expect(ordered.map((entry) => entry.highlighted)).toEqual([
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it('keeps the drawing order when nothing is hovered', () => {
+    const ordered = orderEdgesForHighlight(edges, '');
+    expect(ordered.map((entry) => entry.edge.id)).toEqual(['a', 'b', 'c']);
+    expect(ordered.every((entry) => !entry.highlighted)).toBe(true);
   });
 });
 

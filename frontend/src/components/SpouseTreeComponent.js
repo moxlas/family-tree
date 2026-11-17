@@ -50,6 +50,18 @@ export function edgeInvolvesPerson(edge, personId) {
   return (edge.parentIds || []).some((parentId) => String(parentId) === id);
 }
 
+// Siblings hang from the same parents' heart, so their connectors overlap for
+// the first stretch. Painting the hovered person's lines last keeps them on
+// top instead of being covered by a sibling's unhighlighted path.
+export function orderEdgesForHighlight(edges, personId) {
+  return (edges || [])
+    .map((edge) => ({
+      edge,
+      highlighted: edgeInvolvesPerson(edge, personId),
+    }))
+    .sort((first, second) => Number(first.highlighted) - Number(second.highlighted));
+}
+
 // When the marriages in a group form a simple chain (A - B - C - D), return
 // the people in chain order so every marriage sits between neighbours and
 // its heart is drawn beside the card. Returns null for any other shape.
@@ -2283,20 +2295,22 @@ export default function SpouseTreeComponent({
         height={size.height}
         width={size.width}
       >
-        {edges.map((edge) => (
-          <path
-            className={[
-              edge.isFormerSpouseEdge ? 'is-former-spouse' : '',
-              edgeInvolvesPerson(edge, hoveredPersonId)
-                ? 'is-highlighted'
-                : '',
-            ]
-              .filter(Boolean)
-              .join(' ') || undefined}
-            d={edge.path}
-            key={edge.id}
-          />
-        ))}
+        {orderEdgesForHighlight(edges, hoveredPersonId).map(
+          ({ edge, highlighted }) => (
+            <path
+              className={
+                [
+                  edge.isFormerSpouseEdge ? 'is-former-spouse' : '',
+                  highlighted ? 'is-highlighted' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+              d={edge.path}
+              key={edge.id}
+            />
+          )
+        )}
       </svg>
 
       {scene.rows.map((row, depth) => (
