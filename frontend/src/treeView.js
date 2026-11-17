@@ -449,11 +449,33 @@ export function computeTreeStats(people, families = []) {  const ids = new Set(p
   return { generations, roots };
 }
 
-export function personGeneration(people, families, personId) {
+export function personGenerationMap(people, families) {
   const list = Array.isArray(people) ? people : [];
   const marriages = Array.isArray(families) ? families : [];
   const graph = buildGraph(list, marriages);
-  return generationOf(graph, personId);
+  const parents = reverseEdges(graph.children);
+  const generations = new Map();
+  const visiting = new Set();
+
+  const compute = (node) => {
+    if (generations.has(node)) return generations.get(node);
+    if (visiting.has(node)) return 1;
+    visiting.add(node);
+    let depth = 1;
+    (parents.get(node) || new Set()).forEach((parentId) => {
+      depth = Math.max(depth, compute(parentId) + 1);
+    });
+    visiting.delete(node);
+    generations.set(node, depth);
+    return depth;
+  };
+
+  list.forEach((person) => compute(idOf(person.id)));
+  return generations;
+}
+
+export function personGeneration(people, families, personId) {
+  return personGenerationMap(people, families).get(idOf(personId)) || 1;
 }
 
 export function defaultHomePersonId(people, families) {  const list = Array.isArray(people) ? people : [];

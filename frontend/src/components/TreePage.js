@@ -803,8 +803,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   };
 
   const personLabels = useMemo(
-    () => personOptionLabels(people),
-    [people]
+    () => personOptionLabels(people, families, t),
+    [people, families, t]
   );
 
   const busy = treesLoading || loading;

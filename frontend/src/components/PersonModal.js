@@ -279,7 +279,10 @@ export default function PersonModal({
   relationship,
 }) {
   const { t, translateApiError } = useI18n();
-  const personLabels = useMemo(() => personOptionLabels(people), [people]);
+  const personLabels = useMemo(
+    () => personOptionLabels(people, families, t),
+    [people, families, t]
+  );
   const [form, setForm] = useState(() => {
     const relationships = relationshipsForPerson(
       person,
