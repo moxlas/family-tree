@@ -2667,6 +2667,14 @@ textarea {
   height: 3px;
 }
 
+/* A highlighted former marriage stays a broken-heart dashed line instead of
+   turning into a solid bar. Weight matches the other highlighted links. */
+.spouse-link.is-former.is-highlighted::before {
+  background: none;
+  border-top: 3px dashed var(--ink);
+  height: 0;
+}
+
 .spouse-link-behind.is-highlighted {
   border-top-color: var(--ink);
   border-top-width: 3px;
