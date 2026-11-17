@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { formatLifeDateForDisplay } from '../dates';
+import { previousSurnameFor } from '../gedcom';
 import { personDeceasedLabel, useI18n } from '../i18n';
 
 function initials(person) {
@@ -37,6 +38,13 @@ export default function PersonCard({
   const hasAddActions = Boolean(
     onAddChild || onAddParent || onAddSibling || onAddSpouse
   );
+  const hasMoreActions = Boolean(onFocus || onToggleChildren || onEdit || onDelete);
+
+  const maidenSurname = previousSurnameFor(person);
+  const showMaiden =
+    maidenSurname &&
+    maidenSurname.toLowerCase() !==
+      String(person.lastName || '').trim().toLowerCase();
 
   let life = t('person.datesUnknown');
   if (person.birthDate && person.deathDate) {
@@ -56,18 +64,21 @@ export default function PersonCard({
     life = deceasedLabel;
   }
 
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openMenu, setOpenMenu] = useState('');
   const [menuStyle, setMenuStyle] = useState({});
-  const buttonRef = useRef(null);
-  const menuRef = useRef(null);
-  const optionsRef = useRef(null);
+  const addButtonRef = useRef(null);
+  const addMenuRef = useRef(null);
+  const addOptionsRef = useRef(null);
+  const moreButtonRef = useRef(null);
+  const moreMenuRef = useRef(null);
+  const moreOptionsRef = useRef(null);
 
-  const getMenuStyle = useCallback(() => {
-    if (!buttonRef.current) return {};
+  const getMenuStyle = useCallback((buttonNode, optionsNode) => {
+    if (!buttonNode) return {};
 
-    const rect = buttonRef.current.getBoundingClientRect();
-    const menuWidth = optionsRef.current?.offsetWidth || 168;
-    const menuHeight = optionsRef.current?.offsetHeight || 160;
+    const rect = buttonNode.getBoundingClientRect();
+    const menuWidth = optionsNode?.offsetWidth || 168;
+    const menuHeight = optionsNode?.offsetHeight || 160;
     const belowTop = rect.bottom + 6;
     const aboveTop = rect.top - menuHeight - 6;
     const fitsBelow = belowTop + menuHeight <= window.innerHeight;
@@ -83,30 +94,38 @@ export default function PersonCard({
     };
   }, []);
 
-  const placeMenu = useCallback(() => {
-    setMenuStyle(getMenuStyle());
-  }, [getMenuStyle]);
+  const placeMenu = useCallback(
+    (name) => {
+      const button = name === 'more' ? moreButtonRef.current : addButtonRef.current;
+      const options =
+        name === 'more' ? moreOptionsRef.current : addOptionsRef.current;
+      setMenuStyle(getMenuStyle(button, options));
+    },
+    [getMenuStyle]
+  );
 
   useEffect(() => {
-    if (!menuOpen) return undefined;
+    if (!openMenu) return undefined;
 
-    placeMenu();
+    placeMenu(openMenu);
 
-    const updatePosition = () => placeMenu();
+    const updatePosition = () => placeMenu(openMenu);
 
     const handlePointerDown = (event) => {
-      // The menu is portaled to document.body, so React’s local wrapper
-      // ref alone does not contain clicks on the menu itself. Check both
-      // refs; otherwise clicking an option closes before its click fires.
-      const inAnchor = menuRef.current?.contains(event.target);
-      const inOptions = optionsRef.current?.contains(event.target);
-      if (!inAnchor && !inOptions) {
-        setMenuOpen(false);
+      // Menus are portaled to document.body, so React’s local wrapper ref
+      // alone does not contain clicks on the menu itself. Check both refs;
+      // otherwise clicking an option closes before its click fires.
+      const anchor =
+        openMenu === 'more' ? moreMenuRef.current : addMenuRef.current;
+      const options =
+        openMenu === 'more' ? moreOptionsRef.current : addOptionsRef.current;
+      if (!anchor?.contains(event.target) && !options?.contains(event.target)) {
+        setOpenMenu('');
       }
     };
 
     const handleKeyDown = (event) => {
-      if (event.key === 'Escape') setMenuOpen(false);
+      if (event.key === 'Escape') setOpenMenu('');
     };
 
     document.addEventListener('mousedown', handlePointerDown);
@@ -119,16 +138,23 @@ export default function PersonCard({
       window.removeEventListener('scroll', updatePosition, true);
       window.removeEventListener('resize', updatePosition);
     };
-  }, [menuOpen, placeMenu]);
+  }, [openMenu, placeMenu]);
 
   const handleCardClick = () => {
     if (suppressClickRef?.current) return;
     if (onView) onView(person);
   };
 
-  const closeMenu = () => setMenuOpen(false);
+  const closeMenu = () => setOpenMenu('');
 
-  const runMenuAction = (action) => {
+  const toggleMenu = (event, name) => {
+    event.stopPropagation();
+    if (openMenu !== name) placeMenu(name);
+    setOpenMenu((value) => (value === name ? '' : name));
+  };
+
+  const runMenuAction = (action) => (event) => {
+    event?.stopPropagation();
     if (action) action(person);
     closeMenu();
   };
@@ -171,6 +197,12 @@ export default function PersonCard({
               </span>
             )}
           </h3>
+          {showMaiden && (
+            <p className="person-maiden" title={t('details.previousName')}>
+              <span className="sr-only">{t('details.previousName')}: </span>
+              {maidenSurname}
+            </p>
+          )}
           <p className="person-life">
             {life}
             {isHome && (
@@ -194,153 +226,216 @@ export default function PersonCard({
       </div>
 
       <div className="person-actions">
-        {onFocus && (
-          <button
-            aria-label={t('branch.focusAria', { name: fullName })}
-            className={`icon-button focus${hasBranch ? ' has-branch' : ''}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onFocus(person);
-            }}
-            title={
-              hasBranch ? t('branch.focusHasFamily') : t('branch.focus')
-            }
-            type="button"
-          >
-            ◎
-          </button>
-        )}
         {hasAddActions && (
-        <div className="person-add-menu" ref={menuRef}>
-          <button
-            aria-expanded={menuOpen}
-            aria-haspopup="menu"
-            aria-label={t('person.addRelative', { name: fullName })}
-            className="icon-button add"
-            ref={buttonRef}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (!menuOpen) placeMenu();
-              setMenuOpen((value) => !value);
-            }}
-            title={t('person.addRelativeTitle')}
-            type="button"
-          >
-            +
-          </button>
-          {menuOpen
-            ? createPortal(
-                <div
-                  className="person-add-options"
-                  ref={optionsRef}
-                  role="menu"
-                  style={menuStyle}
-                >
-              {onAddChild && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    runMenuAction(onAddChild);
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  {t('person.addChildTitle')}
-                </button>
-              )}
-              {onAddParent && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    runMenuAction(onAddParent);
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  {t('person.addParentTitle')}
-                </button>
-              )}
-              {onAddSibling && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    runMenuAction(onAddSibling);
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  {t('person.addSiblingTitle')}
-                </button>
-              )}
-              {onAddSpouse && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    runMenuAction(onAddSpouse);
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  {t('person.addSpouseTitle')}
-                </button>
-              )}
-            </div>,
-            document.body
-          ) : null}
-        </div>
+          <div className="person-add-menu" ref={addMenuRef}>
+            <button
+              aria-expanded={openMenu === 'add'}
+              aria-haspopup="menu"
+              aria-label={t('person.addRelative', { name: fullName })}
+              className="icon-button add"
+              ref={addButtonRef}
+              onClick={(event) => toggleMenu(event, 'add')}
+              title={t('person.addRelativeTitle')}
+              type="button"
+            >
+              +
+            </button>
+            {openMenu === 'add'
+              ? createPortal(
+                  <div
+                    className="person-add-options"
+                    ref={addOptionsRef}
+                    role="menu"
+                    style={menuStyle}
+                  >
+                    {onAddChild && (
+                      <button
+                        onClick={runMenuAction(onAddChild)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.addChildTitle')}
+                      </button>
+                    )}
+                    {onAddParent && (
+                      <button
+                        onClick={runMenuAction(onAddParent)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.addParentTitle')}
+                      </button>
+                    )}
+                    {onAddSibling && (
+                      <button
+                        onClick={runMenuAction(onAddSibling)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.addSiblingTitle')}
+                      </button>
+                    )}
+                    {onAddSpouse && (
+                      <button
+                        onClick={runMenuAction(onAddSpouse)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.addSpouseTitle')}
+                      </button>
+                    )}
+                  </div>,
+                  document.body
+                )
+              : null}
+          </div>
         )}
-        {onToggleChildren && (
-          <button
-            aria-label={
-              childrenHidden
-                ? t('person.showChildrenAria', { name: fullName })
-                : t('person.hideChildrenAria', { name: fullName })
-            }
-            className={`icon-button children${childrenHidden ? ' is-collapsed' : ''}`}
-            disabled={childCount === 0}
-            onClick={(event) => {
-              event.stopPropagation();
-              if (childCount > 0) onToggleChildren(person);
-            }}
-            title={
-              childCount === 0
-                ? t('person.noChildren')
-                : childrenHidden
-                  ? t('person.showChildren')
-                  : t('person.hideChildren')
-            }
-            type="button"
-          >
-            {childrenHidden ? '▸' : '▾'}
-          </button>
+
+        {hasMoreActions && (
+          <div className="person-actions-secondary">
+            {onFocus && (
+              <button
+                aria-label={t('branch.focusAria', { name: fullName })}
+                className={`icon-button focus${hasBranch ? ' has-branch' : ''}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onFocus(person);
+                }}
+                title={
+                  hasBranch ? t('branch.focusHasFamily') : t('branch.focus')
+                }
+                type="button"
+              >
+                ◎
+              </button>
+            )}
+            {onToggleChildren && (
+              <button
+                aria-label={
+                  childrenHidden
+                    ? t('person.showChildrenAria', { name: fullName })
+                    : t('person.hideChildrenAria', { name: fullName })
+                }
+                className={`icon-button children${
+                  childrenHidden ? ' is-collapsed' : ''
+                }`}
+                disabled={childCount === 0}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (childCount > 0) onToggleChildren(person);
+                }}
+                title={
+                  childCount === 0
+                    ? t('person.noChildren')
+                    : childrenHidden
+                      ? t('person.showChildren')
+                      : t('person.hideChildren')
+                }
+                type="button"
+              >
+                {childrenHidden ? '▸' : '▾'}
+              </button>
+            )}
+            {onEdit && (
+              <button
+                aria-label={t('person.edit', { name: fullName })}
+                className="icon-button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit(person);
+                }}
+                title={t('person.editTitle')}
+                type="button"
+              >
+                ✎
+              </button>
+            )}
+            {onDelete && (
+              <button
+                aria-label={t('person.delete', { name: fullName })}
+                className="icon-button danger"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onDelete(person);
+                }}
+                title={t('person.deleteTitle')}
+                type="button"
+              >
+                ×
+              </button>
+            )}
+          </div>
         )}
-        {onEdit && (
-          <button
-            aria-label={t('person.edit', { name: fullName })}
-            className="icon-button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(person);
-            }}
-            title={t('person.editTitle')}
-            type="button"
-          >
-            ✎
-          </button>
-        )}
-        {onDelete && (
-          <button
-            aria-label={t('person.delete', { name: fullName })}
-            className="icon-button danger"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(person);
-            }}
-            title={t('person.deleteTitle')}
-            type="button"
-          >
-            ×
-          </button>
+
+        {hasMoreActions && (
+          <div className="person-more-menu" ref={moreMenuRef}>
+            <button
+              aria-expanded={openMenu === 'more'}
+              aria-haspopup="menu"
+              aria-label={t('person.moreActions', { name: fullName })}
+              className="icon-button more"
+              ref={moreButtonRef}
+              onClick={(event) => toggleMenu(event, 'more')}
+              title={t('person.moreTitle')}
+              type="button"
+            >
+              ⋯
+            </button>
+            {openMenu === 'more'
+              ? createPortal(
+                  <div
+                    className="person-add-options person-more-options"
+                    ref={moreOptionsRef}
+                    role="menu"
+                    style={menuStyle}
+                  >
+                    {onFocus && (
+                      <button
+                        onClick={runMenuAction(onFocus)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {hasBranch
+                          ? t('branch.focusHasFamily')
+                          : t('branch.focus')}
+                      </button>
+                    )}
+                    {onToggleChildren && (
+                      <button
+                        disabled={childCount === 0}
+                        onClick={runMenuAction(onToggleChildren)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {childrenHidden
+                          ? t('person.showChildren')
+                          : t('person.hideChildren')}
+                      </button>
+                    )}
+                    {onEdit && (
+                      <button
+                        onClick={runMenuAction(onEdit)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.editTitle')}
+                      </button>
+                    )}
+                    {onDelete && (
+                      <button
+                        className="danger-text"
+                        onClick={runMenuAction(onDelete)}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {t('person.deleteTitle')}
+                      </button>
+                    )}
+                  </div>,
+                  document.body
+                )
+              : null}
+          </div>
         )}
       </div>
     </article>

@@ -14,8 +14,8 @@ function idOf(value) {
 }
 
 // Public pages are read-only and never expose account data or private notes.
-// Living people keep their names and relationships, but their birth details
-// and the dates/places of their unions stay hidden.
+// Living people keep their names and relationships, but their birth details,
+// previous surname and the dates/places of their unions stay hidden.
 router.get('/trees/:token', async (req, res) => {
   const token = String(req.params.token || '').trim();
 
@@ -52,7 +52,7 @@ router.get('/trees/:token', async (req, res) => {
       id: person.id,
       firstName: person.firstName,
       lastName: person.lastName,
-      previousName: person.previousName,
+      previousName: living ? '' : person.previousName,
       gender: person.gender,
       birthDate: living ? '' : person.birthDate,
       birthPlace: living ? '' : person.birthPlace,

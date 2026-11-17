@@ -1309,6 +1309,13 @@ textarea {
   margin: 0;
 }
 
+.person-maiden {
+  color: var(--muted);
+  font-size: var(--a11y-meta, 11.5px);
+  margin: 0 0 4px;
+  overflow-wrap: anywhere;
+}
+
 .person-deceased-mark {
   color: var(--muted);
   font-size: 1.2em;
@@ -1369,6 +1376,20 @@ textarea {
   justify-content: flex-end;
   margin-top: auto;
   padding-top: 10px;
+}
+
+.person-actions-secondary {
+  display: flex;
+  gap: 5px;
+}
+
+.person-more-menu {
+  display: none;
+  position: relative;
+}
+
+.person-more-options {
+  min-width: 168px;
 }
 
 .icon-button {
@@ -2255,6 +2276,23 @@ textarea {
   outline: none;
 }
 
+.person-add-options button:disabled,
+.person-add-options button:disabled:hover {
+  background: transparent;
+  color: #b3c0c8;
+  cursor: default;
+}
+
+.person-add-options button.danger-text {
+  color: var(--danger);
+}
+
+.person-add-options button.danger-text:hover,
+.person-add-options button.danger-text:focus-visible {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 /* Zoom toolbar */
 .tree-zoom-toolbar {
   align-items: center;
@@ -2823,13 +2861,37 @@ textarea {
 /* Touch devices: roomier hit areas and no sticky hover. */
 @media (pointer: coarse) {
   .icon-button {
-    font-size: 16px;
-    height: 34px;
-    width: 34px;
+    font-size: 18px;
+    height: 44px;
+    width: 44px;
+  }
+
+  .app-shell.a11y-xlarge .icon-button {
+    height: 48px;
+    width: 48px;
   }
 
   .person-actions {
     gap: 7px;
+  }
+
+  /* Keep Add one tap, but move the less common actions into a single large
+     target so the card stays uncluttered on phones. */
+  .person-actions-secondary {
+    display: none;
+  }
+
+  .person-more-menu {
+    display: block;
+  }
+
+  .person-add-options button {
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .app-shell.a11y-xlarge .person-add-options button {
+    min-height: 48px;
   }
 
   .hero-collapse-toggle {
