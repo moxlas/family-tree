@@ -1270,7 +1270,7 @@ textarea {
   padding: 15px 15px 13px;
   position: relative;
   transition: box-shadow 160ms ease, transform 160ms ease;
-  width: 248px;
+  width: var(--card-width, 248px);
 }
 
 .person-card:hover {
@@ -2762,14 +2762,6 @@ textarea {
   --a11y-body: 17.5px;
   --a11y-label: 18px;
   --a11y-tag: 12px;
-}
-
-.app-shell.a11y-large .person-card {
-  min-width: 300px;
-}
-
-.app-shell.a11y-xlarge .person-card {
-  min-width: 320px;
 }
 
 /* Large text should never shrink a control; both modes grow the targets. */

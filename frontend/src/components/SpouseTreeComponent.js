@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { cardWidthFor } from '../accessibility';
 import { relativeDepthsFrom } from '../treeView';
 import PersonCard from './PersonCard';
 
@@ -17,6 +18,7 @@ const FORMER_LINK_WIDTH = 76;
 const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
 const MAX_ROUTING_LANES = 6;
+const DEFAULT_CARD_WIDTH = cardWidthFor();
 
 export function pairKeyOf(firstId, secondId) {  const first = String(firstId);
   const second = String(secondId);
@@ -369,7 +371,7 @@ function applyHomePedigree({
     if (current >= required) return;
 
     const gapIndex = Math.min(firstIndex, secondIndex);
-    const cardWidth = unit.cardWidth || 248;
+    const cardWidth = unit.cardWidth || DEFAULT_CARD_WIDTH;
     unit.linkWidths[gapIndex] =
       (unit.linkWidths[gapIndex] || 0) + (required - current);
 
@@ -504,7 +506,8 @@ export function buildScene(
   families,
   showFormerSpouses = true,
   anchorPersonId = '',
-  pedigreePersonId = ''
+  pedigreePersonId = '',
+  cardWidth = DEFAULT_CARD_WIDTH
 ) {
   const byId = new Map(people.map((person) => [String(person.id), person]));
   const units = [];
@@ -1258,7 +1261,7 @@ export function buildScene(
   // Layout: every connected family is laid out as one block and children
   // are reserved bottom-up, so each parent is centred over its descendants
   // without any later shifting.
-  const CARD_WIDTH = 248;
+  const CARD_WIDTH = cardWidth;
   const BASE_UNIT_GAP = 44;
   const ROUTING_UNIT_GAP = 76;
   const COMPONENT_GAP = 140;
@@ -1687,6 +1690,7 @@ export function buildScene(
 
 export default function SpouseTreeComponent({
   branchFlagsById,
+  cardWidth = DEFAULT_CARD_WIDTH,
   childrenByPerson,
   collapsedPersonIds = [],
   families = [],
@@ -1714,7 +1718,8 @@ export default function SpouseTreeComponent({
         families,
         showFormerSpouses,
         focusId || homePersonId || '',
-        pedigreePersonId
+        pedigreePersonId,
+        cardWidth
       ),
     [
       people,
@@ -1723,6 +1728,7 @@ export default function SpouseTreeComponent({
       focusId,
       homePersonId,
       pedigreePersonId,
+      cardWidth,
     ]
   );
 
@@ -2353,11 +2359,11 @@ export default function SpouseTreeComponent({
                 );
                 if (gapIndex == null) return null;
 
-                const cardWidth = unit.cardWidth || 248;
+                const width = unit.cardWidth || cardWidth;
                 const segments = [];
                 for (let index = leftIndex; index < rightIndex; index += 1) {
-                  const left = unit.memberCenters[index] + cardWidth / 2;
-                  const right = unit.memberCenters[index + 1] - cardWidth / 2;
+                  const left = unit.memberCenters[index] + width / 2;
+                  const right = unit.memberCenters[index + 1] - width / 2;
                   if (right - left < 1) continue;
                   segments.push({ left, width: right - left });
                 }

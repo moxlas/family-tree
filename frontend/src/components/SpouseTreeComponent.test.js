@@ -1,3 +1,4 @@
+import { cardWidthFor } from '../accessibility';
 import { personRowMap } from '../treeView';
 import {
   buildScene,
@@ -565,6 +566,77 @@ describe('home-centred pedigree layout', () => {
     expect(
       (cardCentre(maternal, 'MF') + cardCentre(maternal, 'MM')) / 2
     ).toBeCloseTo(motherCentre, 1);
+  });
+});
+
+describe('buildScene accessibility card widths', () => {
+  const widthPeople = [
+    person('1', { firstName: 'A', spouseId: '2' }),
+    person('2', { firstName: 'B', spouseId: '1' }),
+    person('3', { firstName: 'C', spouseId: '4' }),
+    person('4', { firstName: 'D', spouseId: '3' }),
+    person('5', { firstName: 'ChildA', parentId: '1', secondParentId: '2' }),
+    person('6', { firstName: 'ChildB', parentId: '3', secondParentId: '4' }),
+  ];
+  const widthFamilies = [
+    { id: 'f1', husband: '1', wife: '2', status: 'current', children: ['5'] },
+    { id: 'f2', husband: '3', wife: '4', status: 'current', children: ['6'] },
+  ];
+
+  [cardWidthFor('large'), cardWidthFor('xlarge')].forEach((width) => {
+    it(`lays out couples and children at ${width}px without overlap`, () => {
+      const scene = buildScene(widthPeople, widthFamilies, true, '', '', width);
+      expect(scene.units.length).toBeGreaterThan(1);
+
+      scene.units.forEach((unit) => {
+        expect(unit.cardWidth).toBe(width);
+        const linkTotal = (unit.linkWidths || []).reduce(
+          (sum, linkWidth) => sum + linkWidth,
+          0
+        );
+        expect(unit.width).toBeCloseTo(
+          unit.members.length * width + linkTotal,
+          5
+        );
+
+        for (let index = 1; index < unit.memberCenters.length; index += 1) {
+          const distance =
+            unit.memberCenters[index] - unit.memberCenters[index - 1];
+          expect(distance).toBeCloseTo(
+            width + (unit.linkWidths[index - 1] || 0),
+            5
+          );
+          expect(distance).toBeGreaterThanOrEqual(width);
+        }
+      });
+
+      scene.rows.forEach((row) => {
+        const sorted = row
+          .map((unitIndex) => scene.units[unitIndex])
+          .sort(
+            (first, second) =>
+              first.x - first.width / 2 - (second.x - second.width / 2)
+          );
+        for (let index = 1; index < sorted.length; index += 1) {
+          const previousRight = sorted[index - 1].x + sorted[index - 1].width / 2;
+          const nextLeft = sorted[index].x - sorted[index].width / 2;
+          expect(nextLeft).toBeGreaterThanOrEqual(previousRight - 0.01);
+        }
+      });
+    });
+  });
+
+  it('grows unit widths as the text size increases', () => {
+    const coupleWidth = (width) => {
+      const scene = buildScene(widthPeople, widthFamilies, true, '', '', width);
+      return scene.units.find((unit) => unit.members.length === 2).width;
+    };
+
+    const normal = coupleWidth(cardWidthFor('normal'));
+    const large = coupleWidth(cardWidthFor('large'));
+    const xlarge = coupleWidth(cardWidthFor('xlarge'));
+    expect(large).toBeGreaterThan(normal);
+    expect(xlarge).toBeGreaterThan(large);
   });
 });
 

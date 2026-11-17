@@ -5,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { cardWidthFor } from '../accessibility';
 import api from '../api';
 import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
@@ -827,8 +828,15 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
     .filter(Boolean)
     .join(' ');
 
+  // The CSS variable sizes the cards and this same value drives the canvas
+  // layout, so both change together with the accessibility setting.
+  const cardWidth = cardWidthFor(user?.settings?.textSize);
+
   return (
-    <div className={`app-shell ${accessibilityClass}`.trim()}>
+    <div
+      className={`app-shell ${accessibilityClass}`.trim()}
+      style={{ '--card-width': `${cardWidth}px` }}
+    >
       <header className="topbar">
         <div className="topbar-inner">
           <div className="brand-lockup compact">
@@ -1168,6 +1176,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
             >
               {bloodlineOnly ? (
                 <SpouseTreeComponent
+                  cardWidth={cardWidth}
                   families={families}
                   focusId=""
                   homePersonId={homePersonId}
@@ -1186,6 +1195,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               ) : (
                 <SpouseTreeComponent
                   branchFlagsById={branchFlagsById}
+                  cardWidth={cardWidth}
                   childrenByPerson={childrenByPerson}
                   collapsedPersonIds={collapsedPersonIds}
                   families={view.families}
