@@ -22,7 +22,14 @@ export default function PublicTreePage({ token }) {
   const [unavailable, setUnavailable] = useState(false);
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [focusId, setFocusId] = useState('');
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const width = window.innerWidth;
+    if (width <= 430) return 0.6;
+    if (width <= 600) return 0.7;
+    if (width <= 820) return 0.8;
+    return 1;
+  });
   const [generationDepth, setGenerationDepth] = useState('auto');
   const [centreSignal, setCentreSignal] = useState(0);
   const [bloodlineOnly, setBloodlineOnly] = useState(false);

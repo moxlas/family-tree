@@ -451,6 +451,22 @@ const translations = {
       'When off, ex-spouses are hidden and children stay connected to the current parent.',
     'settings.showFormerSpousesNotice': 'Former spouses are shown.',
     'settings.hideFormerSpousesNotice': 'Former spouses are hidden.',
+    'settings.accessibilityTitle': 'Display & accessibility',
+    'settings.accessibilityCopy':
+      'Adjust how the tree looks. These settings are saved to your account and applied on every device.',
+    'settings.textSize': 'Text and card size',
+    'settings.textSizeHint':
+      'Scales names, dates and buttons so the tree is easier to read.',
+    'settings.textSizeNormal': 'Standard',
+    'settings.textSizeLarge': 'Large',
+    'settings.textSizeXLarge': 'Largest',
+    'settings.highContrast': 'Higher contrast',
+    'settings.highContrastHint':
+      'Darkens borders and strengthens connection lines so cards and links stand out.',
+    'settings.reducedMotion': 'Reduce animation',
+    'settings.reducedMotionHint':
+      'Stops cards, menus and alerts from sliding or fading.',
+    'settings.accessibilitySaved': 'Display settings saved.',
     'trees.sharingTitle': 'Public sharing',
     'trees.sharingCopy':
       'Publish a read-only link to a tree. Anyone with the link can view it. Birth dates and places are shown only for deceased people, and notes stay private.',
@@ -1055,6 +1071,8 @@ const translations = {
     'settings.accessibilityTitle': 'Prieinamumas',
     'settings.accessibilityCopy': 'Pritaikykite sąsają lengvesniam skaitymui.',
     'settings.textSize': 'Teksto ir kortelių dydis',
+    'settings.textSizeHint':
+      'Padidina vardus, datas ir mygtukus, kad medį būtų lengviau skaityti.',
     'settings.textSizeNormal': 'Įprastas',
     'settings.textSizeLarge': 'Didelis',
     'settings.textSizeXLarge': 'Labai didelis',

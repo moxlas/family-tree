@@ -2264,6 +2264,12 @@ export default function SpouseTreeComponent({
     );
   }, [edges, hoveredPersonId, scene]);
 
+  // Hovered connectors get their own layer above the rows; see
+  // .spouse-edges-highlight.
+  const edgeEntries = orderEdgesForHighlight(edges, hoveredPersonId);
+  const plainEdges = edgeEntries.filter((entry) => !entry.highlighted);
+  const highlightedEdges = edgeEntries.filter((entry) => entry.highlighted);
+
   return (
     <div
       className={`spouse-tree${hoveredHasRelations ? ' is-hovering' : ''}`}
@@ -2295,13 +2301,29 @@ export default function SpouseTreeComponent({
         height={size.height}
         width={size.width}
       >
-        {orderEdgesForHighlight(edges, hoveredPersonId).map(
-          ({ edge, highlighted }) => (
+        {plainEdges.map(({ edge }) => (
+          <path
+            className={
+              edge.isFormerSpouseEdge ? 'is-former-spouse' : undefined
+            }
+            d={edge.path}
+            key={edge.id}
+          />
+        ))}
+      </svg>
+      {highlightedEdges.length > 0 && (
+        <svg
+          aria-hidden="true"
+          className="spouse-edges spouse-edges-highlight"
+          height={size.height}
+          width={size.width}
+        >
+          {highlightedEdges.map(({ edge }) => (
             <path
               className={
                 [
+                  'is-highlighted',
                   edge.isFormerSpouseEdge ? 'is-former-spouse' : '',
-                  highlighted ? 'is-highlighted' : '',
                 ]
                   .filter(Boolean)
                   .join(' ') || undefined
@@ -2309,9 +2331,9 @@ export default function SpouseTreeComponent({
               d={edge.path}
               key={edge.id}
             />
-          )
-        )}
-      </svg>
+          ))}
+        </svg>
+      )}
 
       {scene.rows.map((row, depth) => (
         <div

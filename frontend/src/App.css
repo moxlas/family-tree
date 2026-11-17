@@ -341,7 +341,7 @@ p {
 .auth-form label span,
 .person-form label span {
   color: #425466;
-  font-size: 13px;
+  font-size: var(--a11y-body, 13px);
   font-weight: 650;
 }
 
@@ -389,6 +389,14 @@ textarea {
 .app-shell {
   font-size: var(--font-size-base, 16px);
   min-height: 100vh;
+
+  /* Content text sizes. The accessibility modes raise these so the names and
+     dates on the cards actually grow, not just inherited body text. */
+  --a11y-name: 15px;
+  --a11y-meta: 11.5px;
+  --a11y-body: 13px;
+  --a11y-label: 14px;
+  --a11y-tag: 9px;
 }
 
 .topbar {
@@ -507,7 +515,7 @@ textarea {
 
 .account-label {
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: var(--a11y-tag, 10.5px);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -515,7 +523,7 @@ textarea {
 
 .account-name strong {
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--a11y-body, 13px);
 }
 
 .account-dropdown {
@@ -706,7 +714,7 @@ textarea {
 
 .stat-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--a11y-meta, 12px);
   font-weight: 600;
   margin-top: 3px;
   text-transform: uppercase;
@@ -852,7 +860,9 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 22px;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  /* Visible so the toolbar can stick to the viewport while the tall tree
+     scrolls; the canvas clips its own content. */
+  overflow: visible;
 }
 
 .tree-panel-heading {
@@ -876,7 +886,7 @@ textarea {
 
 .tree-panel-heading p {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--a11y-body, 13px);
   margin: 0;
 }
 
@@ -897,7 +907,7 @@ textarea {
 
 .home-person-label {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--a11y-meta, 12px);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -948,7 +958,7 @@ textarea {
   background: var(--brand-soft);
   border-radius: 999px;
   color: var(--brand-deep);
-  font-size: 11.5px;
+  font-size: var(--a11y-meta, 11.5px);
   font-weight: 650;
   padding: 4px 9px;
   white-space: nowrap;
@@ -997,6 +1007,12 @@ textarea {
   pointer-events: none;
   position: absolute;
   z-index: 0;
+}
+
+/* Hovered connectors are painted in their own layer above the rows, so a
+   sibling's path, a card or a marriage heart can never cover them. */
+.spouse-edges-highlight {
+  z-index: 4;
 }
 
 .spouse-edges path {
@@ -1280,7 +1296,7 @@ textarea {
 }
 
 .person-details h3 {
-  font-size: 15px;
+  font-size: var(--a11y-name, 15px);
   letter-spacing: -0.02em;
   line-height: 1.25;
   margin: 1px 0 4px;
@@ -1289,7 +1305,7 @@ textarea {
 
 .person-life {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--a11y-meta, 11.5px);
   margin: 0;
 }
 
@@ -1305,7 +1321,7 @@ textarea {
   background: var(--brand-soft);
   border-radius: 999px;
   color: var(--brand-deep);
-  font-size: 9px;
+  font-size: var(--a11y-tag, 9px);
   font-weight: 700;
   letter-spacing: 0.06em;
   margin-left: 6px;
@@ -1343,7 +1359,7 @@ textarea {
 
 .person-spouse {
   color: #9d174d;
-  font-size: 11.5px;
+  font-size: var(--a11y-meta, 11.5px);
   margin: 5px 0 0;
 }
 
@@ -1417,7 +1433,7 @@ textarea {
 
 .field-hint {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: var(--a11y-meta, 11.5px);
   line-height: 1.35;
 }
 
@@ -1439,6 +1455,7 @@ textarea {
   border-radius: 22px;
   box-shadow: var(--shadow-lg);
   max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
   max-width: 660px;
   overflow-y: auto;
   padding: 30px;
@@ -1719,7 +1736,7 @@ textarea {
 
 .settings-copy {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--a11y-body, 13px);
   margin-bottom: 14px;
 }
 
@@ -1745,13 +1762,13 @@ textarea {
 }
 
 .toggle-title {
-  font-size: 14px;
+  font-size: var(--a11y-label, 14px);
   font-weight: 650;
 }
 
 .toggle-hint {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--a11y-meta, 12px);
   line-height: 1.4;
 }
 
@@ -1883,6 +1900,12 @@ textarea {
 }
 
 @media (max-width: 720px) {
+  .topbar {
+    /* On a phone the header is two rows tall; letting it scroll away keeps
+       more of the tree on screen. */
+    position: static;
+  }
+
   .auth-page,
   .workspace {
     padding: 18px;
@@ -1903,19 +1926,12 @@ textarea {
 
   .topbar-inner {
     align-items: flex-start;
-    flex-direction: column;
     gap: 10px;
-    padding: 15px 18px;
+    padding: 12px 18px 14px;
   }
 
   .account-menu {
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .account-button {
-    flex: 1 1 180px;
-    min-width: 0;
+    align-items: center;
   }
 
   .account-name {
@@ -1926,10 +1942,6 @@ textarea {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  .account-cog {
-    display: none;
   }
 
   .tree-heading-actions {
@@ -1962,11 +1974,24 @@ textarea {
   }
 
   .stats-row {
-    grid-template-columns: 1fr;
+    gap: 8px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 14px 0;
   }
 
   .stat-card {
-    padding: 14px 17px;
+    border-radius: 13px;
+    padding: 12px 12px;
+  }
+
+  .stat-value {
+    font-size: 21px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
   }
 
   .tree-panel-heading {
@@ -1995,6 +2020,7 @@ textarea {
   .modal-card {
     border-radius: 17px;
     max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
     padding: 22px 18px;
   }
 
@@ -2004,6 +2030,37 @@ textarea {
 
   .modal-actions .button {
     width: 100%;
+  }
+}
+
+/* Very small phones: the wordmark and the account chip cannot share a row. */
+@media (max-width: 430px) {
+  .topbar-inner {
+    gap: 8px;
+    padding: 12px 14px;
+  }
+
+  .topbar .brand-lockup > span:last-child {
+    display: none;
+  }
+
+  .brand-icon {
+    height: 34px;
+    width: 34px;
+  }
+
+  .brand-icon svg {
+    height: 24px;
+    width: 24px;
+  }
+
+  .account-chip {
+    gap: 6px;
+    padding: 0 8px 0 4px;
+  }
+
+  .tree-panel-heading {
+    padding: 16px 14px;
   }
 }
 
@@ -2020,7 +2077,7 @@ textarea {
 
 .tree-switcher-label {
   color: var(--muted);
-  font-size: 11px;
+  font-size: var(--a11y-meta, 11px);
   font-weight: 750;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -2168,6 +2225,7 @@ textarea {
   display: grid;
   gap: 2px;
   max-height: calc(100vh - 16px);
+  max-height: calc(100dvh - 16px);
   max-width: calc(100vw - 16px);
   min-width: 150px;
   overflow: auto;
@@ -2210,6 +2268,20 @@ textarea {
   justify-content: space-between;
   margin: 12px 24px 16px;
   padding: 10px 14px;
+  /* Stays reachable while the canvas scrolls, so zooming out never means
+     scrolling away from the tree first. */
+  position: sticky;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 6;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+@media (max-width: 720px) {
+  .tree-zoom-toolbar {
+    gap: 8px;
+    margin: 10px 12px 12px;
+    padding: 8px 10px;
+  }
 }
 
 .tree-zoom-controls {
@@ -2218,13 +2290,19 @@ textarea {
   gap: 8px;
 }
 
+@media (max-width: 720px) {
+  .tree-zoom-controls {
+    gap: 4px;
+  }
+}
+
 .tree-centre-button {
   margin-right: 0;
 }
 
 .zoom-level {
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--a11y-meta, 12px);
   font-weight: 650;
   min-width: 46px;
   text-align: center;
@@ -2604,21 +2682,69 @@ textarea {
 
 .app-shell.a11y-large {
   --font-size-base: 17px;
+  --a11y-name: 17px;
+  --a11y-meta: 13.5px;
+  --a11y-body: 15px;
+  --a11y-label: 16px;
+  --a11y-tag: 10.5px;
 }
 
 .app-shell.a11y-xlarge {
   --font-size-base: 20px;
+  --a11y-name: 20px;
+  --a11y-meta: 16px;
+  --a11y-body: 17.5px;
+  --a11y-label: 18px;
+  --a11y-tag: 12px;
 }
 
-.app-shell.a11y-large .person-card,
+.app-shell.a11y-large .person-card {
+  min-width: 300px;
+}
+
 .app-shell.a11y-xlarge .person-card {
-  min-width: 280px;
+  min-width: 320px;
 }
 
+/* Large text should never shrink a control; both modes grow the targets. */
 .app-shell.a11y-large .button,
 .app-shell.a11y-xlarge .button {
-  min-height: 40px;
-  padding: 10px 14px;
+  min-height: 48px;
+  padding: 12px 16px;
+}
+
+.app-shell.a11y-xlarge .button {
+  min-height: 52px;
+}
+
+.app-shell.a11y-large .icon-button,
+.app-shell.a11y-xlarge .icon-button {
+  height: 36px;
+  width: 36px;
+}
+
+.app-shell.a11y-xlarge .icon-button {
+  height: 40px;
+  width: 40px;
+}
+
+.app-shell.a11y-large .switch,
+.app-shell.a11y-large .switch-track,
+.app-shell.a11y-xlarge .switch,
+.app-shell.a11y-xlarge .switch-track {
+  height: 36px;
+  width: 64px;
+}
+
+.app-shell.a11y-large .switch-thumb,
+.app-shell.a11y-xlarge .switch-thumb {
+  height: 30px;
+  width: 30px;
+}
+
+.app-shell.a11y-large .switch input:checked + .switch-track .switch-thumb,
+.app-shell.a11y-xlarge .switch input:checked + .switch-track .switch-thumb {
+  transform: translateX(28px);
 }
 
 .app-shell.a11y-high-contrast {
@@ -2626,14 +2752,37 @@ textarea {
   --surface-soft: #ffffff;
   --line: #111827;
   --muted: #1f2937;
+  --ink: #000000;
   --text: #000000;
   --brand: #003366;
   --brand-deep: #001a33;
+  background: #ffffff;
+  color: var(--ink);
 }
 
 .app-shell.a11y-high-contrast .tree-panel,
 .app-shell.a11y-high-contrast .person-card {
   border-width: 2px;
+}
+
+/* Several surfaces use literal white; keep the mode coherent. */
+.app-shell.a11y-high-contrast .topbar,
+.app-shell.a11y-high-contrast .person-card,
+.app-shell.a11y-high-contrast .person-card.is-former,
+.app-shell.a11y-high-contrast .icon-button,
+.app-shell.a11y-high-contrast .tree-zoom-toolbar,
+.app-shell.a11y-high-contrast .toggle-row,
+.app-shell.a11y-high-contrast .modal-card {
+  background: #ffffff;
+}
+
+.app-shell.a11y-high-contrast .person-card.is-former {
+  opacity: 1;
+}
+
+.app-shell.a11y-high-contrast .icon-button {
+  border-color: #111827;
+  color: #111827;
 }
 
 .app-shell.a11y-high-contrast .tree-scroll svg line,
@@ -2646,6 +2795,72 @@ textarea {
 .app-shell.a11y-reduced-motion *::after {
   animation: none !important;
   transition: none !important;
+}
+
+/* Respect the operating system even when the account setting is untouched. */
+@media (prefers-reduced-motion: reduce) {
+  .app-shell *,
+  .app-shell *::before,
+  .app-shell *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line: #334155;
+    --muted: #1e293b;
+  }
+
+  .person-card,
+  .tree-panel,
+  .toggle-row {
+    border-color: #334155;
+  }
+}
+
+/* Touch devices: roomier hit areas and no sticky hover. */
+@media (pointer: coarse) {
+  .icon-button {
+    font-size: 16px;
+    height: 34px;
+    width: 34px;
+  }
+
+  .person-actions {
+    gap: 7px;
+  }
+
+  .hero-collapse-toggle {
+    height: 40px;
+    width: 40px;
+  }
+
+  .hero-collapse-toggle svg {
+    height: 18px;
+    width: 18px;
+  }
+
+  .spouse-link-heart {
+    height: 30px;
+    width: 30px;
+  }
+}
+
+@media (hover: none) {
+  .person-card:hover {
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+    transform: none;
+  }
+
+  .person-card.is-home:hover {
+    box-shadow: 0 0 0 2px var(--brand-soft), 0 6px 18px rgba(15, 23, 42, 0.08);
+  }
+
+  .button:hover:not(:disabled) {
+    transform: none;
+  }
 }
 
 /* Highlight relation lines on card hover */

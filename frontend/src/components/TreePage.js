@@ -70,7 +70,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [modal, setModal] = useState(null);
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const width = window.innerWidth;
+    if (width <= 430) return 0.6;
+    if (width <= 600) return 0.7;
+    if (width <= 820) return 0.8;
+    return 1;
+  });
   const [generationDepth, setGenerationDepth] = useState(() => {
     try {
       return localStorage.getItem('familyTreeGenerationDepth') || 'auto';
@@ -85,7 +92,16 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [collapsedByTree, setCollapsedByTree] = useState(readCollapsed);
   const [heroCollapsed, setHeroCollapsed] = useState(() => {
     try {
-      return localStorage.getItem(HERO_COLLAPSED_KEY) === '1';
+      const stored = localStorage.getItem(HERO_COLLAPSED_KEY);
+      if (stored === '1') return true;
+      if (stored === '0') return false;
+      // No explicit choice yet: on a phone the banner would push the tree far
+      // below the fold, so start it collapsed there.
+      return (
+        typeof window !== 'undefined' &&
+        typeof window.matchMedia === 'function' &&
+        window.matchMedia('(max-width: 720px)').matches
+      );
     } catch (_error) {
       return false;
     }

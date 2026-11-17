@@ -159,6 +159,11 @@ export default function SettingsModal({
     setNotice('');
     setSavingSettings(true);
 
+    const previous = {
+      textSize,
+      highContrast,
+      reducedMotion,
+    };
     if (patch.textSize !== undefined) setTextSize(patch.textSize);
     if (patch.highContrast !== undefined) setHighContrast(patch.highContrast);
     if (patch.reducedMotion !== undefined) setReducedMotion(patch.reducedMotion);
@@ -168,6 +173,11 @@ export default function SettingsModal({
       onUserUpdate(response.data.user);
       setNotice(t('settings.accessibilitySaved'));
     } catch (requestError) {
+      // Put the controls back where they were so the dialog never shows a
+      // setting that was not actually saved.
+      setTextSize(previous.textSize);
+      setHighContrast(previous.highContrast);
+      setReducedMotion(previous.reducedMotion);
       setSettingsError(
         translateApiError(requestError, 'errors.saveSettings')
       );
@@ -354,6 +364,7 @@ export default function SettingsModal({
           <label className="settings-field">
             <span>{t('settings.textSize')}</span>
             <select
+              aria-describedby="text-size-hint"
               disabled={savingSettings}
               onChange={(event) =>
                 saveAccessibility({ textSize: event.target.value })
@@ -364,6 +375,9 @@ export default function SettingsModal({
               <option value="large">{t('settings.textSizeLarge')}</option>
               <option value="xlarge">{t('settings.textSizeXLarge')}</option>
             </select>
+            <span className="field-hint" id="text-size-hint">
+              {t('settings.textSizeHint')}
+            </span>
           </label>
 
           <div className="toggle-row">
