@@ -522,6 +522,7 @@ export default function PublicTreePage({ token }) {
                 <span className="home-person-label">{t('tree.generations')}</span>
                 <span className="home-person-select">
                   <select
+                    aria-label={t('tree.generations')}
                     onChange={(event) => setGenerationDepth(event.target.value)}
                     value={generationDepth}
                   >
@@ -559,19 +560,25 @@ export default function PublicTreePage({ token }) {
                   +
                 </button>
                 <button
-                  className="button ghost small"
+                  aria-label={t('tree.zoomReset')}
+                  className="button ghost small toolbar-icon-button"
                   onClick={() => setZoom(1)}
+                  title={t('tree.zoomReset')}
                   type="button"
                 >
-                  {t('tree.zoomReset')}
+                  <span aria-hidden="true" className="toolbar-icon">↺</span>
+                  <span className="toolbar-label">{t('tree.zoomReset')}</span>
                 </button>
               </div>
               <button
-                className="button ghost small tree-centre-button"
+                aria-label={t('tree.centreView')}
+                className="button ghost small tree-centre-button toolbar-icon-button"
                 onClick={() => setCentreSignal((value) => value + 1)}
+                title={t('tree.centreView')}
                 type="button"
               >
-                {t('tree.centreView')}
+                <span aria-hidden="true" className="toolbar-icon">⌖</span>
+                <span className="toolbar-label">{t('tree.centreView')}</span>
               </button>
             </div>
 

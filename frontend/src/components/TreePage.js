@@ -928,27 +928,29 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               </>
             )}
           </div>
-          <div className="hero-actions">
-            <button className="button glass" onClick={loadDemo} type="button">
-              {t('tree.loadDemo')}
-            </button>
-            <button
-              className="button glass"
-              disabled={!activeTree}
-              onClick={() => setGedcomOpen(true)}
-              type="button"
-            >
-              {t('gedcom.import')}
-            </button>
-            <button
-              className="button glass"
-              disabled={!activeTree || !people.length}
-              onClick={exportGedcom}
-              type="button"
-            >
-              {t('gedcom.export')}
-            </button>
-          </div>
+          {!heroCollapsed && (
+            <div className="hero-actions">
+              <button className="button glass" onClick={loadDemo} type="button">
+                {t('tree.loadDemo')}
+              </button>
+              <button
+                className="button glass"
+                disabled={!activeTree}
+                onClick={() => setGedcomOpen(true)}
+                type="button"
+              >
+                {t('gedcom.import')}
+              </button>
+              <button
+                className="button glass"
+                disabled={!activeTree || !people.length}
+                onClick={exportGedcom}
+                type="button"
+              >
+                {t('gedcom.export')}
+              </button>
+            </div>
+          )}
           <button
             aria-expanded={!heroCollapsed}
             aria-label={
@@ -1095,6 +1097,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   </span>
                   <span className="home-person-select">
                     <select
+                      aria-label={t('tree.homePerson')}
                       disabled={!people.length}
                       onChange={(event) => changeHomePerson(event.target.value)}
                       value={homePersonId}
@@ -1200,6 +1203,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 <span className="home-person-label">{t('tree.generations')}</span>
                 <span className="home-person-select">
                   <select
+                    aria-label={t('tree.generations')}
                     onChange={(event) => {
                       const value = event.target.value;
                       setGenerationDepth(value);
@@ -1237,19 +1241,25 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   +
                 </button>
                 <button
-                  className="button ghost small"
+                  aria-label={t('tree.zoomReset')}
+                  className="button ghost small toolbar-icon-button"
                   onClick={() => setZoom(1)}
+                  title={t('tree.zoomReset')}
                   type="button"
                 >
-                  {t('tree.zoomReset')}
+                  <span aria-hidden="true" className="toolbar-icon">↺</span>
+                  <span className="toolbar-label">{t('tree.zoomReset')}</span>
                 </button>
               </div>
               <button
-                className="button ghost small tree-centre-button"
+                aria-label={t('tree.centreView')}
+                className="button ghost small tree-centre-button toolbar-icon-button"
                 onClick={() => setCentreSignal((value) => value + 1)}
+                title={t('tree.centreView')}
                 type="button"
               >
-                {t('tree.centreView')}
+                <span aria-hidden="true" className="toolbar-icon">⌖</span>
+                <span className="toolbar-label">{t('tree.centreView')}</span>
               </button>
             </div>
           </section>

@@ -2290,6 +2290,22 @@ textarea {
   gap: 8px;
 }
 
+.toolbar-icon-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 4px;
+}
+
+.toolbar-icon {
+  display: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.toolbar-label {
+  display: inline;
+}
+
 @media (max-width: 720px) {
   .tree-zoom-controls {
     gap: 4px;
@@ -2915,4 +2931,118 @@ textarea {
   .spouse-gap-heart:not(.is-highlighted)
   .spouse-link-heart {
   opacity: 0.45;
+}
+
+/* Mobile header, banner and toolbar compaction. */
+@media (max-width: 720px) {
+  .hero-panel {
+    padding: 28px 24px;
+  }
+
+  .hero-panel.is-collapsed {
+    align-items: center;
+    padding: 10px 52px 10px 16px;
+  }
+
+  .hero-panel.is-collapsed .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    margin: 0;
+  }
+
+  .hero-collapse-toggle {
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .hero-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .hero-actions .button {
+    flex: 1 1 45%;
+    font-size: 13px;
+    min-height: 38px;
+    padding: 8px 12px;
+  }
+
+  .tree-panel-heading {
+    padding: 14px 14px 12px;
+  }
+
+  .tree-panel-heading .button {
+    width: auto;
+  }
+
+  .tree-heading-actions {
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: space-between;
+  }
+
+  .tree-panel-heading .home-person-label {
+    display: none;
+  }
+
+  .home-person-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .home-person-select select {
+    max-width: 100%;
+  }
+
+  .tree-zoom-toolbar {
+    flex-wrap: nowrap;
+    gap: 6px;
+    margin: 8px 10px 10px;
+    padding: 6px 8px;
+  }
+
+  .tree-zoom-toolbar .home-person-label {
+    display: none;
+  }
+
+  .home-person-select select {
+    font-size: 12px;
+    height: 32px;
+    padding: 0 22px 0 8px;
+    width: 68px;
+  }
+
+  .tree-zoom-controls {
+    gap: 4px;
+  }
+
+  .tree-zoom-controls .button {
+    font-size: 13px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0 8px;
+  }
+
+  .toolbar-icon {
+    display: inline;
+  }
+
+  .toolbar-label {
+    display: none;
+  }
+
+  .toolbar-icon-button {
+    padding: 0 6px;
+  }
+
+  .zoom-level {
+    font-size: 12px;
+    min-width: 36px;
+  }
+
+  .tree-centre-button {
+    width: auto;
+  }
 }
