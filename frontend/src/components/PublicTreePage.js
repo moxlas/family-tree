@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import api from '../api';
 import { useI18n } from '../i18n';
 import {
@@ -8,6 +14,13 @@ import {
   personRowMap,
   viewPeople,
 } from '../treeView';
+import {
+  PUBLIC_ZOOM_KEY,
+  ZOOM_RESET,
+  ZOOM_STEP,
+  readZoom,
+  writeZoom,
+} from '../zoom';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonDetailsModal from './PersonDetailsModal';
 import SpouseTreeComponent from './SpouseTreeComponent';
@@ -23,14 +36,13 @@ export default function PublicTreePage({ token }) {
   const [unavailable, setUnavailable] = useState(false);
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [focusId, setFocusId] = useState('');
-  const [zoom, setZoom] = useState(() => {
-    if (typeof window === 'undefined') return 1;
-    const width = window.innerWidth;
-    if (width <= 430) return 0.6;
-    if (width <= 600) return 0.7;
-    if (width <= 820) return 0.8;
-    return 1;
-  });
+  const [zoom, setZoom] = useState(() =>
+    readZoom(
+      PUBLIC_ZOOM_KEY,
+      typeof window === 'undefined' ? undefined : window.innerWidth
+    )
+  );
+  const zoomRef = useRef(zoom);
   const [generationDepth, setGenerationDepth] = useState('auto');
   const [centreSignal, setCentreSignal] = useState(0);
   const [bloodlineOnly, setBloodlineOnly] = useState(false);
@@ -46,6 +58,14 @@ export default function PublicTreePage({ token }) {
     scrollLeft: 0,
     scrollTop: 0,
   });
+
+  const changeZoom = useCallback((next) => {
+    const requested = typeof next === 'function' ? next(zoomRef.current) : next;
+    const value = writeZoom(PUBLIC_ZOOM_KEY, requested);
+    if (value == null) return;
+    zoomRef.current = value;
+    setZoom(value);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -317,13 +337,8 @@ export default function PublicTreePage({ token }) {
 
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      setZoom((value) => {
-        const delta = event.deltaY > 0 ? -0.1 : 0.1;
-        return Math.min(
-          2,
-          Math.max(0.5, Math.round((value + delta) * 10) / 10)
-        );
-      });
+      const delta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      changeZoom((value) => value + delta);
       return;
     }
 
@@ -544,11 +559,7 @@ export default function PublicTreePage({ token }) {
               <div className="tree-zoom-controls">
                 <button
                   className="button ghost small"
-                  onClick={() =>
-                    setZoom((value) =>
-                      Math.max(0.5, Math.round((value - 0.1) * 10) / 10)
-                    )
-                  }
+                  onClick={() => changeZoom((value) => value - ZOOM_STEP)}
                   type="button"
                 >
                   −
@@ -556,18 +567,14 @@ export default function PublicTreePage({ token }) {
                 <span className="zoom-level">{Math.round(zoom * 100)}%</span>
                 <button
                   className="button ghost small"
-                  onClick={() =>
-                    setZoom((value) =>
-                      Math.min(2, Math.round((value + 0.1) * 10) / 10)
-                    )
-                  }
+                  onClick={() => changeZoom((value) => value + ZOOM_STEP)}
                   type="button"
                 >
                   +
                 </button>
                 <button
                   className="button ghost small"
-                  onClick={() => setZoom(1)}
+                  onClick={() => changeZoom(ZOOM_RESET)}
                   type="button"
                 >
                   {t('tree.zoomReset')}

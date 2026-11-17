@@ -25,6 +25,7 @@ import {
   personRowMap,
   viewPeople,
 } from '../treeView';
+import { ZOOM_KEY, ZOOM_RESET, ZOOM_STEP, readZoom, writeZoom } from '../zoom';
 
 const ACTIVE_TREE_KEY = 'familyTreeActiveTree';
 const COLLAPSED_KEY = 'familyTreeCollapsedPeople';
@@ -72,14 +73,13 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
   const [modal, setModal] = useState(null);
   const [detailsPerson, setDetailsPerson] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [zoom, setZoom] = useState(() => {
-    if (typeof window === 'undefined') return 1;
-    const width = window.innerWidth;
-    if (width <= 430) return 0.6;
-    if (width <= 600) return 0.7;
-    if (width <= 820) return 0.8;
-    return 1;
-  });
+  const [zoom, setZoom] = useState(() =>
+    readZoom(
+      ZOOM_KEY,
+      typeof window === 'undefined' ? undefined : window.innerWidth
+    )
+  );
+  const zoomRef = useRef(zoom);
   const [generationDepth, setGenerationDepth] = useState(() => {
     try {
       return localStorage.getItem('familyTreeGenerationDepth') || 'auto';
@@ -138,6 +138,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       }
       return next;
     });
+  }, []);
+
+  const changeZoom = useCallback((next) => {
+    const requested = typeof next === 'function' ? next(zoomRef.current) : next;
+    const value = writeZoom(ZOOM_KEY, requested);
+    if (value == null) return;
+    zoomRef.current = value;
+    setZoom(value);
   }, []);
 
   const activeTree = useMemo(
@@ -796,10 +804,8 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
 
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault();
-      setZoom((value) => {
-        const delta = event.deltaY > 0 ? -0.1 : 0.1;
-        return Math.min(2, Math.max(0.5, Math.round((value + delta) * 10) / 10));
-      });
+      const delta = event.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+      changeZoom((value) => value + delta);
       return;
     }
 
@@ -1247,7 +1253,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
               <div className="tree-zoom-controls">
                 <button
                   className="button ghost small"
-                  onClick={() => setZoom((value) => Math.max(0.5, Math.round((value - 0.1) * 10) / 10))}
+                  onClick={() => changeZoom((value) => value - ZOOM_STEP)}
                   type="button"
                 >
                   −
@@ -1255,14 +1261,14 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                 <span className="zoom-level">{Math.round(zoom * 100)}%</span>
                 <button
                   className="button ghost small"
-                  onClick={() => setZoom((value) => Math.min(2, Math.round((value + 0.1) * 10) / 10))}
+                  onClick={() => changeZoom((value) => value + ZOOM_STEP)}
                   type="button"
                 >
                   +
                 </button>
                 <button
                   className="button ghost small"
-                  onClick={() => setZoom(1)}
+                  onClick={() => changeZoom(ZOOM_RESET)}
                   type="button"
                 >
                   {t('tree.zoomReset')}
