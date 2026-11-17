@@ -2947,6 +2947,7 @@ textarea {
     background: transparent;
     border: 0;
     border-radius: inherit;
+    height: auto;
     inset: 0;
     justify-content: flex-end;
     padding: 0 16px;
