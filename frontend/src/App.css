@@ -2898,6 +2898,7 @@ textarea {
 .spouse-link.is-highlighted .spouse-link-heart,
 .spouse-gap-heart.is-highlighted .spouse-link-heart {
   border-color: var(--ink);
+  color: var(--ink);
   box-shadow: 0 0 0 3px rgba(19, 32, 47, 0.08);
 }
 

@@ -62,6 +62,22 @@ export function orderEdgesForHighlight(edges, personId) {
     .sort((first, second) => Number(first.highlighted) - Number(second.highlighted));
 }
 
+// The marriage heart a hovered person's own parent line is anchored to. The
+// connector is measured from that heart, so highlighting the same heart and
+// its line keeps the bright path continuous out to both parents, even when the
+// filtered family records no longer carry the pair.
+export function parentHeartKeys(edges, personId) {
+  const keys = new Set();
+  const id = String(personId == null ? '' : personId);
+  if (!id) return keys;
+  (edges || []).forEach((edge) => {
+    if (!edge || !edge.heartKey) return;
+    if (edge.childId == null || String(edge.childId) !== id) return;
+    keys.add(edge.heartKey);
+  });
+  return keys;
+}
+
 // When the marriages in a group form a simple chain (A - B - C - D), return
 // the people in chain order so every marriage sits between neighbours and
 // its heart is drawn beside the card. Returns null for any other shape.
@@ -1855,6 +1871,7 @@ export default function SpouseTreeComponent({
         // single cards connect straight from the card itself.
         let junctionX = startX;
         let junctionY = startY;
+        let junctionHeartKey = null;
         if (parentUnit.members.length > 1) {
           const relationshipContext = parentLink?.relationshipContext;
           const firstIndex = relationshipContext?.firstId
@@ -1869,12 +1886,12 @@ export default function SpouseTreeComponent({
             : -1;
 
           let heartNode = null;
+          let heartKey = null;
           if (firstIndex >= 0 && secondIndex >= 0 && firstIndex !== secondIndex) {
             const leftMember = parentUnit.members[Math.min(firstIndex, secondIndex)];
             const rightMember = parentUnit.members[Math.max(firstIndex, secondIndex)];
-            heartNode = heartRefs.current.get(
-              `heart-${parentUnit.id}-${leftMember.id}-${rightMember.id}`
-            );
+            heartKey = `heart-${parentUnit.id}-${leftMember.id}-${rightMember.id}`;
+            heartNode = heartRefs.current.get(heartKey);
           }
 
           if (!heartNode) {
@@ -1889,6 +1906,7 @@ export default function SpouseTreeComponent({
 
             if (heartEntries.length <= 1 || !parentCardNode) {
               heartNode = heartEntries[0] ? heartEntries[0][1] : null;
+              heartKey = heartEntries[0] ? heartEntries[0][0] : null;
             } else {
               const parentCardRect = parentCardNode.getBoundingClientRect();
               const parentCenterX = parentCardRect.left + parentCardRect.width / 2;
@@ -1904,6 +1922,7 @@ export default function SpouseTreeComponent({
               });
 
               heartNode = bestEntry ? bestEntry.entry[1] : null;
+              heartKey = bestEntry ? bestEntry.entry[0] : null;
             }
           }
 
@@ -1912,6 +1931,7 @@ export default function SpouseTreeComponent({
             junctionX = (heartRect.left - containerRect.left + heartRect.width / 2) / scale;
             junctionY = (heartRect.bottom - containerRect.top) / scale;
           }
+          junctionHeartKey = heartKey;
         }
 
         const connector = {
@@ -1926,6 +1946,7 @@ export default function SpouseTreeComponent({
           endX,
           endY,
           isFormerSpouseEdge,
+          heartKey: junctionHeartKey,
           parentIds: parentLink?.parentIds?.length
             ? parentLink.parentIds
             : parentLink?.parentId
@@ -2195,6 +2216,7 @@ export default function SpouseTreeComponent({
         isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
         parentIds: descriptor.parentIds || [],
         childId: descriptor.childId ?? null,
+        heartKey: descriptor.heartKey || null,
       };
     });
 
@@ -2249,6 +2271,11 @@ export default function SpouseTreeComponent({
   const hoveredParentPairs = useMemo(
     () => parentPairKeys(families, hoveredPersonId),
     [families, hoveredPersonId]
+  );
+
+  const hoveredParentHearts = useMemo(
+    () => parentHeartKeys(edges, hoveredPersonId),
+    [edges, hoveredPersonId]
   );
 
   const hoveredHasRelations = useMemo(() => {
@@ -2389,6 +2416,9 @@ export default function SpouseTreeComponent({
                       String(relationship.secondId) === String(hoveredPersonId) ||
                       hoveredParentPairs.has(
                         pairKeyOf(relationship.firstId, relationship.secondId)
+                      ) ||
+                      hoveredParentHearts.has(
+                        `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`
                       )),
                   segments,
                   heartX:
@@ -2450,7 +2480,8 @@ export default function SpouseTreeComponent({
                               (relationship &&
                                 hoveredParentPairs.has(
                                   pairKeyOf(previousMember.id, member.id)
-                                )))
+                                )) ||
+                              (heartKey && hoveredParentHearts.has(heartKey)))
                               ? ' is-highlighted'
                               : ''
                           }`}

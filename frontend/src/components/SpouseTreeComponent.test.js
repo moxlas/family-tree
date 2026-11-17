@@ -2,6 +2,7 @@ import {
   buildScene,
   edgeInvolvesPerson,
   orderEdgesForHighlight,
+  parentHeartKeys,
   pairKeyOf,
   parentPairKeys,
 } from './SpouseTreeComponent';
@@ -601,6 +602,32 @@ describe('orderEdgesForHighlight', () => {
     const ordered = orderEdgesForHighlight(edges, '');
     expect(ordered.map((entry) => entry.edge.id)).toEqual(['a', 'b', 'c']);
     expect(ordered.every((entry) => !entry.highlighted)).toBe(true);
+  });
+});
+
+describe('parentHeartKeys', () => {
+  const edges = [
+    { id: 'a', childId: '7', heartKey: 'heart-p-1-2', parentIds: ['1', '2'] },
+    { id: 'b', childId: '8', heartKey: 'heart-p-3-4', parentIds: ['3', '4'] },
+    { id: 'c', childId: '7', heartKey: 'heart-p-5-6', parentIds: ['5', '6'] },
+    { id: 'd', childId: '9', heartKey: null, parentIds: ['9'] },
+  ];
+
+  it('returns the hearts the person parent lines are anchored to', () => {
+    expect([...parentHeartKeys(edges, '7')].sort()).toEqual([
+      'heart-p-1-2',
+      'heart-p-5-6',
+    ]);
+  });
+
+  it('ignores edges that belong to other children', () => {
+    expect([...parentHeartKeys(edges, '8')]).toEqual(['heart-p-3-4']);
+  });
+
+  it('skips edges without a heart and empty hovers', () => {
+    expect(parentHeartKeys(edges, '9').size).toBe(0);
+    expect(parentHeartKeys(edges, '').size).toBe(0);
+    expect(parentHeartKeys(null, '7').size).toBe(0);
   });
 });
 
