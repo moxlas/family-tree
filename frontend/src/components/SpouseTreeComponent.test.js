@@ -1,4 +1,9 @@
-import { buildScene, edgeInvolvesPerson } from './SpouseTreeComponent';
+import {
+  buildScene,
+  edgeInvolvesPerson,
+  pairKeyOf,
+  parentPairKeys,
+} from './SpouseTreeComponent';
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', ...extra };
@@ -571,5 +576,36 @@ describe('edgeInvolvesPerson', () => {
   it('ignores an empty hover', () => {
     expect(edgeInvolvesPerson(edge, '')).toBe(false);
     expect(edgeInvolvesPerson(null, '2')).toBe(false);
+  });
+});
+
+describe('parentPairKeys', () => {
+  const families = [
+    { id: 'f1', husband: '1', wife: '2', children: ['7'] },
+    { id: 'f2', husband: '4', wife: null, children: ['8'] },
+    { id: 'f3', husband: '5', wife: '6', children: ['9'] },
+  ];
+
+  it('returns the marriage that produced the person', () => {
+    expect([...parentPairKeys(families, '7')]).toEqual([pairKeyOf('1', '2')]);
+  });
+
+  it('normalises the partner order', () => {
+    expect(parentPairKeys(families, '7').has(pairKeyOf('2', '1'))).toBe(true);
+  });
+
+  it('includes only the person own parent couple', () => {
+    const keys = parentPairKeys(families, '9');
+    expect(keys.has(pairKeyOf('5', '6'))).toBe(true);
+    expect(keys.has(pairKeyOf('1', '2'))).toBe(false);
+  });
+
+  it('skips a family with only one recorded parent', () => {
+    expect(parentPairKeys(families, '8').size).toBe(0);
+  });
+
+  it('returns nothing without a hovered person', () => {
+    expect(parentPairKeys(families, '').size).toBe(0);
+    expect(parentPairKeys(null, '7').size).toBe(0);
   });
 });

@@ -17,9 +17,28 @@ const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
 const MAX_ROUTING_LANES = 6;
 
-function pairKeyOf(firstId, secondId) {  const first = String(firstId);
+export function pairKeyOf(firstId, secondId) {  const first = String(firstId);
   const second = String(secondId);
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
+}
+
+// The marriages that produced a person. Highlighting one of these while the
+// child is hovered keeps the bright path continuous from the child up through
+// the parents' heart and out to both parent cards.
+export function parentPairKeys(families, personId) {
+  const pairs = new Set();
+  const id = String(personId == null ? '' : personId);
+  if (!id) return pairs;
+  (families || []).forEach((family) => {
+    const isParent = (family.children || []).some(
+      (childId) => String(childId) === id
+    );
+    if (!isParent) return;
+    const husband = family.husband == null ? '' : String(family.husband);
+    const wife = family.wife == null ? '' : String(family.wife);
+    if (husband && wife) pairs.add(pairKeyOf(husband, wife));
+  });
+  return pairs;
 }
 
 // A child connector belongs to the two partners of one family and to the
@@ -2215,6 +2234,11 @@ export default function SpouseTreeComponent({
     return () => window.removeEventListener('resize', handleResize);
   }, [measure]);
 
+  const hoveredParentPairs = useMemo(
+    () => parentPairKeys(families, hoveredPersonId),
+    [families, hoveredPersonId]
+  );
+
   const hoveredHasRelations = useMemo(() => {
     if (!hoveredPersonId) return false;
     const id = String(hoveredPersonId);
@@ -2326,7 +2350,10 @@ export default function SpouseTreeComponent({
                   highlighted:
                     Boolean(hoveredPersonId) &&
                     (String(relationship.firstId) === String(hoveredPersonId) ||
-                      String(relationship.secondId) === String(hoveredPersonId)),
+                      String(relationship.secondId) === String(hoveredPersonId) ||
+                      hoveredParentPairs.has(
+                        pairKeyOf(relationship.firstId, relationship.secondId)
+                      )),
                   segments,
                   heartX:
                     (unit.memberCenters[gapIndex] +
@@ -2382,9 +2409,12 @@ export default function SpouseTreeComponent({
                             relationship ? '' : ' is-empty'
                           }${isFormerLink ? ' is-former' : ''}${
                             hoveredPersonId &&
-                            previousMember &&
                             (String(previousMember.id) === String(hoveredPersonId) ||
-                              String(member.id) === String(hoveredPersonId))
+                              String(member.id) === String(hoveredPersonId) ||
+                              (relationship &&
+                                hoveredParentPairs.has(
+                                  pairKeyOf(previousMember.id, member.id)
+                                )))
                               ? ' is-highlighted'
                               : ''
                           }`}
