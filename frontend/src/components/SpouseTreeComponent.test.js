@@ -1,4 +1,4 @@
-import { buildScene } from './SpouseTreeComponent';
+import { buildScene, edgeInvolvesPerson } from './SpouseTreeComponent';
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', ...extra };
@@ -225,6 +225,23 @@ describe('buildScene generation placement', () => {
     // between them: the current marriage must not sit across the ex card.
     expect(unit.members.map((member) => member.id)).toEqual(['1', '2', '3']);
     expect(unit.linkWidths[0]).toBeGreaterThan(unit.linkWidths[1]);
+
+    // Each child keeps only the parents of its own family, so hovering the
+    // ex-spouse does not light up the current marriage's children (or back).
+    const exKidUnit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '4')
+    );
+    const currentKidUnit = scene.units.find((entry) =>
+      entry.members.some((member) => member.id === '7')
+    );
+    expect([...exKidUnit.parentLinks.values()][0].parentIds).toEqual([
+      '2',
+      '1',
+    ]);
+    expect([...currentKidUnit.parentLinks.values()][0].parentIds).toEqual([
+      '2',
+      '3',
+    ]);
   });
 
   it('renders marriages where only one partner is in view', () => {
@@ -531,5 +548,28 @@ describe('home-centred pedigree layout', () => {
     expect(
       (cardCentre(maternal, 'MF') + cardCentre(maternal, 'MM')) / 2
     ).toBeCloseTo(motherCentre, 1);
+  });
+});
+
+describe('edgeInvolvesPerson', () => {
+  const edge = { parentIds: ['2', '3'], childId: '7' };
+
+  it('includes both partners of the family and the linked child', () => {
+    expect(edgeInvolvesPerson(edge, '2')).toBe(true);
+    expect(edgeInvolvesPerson(edge, '3')).toBe(true);
+    expect(edgeInvolvesPerson(edge, '7')).toBe(true);
+  });
+
+  it('excludes a spouse from another marriage in the same unit', () => {
+    expect(edgeInvolvesPerson(edge, '1')).toBe(false);
+  });
+
+  it('excludes the linked child spouse', () => {
+    expect(edgeInvolvesPerson(edge, '8')).toBe(false);
+  });
+
+  it('ignores an empty hover', () => {
+    expect(edgeInvolvesPerson(edge, '')).toBe(false);
+    expect(edgeInvolvesPerson(null, '2')).toBe(false);
   });
 });

@@ -22,6 +22,15 @@ function pairKeyOf(firstId, secondId) {  const first = String(firstId);
   return first < second ? `${first}\u0000${second}` : `${second}\u0000${first}`;
 }
 
+// A child connector belongs to the two partners of one family and to the
+// child that link points at. Nothing else in a multi-marriage unit is involved.
+export function edgeInvolvesPerson(edge, personId) {
+  const id = String(personId == null ? '' : personId);
+  if (!id || !edge) return false;
+  if (edge.childId != null && String(edge.childId) === id) return true;
+  return (edge.parentIds || []).some((parentId) => String(parentId) === id);
+}
+
 // When the marriages in a group form a simple chain (A - B - C - D), return
 // the people in chain order so every marriage sits between neighbours and
 // its heart is drawn beside the card. Returns null for any other shape.
@@ -539,10 +548,20 @@ export function buildScene(
     childPersonId,
     linkedParentId,
     relationshipStatus = 'current',
-    relationshipContext = null
+    relationshipContext = null,
+    participantIds = null
   ) {
     const childUnitIndexes = personUnits.get(String(childPersonId));
     if (!childUnitIndexes) return;
+
+    // Only the partners of this one family are parents of this link. A unit
+    // may hold a chain of several marriages, so using every unit member here
+    // would light up a spouse's children from another marriage on hover.
+    const parentIds = participantIds?.length
+      ? participantIds.map(String)
+      : linkedParentId
+        ? [String(linkedParentId)]
+        : [];
 
     childUnitIndexes.forEach((childUnitIndex) => {
       if (childUnitIndex === parentUnitIndex) return;
@@ -553,6 +572,7 @@ export function buildScene(
         units[childUnitIndex].parentLinks.set(parentUnitIndex, {
           childId: String(childPersonId),
           parentId: linkedParentId ? String(linkedParentId) : null,
+          parentIds,
           relationshipStatus,
           relationshipContext,
         });
@@ -934,6 +954,9 @@ export function buildScene(
           family.husband && family.wife
             ? relationshipByPair.get(pairKeyOf(family.husband, family.wife))
             : null;
+        const participantIds = [family.husband, family.wife]
+          .filter(Boolean)
+          .map(String);
         const relationshipStatus =
           familyRelationship?.status ||
           ((family.status === 'former' ||
@@ -949,7 +972,8 @@ export function buildScene(
             childId,
             linkedParentId,
             relationshipStatus,
-            familyRelationship
+            familyRelationship,
+            participantIds
           );
         });
       });
@@ -1871,10 +1895,18 @@ export default function SpouseTreeComponent({
           endX,
           endY,
           isFormerSpouseEdge,
-          personIds: [
-            ...(parentUnit?.members || []).map((member) => String(member.id)),
-            ...(childMemberForEdge ? [String(childMemberForEdge.id)] : []),
-          ],
+          parentIds: parentLink?.parentIds?.length
+            ? parentLink.parentIds
+            : parentLink?.parentId
+              ? [String(parentLink.parentId)]
+              : parentUnit.members
+                  .slice(0, 1)
+                  .map((member) => String(member.id)),
+          childId: parentLink?.childId
+            ? String(parentLink.childId)
+            : childMemberForEdge
+              ? String(childMemberForEdge.id)
+              : null,
         };
         descriptorById.set(connector.id, connector);
       });
@@ -2130,7 +2162,8 @@ export default function SpouseTreeComponent({
         id: descriptor.id,
         path,
         isFormerSpouseEdge: descriptor.isFormerSpouseEdge,
-        personIds: descriptor.personIds || [],
+        parentIds: descriptor.parentIds || [],
+        childId: descriptor.childId ?? null,
       };
     });
 
@@ -2182,13 +2215,39 @@ export default function SpouseTreeComponent({
     return () => window.removeEventListener('resize', handleResize);
   }, [measure]);
 
+  const hoveredHasRelations = useMemo(() => {
+    if (!hoveredPersonId) return false;
+    const id = String(hoveredPersonId);
+    if (edges.some((edge) => edgeInvolvesPerson(edge, id))) return true;
+    return scene.units.some((unit) =>
+      (unit.relationships || []).some(
+        (relationship) =>
+          String(relationship.firstId) === id ||
+          String(relationship.secondId) === id
+      )
+    );
+  }, [edges, hoveredPersonId, scene]);
+
   return (
     <div
-      className="spouse-tree"
+      className={`spouse-tree${hoveredHasRelations ? ' is-hovering' : ''}`}
       onMouseLeave={() => setHoveredPersonId('')}
       onMouseOver={(event) => {
         const card = event.target.closest('[data-person-id]');
-        setHoveredPersonId(card ? card.getAttribute('data-person-id') : '');
+        if (card) {
+          setHoveredPersonId(card.getAttribute('data-person-id'));
+          return;
+        }
+        // Keep the highlight while the pointer crosses the relation lines
+        // themselves; only empty canvas clears it.
+        if (
+          event.target.closest(
+            '.spouse-link, .spouse-link-behind, .spouse-gap-heart'
+          )
+        ) {
+          return;
+        }
+        setHoveredPersonId('');
       }}
       ref={containerRef}
       role="list"
@@ -2204,7 +2263,7 @@ export default function SpouseTreeComponent({
           <path
             className={[
               edge.isFormerSpouseEdge ? 'is-former-spouse' : '',
-              hoveredPersonId && (edge.personIds || []).includes(hoveredPersonId)
+              edgeInvolvesPerson(edge, hoveredPersonId)
                 ? 'is-highlighted'
                 : '',
             ]
@@ -2264,6 +2323,10 @@ export default function SpouseTreeComponent({
                 return {
                   key: `behind-${relationship.firstId}-${relationship.secondId}`,
                   heartKey: `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
+                  highlighted:
+                    Boolean(hoveredPersonId) &&
+                    (String(relationship.firstId) === String(hoveredPersonId) ||
+                      String(relationship.secondId) === String(hoveredPersonId)),
                   segments,
                   heartX:
                     (unit.memberCenters[gapIndex] +
@@ -2286,7 +2349,9 @@ export default function SpouseTreeComponent({
                   link.segments.map((segment, segmentIndex) => (
                     <span
                       aria-hidden="true"
-                      className={`spouse-link-behind${link.former ? ' is-former' : ''}`}
+                      className={`spouse-link-behind${link.former ? ' is-former' : ''}${
+                        link.highlighted ? ' is-highlighted' : ''
+                      }`}
                       key={`${link.key}-line-${segmentIndex}`}
                       style={{
                         left: `${segment.left}px`,
@@ -2315,7 +2380,14 @@ export default function SpouseTreeComponent({
                           aria-hidden="true"
                           className={`spouse-link${
                             relationship ? '' : ' is-empty'
-                          }${isFormerLink ? ' is-former' : ''}`}
+                          }${isFormerLink ? ' is-former' : ''}${
+                            hoveredPersonId &&
+                            previousMember &&
+                            (String(previousMember.id) === String(hoveredPersonId) ||
+                              String(member.id) === String(hoveredPersonId))
+                              ? ' is-highlighted'
+                              : ''
+                          }`}
                           style={{
                             width: `${
                               unit.linkWidths?.[memberIndex - 1] ||
@@ -2362,7 +2434,9 @@ export default function SpouseTreeComponent({
                 {behindLinks.map((link) => (
                   <span
                     aria-hidden="true"
-                    className="spouse-gap-heart"
+                    className={`spouse-gap-heart${
+                      link.highlighted ? ' is-highlighted' : ''
+                    }`}
                     key={`${link.key}-heart`}
                     ref={(node) => setHeartRef(link.heartKey, node)}
                     style={{

@@ -2649,16 +2649,46 @@ textarea {
 }
 
 /* Highlight relation lines on card hover */
-.spouse-edges path {
-  transition: stroke 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
+.spouse-edges path,
+.spouse-link::before,
+.spouse-link-behind {
+  transition: stroke 120ms ease, background-color 120ms ease,
+    border-color 120ms ease, stroke-width 120ms ease, opacity 120ms ease;
 }
 
 .spouse-edges path.is-highlighted {
   opacity: 1;
   stroke: var(--ink);
-  stroke-width: 2.2px;
+  stroke-width: 2.4px;
 }
 
-.spouse-tree:hover .spouse-edges path:not(.is-highlighted) {
+.spouse-link.is-highlighted::before {
+  background: var(--ink);
+  height: 3px;
+}
+
+.spouse-link-behind.is-highlighted {
+  border-top-color: var(--ink);
+  border-top-width: 3px;
+}
+
+.spouse-link.is-highlighted .spouse-link-heart,
+.spouse-gap-heart.is-highlighted .spouse-link-heart {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(19, 32, 47, 0.08);
+}
+
+/* Dim everything that does not belong to the hovered person. */
+.spouse-tree.is-hovering .spouse-edges path:not(.is-highlighted) {
+  opacity: 0.45;
+}
+
+.spouse-tree.is-hovering
+  .spouse-link:not(.is-highlighted):not(.is-empty)::before,
+.spouse-tree.is-hovering .spouse-link-behind:not(.is-highlighted),
+.spouse-tree.is-hovering .spouse-link:not(.is-highlighted) .spouse-link-heart,
+.spouse-tree.is-hovering
+  .spouse-gap-heart:not(.is-highlighted)
+  .spouse-link-heart {
   opacity: 0.45;
 }
