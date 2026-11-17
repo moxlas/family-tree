@@ -560,25 +560,19 @@ export default function PublicTreePage({ token }) {
                   +
                 </button>
                 <button
-                  aria-label={t('tree.zoomReset')}
-                  className="button ghost small toolbar-icon-button"
+                  className="button ghost small"
                   onClick={() => setZoom(1)}
-                  title={t('tree.zoomReset')}
                   type="button"
                 >
-                  <span aria-hidden="true" className="toolbar-icon">↺</span>
-                  <span className="toolbar-label">{t('tree.zoomReset')}</span>
+                  {t('tree.zoomReset')}
                 </button>
               </div>
               <button
-                aria-label={t('tree.centreView')}
-                className="button ghost small tree-centre-button toolbar-icon-button"
+                className="button ghost small tree-centre-button"
                 onClick={() => setCentreSignal((value) => value + 1)}
-                title={t('tree.centreView')}
                 type="button"
               >
-                <span aria-hidden="true" className="toolbar-icon">⌖</span>
-                <span className="toolbar-label">{t('tree.centreView')}</span>
+                {t('tree.centreView')}
               </button>
             </div>
 
