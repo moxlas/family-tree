@@ -201,6 +201,26 @@ export default function PersonDetailsModal({
     }
   }
 
+  let generationDetail = '';
+  if (referencePerson && relativeDiff !== null) {
+    const referenceName = `${referencePerson.firstName} ${referencePerson.lastName}`.trim();
+    if (String(referencePerson.id) === String(person.id)) {
+      generationDetail = t('details.generationMainPerson');
+    } else if (relativeDiff === 0) {
+      generationDetail = t('details.generationSame');
+    } else if (relativeDiff > 0) {
+      generationDetail = t('details.generationBelowInline', {
+        count: relativeDiff,
+        name: referenceName,
+      });
+    } else {
+      generationDetail = t('details.generationAboveInline', {
+        count: Math.abs(relativeDiff),
+        name: referenceName,
+      });
+    }
+  }
+
   return (
     <div
       className="modal-backdrop"
@@ -252,28 +272,16 @@ export default function PersonDetailsModal({
           </div>
           <div>
             <dt>{t('details.generation')}</dt>
-            <dd>{personGen}</dd>
+            <dd>
+              {personGen}
+              {generationDetail && (
+                <span className="details-generation-relative">
+                  {' '}
+                  ({generationDetail})
+                </span>
+              )}
+            </dd>
           </div>
-          {referencePersonId && relativeDiff !== null && (
-            <div>
-              <dt>
-                {t('details.generationRelative', {
-                  name: `${referencePerson.firstName} ${referencePerson.lastName}`.trim(),
-                })}
-              </dt>
-              <dd>
-                {String(referencePersonId) === String(person.id)
-                  ? t('details.generationMainPerson')
-                  : relativeDiff === 0
-                    ? t('details.generationSame')
-                    : relativeDiff > 0
-                      ? t('details.generationBelow', { count: relativeDiff })
-                      : t('details.generationAbove', {
-                          count: Math.abs(relativeDiff),
-                        })}
-              </dd>
-            </div>
-          )}
           {previousSurname && (
             <div>
               <dt>{t('details.previousName')}</dt>

@@ -2410,6 +2410,11 @@ textarea {
   margin: 0;
 }
 
+.details-generation-relative {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .details-notes {
   white-space: pre-wrap;
 }
