@@ -6,6 +6,7 @@ const Person = require('../models/Person');
 const authenticate = require('../middleware/auth');
 const { ensureTrees, resolveTree, serializeTree } = require('../utils/trees');
 const { importGedcom } = require('../services/gedcomImport');
+const { duplicateTree } = require('../services/duplicateTree');
 
 const router = express.Router();
 router.use(authenticate);
@@ -45,6 +46,34 @@ router.post('/', async (req, res) => {
 
   const tree = await Tree.create({ owner: req.user.id, name });
   return res.status(201).json(serializeTree(tree, 0));
+});
+
+router.post('/:id/duplicate', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ error: 'Tree not found' });
+  }
+
+  const tree = await Tree.findOne({
+    _id: req.params.id,
+    owner: req.user.id,
+  });
+
+  if (!tree) {
+    return res.status(404).json({ error: 'Tree not found' });
+  }
+
+  try {
+    const result = await duplicateTree({
+      ownerId: req.user.id,
+      sourceTree: tree,
+    });
+    return res
+      .status(201)
+      .json(serializeTree(result.tree, result.peopleCount));
+  } catch (error) {
+    console.error('Could not duplicate tree:', error);
+    return res.status(500).json({ error: 'Could not duplicate this tree' });
+  }
 });
 
 router.put('/:id', async (req, res) => {

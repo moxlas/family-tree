@@ -82,6 +82,7 @@ const translations = {
     'notice.personDeleted': 'Person removed from the tree.',
     'notice.demoLoaded': 'Example family loaded.',
     'notice.treeCreated': 'Tree created.',
+    'notice.treeDuplicated': 'Tree duplicated as “{{name}}”.',
     'notice.treeRenamed': 'Tree renamed.',
     'notice.homePersonSet': 'Main person updated.',
     'notice.treeDeleted': 'Tree deleted.',
@@ -320,6 +321,8 @@ const translations = {
     'trees.currentBadge': 'Open',
     'trees.open': 'Open',
     'trees.rename': 'Rename',
+    'trees.duplicate': 'Duplicate',
+    'trees.duplicating': 'Duplicating…',
     'trees.delete': 'Delete',
     'trees.createTitle': 'Create a new tree',
     'trees.createCopy':
@@ -424,6 +427,7 @@ const translations = {
     'errors.loadTrees':
       'Could not load your family trees. Please try again.',
     'errors.createTree': 'Could not create this tree. Please try again.',
+    'errors.duplicateTree': 'Could not duplicate this tree. Please try again.',
     'errors.renameTree': 'Could not rename this tree. Please try again.',
     'errors.deleteTree': 'Could not delete this tree. Please try again.',
     'errors.homePerson': 'Could not change the main person. Please try again.',
@@ -631,6 +635,7 @@ const translations = {
     'notice.personDeleted': 'Asmuo pašalintas iš medžio.',
     'notice.demoLoaded': 'Pavyzdinė šeima įkelta.',
     'notice.treeCreated': 'Medis sukurtas.',
+    'notice.treeDuplicated': 'Medis nukopijuotas kaip „{{name}}“.',
     'notice.treeRenamed': 'Medžio pavadinimas pakeistas.',
     'notice.homePersonSet': 'Pagrindinis asmuo atnaujintas.',
     'notice.treeDeleted': 'Medis ištrintas.',
@@ -944,6 +949,8 @@ const translations = {
     'trees.currentBadge': 'Atidarytas',
     'trees.open': 'Atidaryti',
     'trees.rename': 'Pervadinti',
+    'trees.duplicate': 'Kopijuoti',
+    'trees.duplicating': 'Kopijuojama…',
     'trees.delete': 'Ištrinti',
     'trees.createTitle': 'Sukurti naują medį',
     'trees.createCopy':
@@ -1049,6 +1056,8 @@ const translations = {
       'Nepavyko įkelti šeimos medžių. Bandykite dar kartą.',
     'errors.createTree':
       'Nepavyko sukurti šio medžio. Bandykite dar kartą.',
+    'errors.duplicateTree':
+      'Nepavyko nukopijuoti šio medžio. Bandykite dar kartą.',
     'errors.renameTree':
       'Nepavyko pervadinti šio medžio. Bandykite dar kartą.',
     'errors.deleteTree':

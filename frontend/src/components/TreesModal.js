@@ -37,6 +37,7 @@ export default function TreesModal({
   const [renameName, setRenameName] = useState('');
   const [savingId, setSavingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [duplicatingId, setDuplicatingId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [sharingBusyId, setSharingBusyId] = useState('');
@@ -145,6 +146,24 @@ export default function TreesModal({
       setError(translateApiError(requestError, 'errors.deleteTree'));
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const duplicateSelectedTree = async (tree) => {
+    setError('');
+    setNotice('');
+    setDuplicatingId(tree.id);
+
+    try {
+      const response = await api.post(`/trees/${tree.id}/duplicate`);
+      onCreated(response.data);
+      setNotice(
+        t('notice.treeDuplicated', { name: response.data.name })
+      );
+    } catch (requestError) {
+      setError(translateApiError(requestError, 'errors.duplicateTree'));
+    } finally {
+      setDuplicatingId(null);
     }
   };
 
@@ -317,6 +336,16 @@ export default function TreesModal({
                         type="button"
                       >
                         {t('trees.rename')}
+                      </button>
+                      <button
+                        className="button ghost small"
+                        disabled={duplicatingId === tree.id}
+                        onClick={() => duplicateSelectedTree(tree)}
+                        type="button"
+                      >
+                        {duplicatingId === tree.id
+                          ? t('trees.duplicating')
+                          : t('trees.duplicate')}
                       </button>
                       <button
                         className="button ghost small danger-text"
