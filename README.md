@@ -9,6 +9,11 @@ A private place to build, explore, and preserve your family story.
 Your trees are private to your account unless you choose to share one with a
 public link.
 
+## User guides
+
+- [Illustrated user guide (English)](readme/en/index.html)
+- [Ilustruotas naudotojo vadovas (Lietuvių)](readme/lt/index.html)
+
 ## What you can do
 
 - Create one or more family trees and switch between them.

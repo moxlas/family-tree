@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Family Tree — User Guide</title>
+  <style>
+    :root{
+      color-scheme:light;--bg:#f2f6f7;--panel:#fff;--soft:#f5f8f8;--ink:#13202f;
+      --muted:#5e6b78;--line:#d8e3e4;--brand:#0f766e;--brand-soft:#dff4f0;
+      --accent:#f59e0b;--shadow:0 10px 28px rgba(15,23,42,.09);--radius:16px;
+      --sans:Segoe UI,Roboto,Arial,sans-serif;--mono:Consolas,Monaco,monospace;
+    }
+    html[data-theme="dark"]{
+      color-scheme:dark;--bg:#101820;--panel:#18232b;--soft:#202d36;--ink:#e8eef3;
+      --muted:#a6b4c0;--line:#2c3b46;--brand:#5ee0cf;--brand-soft:#173b38;
+      --shadow:0 10px 28px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:15px}
+    a{color:var(--brand)}
+    header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);box-shadow:var(--shadow);padding:12px clamp(16px,3vw,36px);display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+    .logo{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--brand);color:#fff;font-size:13px}
+    html[data-theme="dark"] .logo{color:#08201d}
+    .tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+    .button{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--ink);font:inherit;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer}
+    .button:hover{border-color:var(--brand)}
+    .button.on{background:var(--brand);border-color:var(--brand);color:#fff}
+    html[data-theme="dark"] .button.on{color:#08201d}
+    .layout{display:grid;grid-template-columns:244px minmax(0,1fr);gap:26px;max-width:1400px;margin:0 auto;padding:24px clamp(16px,3vw,36px) 80px}
+    nav{position:sticky;top:84px;align-self:start;max-height:calc(100vh - 110px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    nav h2{margin:0 0 10px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    nav a{display:block;padding:6px 8px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:13px}
+    nav a:hover,nav a.active{background:var(--brand-soft);color:var(--brand)}
+    main{min-width:0}
+    .hero{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px;margin-bottom:20px}
+    .hero h1{margin:0 0 8px;font-size:clamp(26px,3.4vw,38px);line-height:1.15}
+    .hero p{margin:6px 0;color:var(--muted);max-width:70ch}
+    .tag{display:inline-block;background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:800;margin-bottom:10px}
+    section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-bottom:16px;scroll-margin-top:90px}
+    section h2{margin:0 0 12px;font-size:22px}
+    h3{margin:22px 0 8px;font-size:17px;color:var(--brand)}
+    p{margin:8px 0}
+    ul,ol{margin:8px 0 8px 22px;padding:0}
+    li{margin:5px 0}
+    .example{background:var(--soft);border-left:4px solid var(--brand);border-radius:12px;padding:14px 16px;margin:14px 0}
+    .example strong{display:block;margin-bottom:4px}
+    .tip{background:#fff8e8;border-left:4px solid var(--accent);border-radius:12px;padding:12px 15px;margin:14px 0;color:#5b4615}
+    figure{margin:18px 0}
+    figure img{width:100%;border:1px solid var(--line);border-radius:12px;display:block;background:#fff}
+    figcaption{font-size:12px;color:var(--muted);margin-top:7px;text-align:center;font-style:italic}
+    .steps{counter-reset:step}
+    .step{padding:10px 0 10px 44px;position:relative;border-bottom:1px solid var(--line)}
+    .step:last-child{border-bottom:0}
+    .step::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:10px;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px}
+    html[data-theme="dark"] .step::before{color:#08201d}
+    .faq details{border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:8px 0;background:var(--soft)}
+    .faq summary{cursor:pointer;font-weight:700}
+    .top{position:fixed;right:20px;bottom:20px;display:none;padding:10px 14px;border-radius:999px;background:var(--brand);color:#fff;border:0;font:inherit;font-weight:800;cursor:pointer}
+    html[data-theme="dark"] .top{color:#08201d}
+    .top.show{display:block}
+    @media(max-width:900px){.layout{grid-template-columns:1fr;padding-top:16px}nav{position:static;max-height:none}header{align-items:stretch}.tools{justify-content:flex-start}}
+    @media print{header,nav,.top{display:none!important}.layout{display:block;padding:0;max-width:none}section,.hero{box-shadow:none;break-inside:avoid}body{background:#fff;color:#000}figure img{max-height:420px;object-fit:contain}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="logo">FT</span><span>Family Tree — User Guide</span></div>
+  <div class="tools">
+    <a class="button" href="../lt/index.html">Lietuvių</a>
+    <span class="button on">English</span>
+    <button class="button" id="theme" type="button">Dark mode</button>
+    <button class="button" type="button" onclick="window.print()">Print / Save as PDF</button>
+  </div>
+</header>
+
+<div class="layout">
+  <nav aria-label="Contents">
+    <h2>Contents</h2>
+    <a href="#welcome">1. Welcome</a>
+    <a href="#start">2. Getting started</a>
+    <a href="#glance">3. Your tree at a glance</a>
+    <a href="#people">4. Adding people</a>
+    <a href="#family">5. Family connections</a>
+    <a href="#explore">6. Exploring the tree</a>
+    <a href="#select">7. Selecting a card</a>
+    <a href="#trees">8. Managing trees</a>
+    <a href="#share">9. Sharing a tree</a>
+    <a href="#display">10. Display and comfort</a>
+    <a href="#gedcom">11. GEDCOM files</a>
+    <a href="#examples">12. Step-by-step examples</a>
+    <a href="#faq">13. Common questions</a>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <span class="tag">For new users</span>
+      <h1>Build your family story, one person at a time</h1>
+      <p>Family Tree is a private place to collect names, dates, stories and connections. This guide walks you through the everyday things you can do in the app.</p>
+      <p>Open the app at <strong>https://moxlas.github.io/family-tree/</strong>.</p>
+    </div>
+
+    <section id="welcome">
+      <h2>1. Welcome</h2>
+      <p>With Family Tree you can:</p>
+      <ul>
+        <li>keep one or more family trees;</li>
+        <li>add people and record their names, dates, places and notes;</li>
+        <li>connect parents, children, spouses and former spouses;</li>
+        <li>follow ancestors and descendants on a clear family canvas;</li>
+        <li>choose which details are shown and how the tree looks;</li>
+        <li>share a read-only link to one tree when you want to;</li>
+        <li>bring in family data from a GEDCOM file.</li>
+      </ul>
+      <p>The app speaks English and Lithuanian. You can switch languages at any time.</p>
+    </section>
+
+    <section id="start">
+      <h2>2. Getting started</h2>
+      <div class="steps">
+        <div class="step">Open the app and choose <strong>Create account</strong> if you are new, or <strong>Sign in</strong> if you already have an account.</div>
+        <div class="step">Enter your email and a password of at least six characters.</div>
+        <div class="step">Use the language menu in the top bar to choose English or Lietuvių.</div>
+        <div class="step">Your first tree is ready for you. You can rename it whenever you like.</div>
+        <div class="step">Start adding the people you know, then connect them as relatives.</div>
+      </div>
+      <figure>
+        <img src="../screenshots/en/signin.png" alt="Illustration of the sign-in screen">
+        <figcaption>Illustration — the sign-in screen.</figcaption>
+      </figure>
+      <div class="tip"><strong>Good to know:</strong> your trees are private to your account. Nothing is public until you choose to share a tree.</div>
+    </section>
+
+    <section id="glance">
+      <h2>3. Your tree at a glance</h2>
+      <p>The canvas shows your family on a clear map. Every person has a card. A heart between two cards means a marriage or partnership. Lines connect parents to their children.</p>
+      <p>The <strong>main person</strong> is the person the view is centred on. You can change the main person in the toolbar. Their card carries a small badge.</p>
+      <p>A previous or maiden surname appears next to the current one, for example <strong>Jane Smith (Doe)</strong>.</p>
+      <figure>
+        <img src="../screenshots/en/tree.png" alt="Illustration of a family tree with cards and hearts">
+        <figcaption>Illustration — cards, hearts and family lines on the canvas.</figcaption>
+      </figure>
+    </section>
+
+    <section id="people">
+      <h2>4. Adding people</h2>
+      <p>Use <strong>+ Add person</strong> in the toolbar, or the <strong>+</strong> button on a person's card to add a relative in the right place.</p>
+      <p>For each person you can record:</p>
+      <ul>
+        <li>first and last name, and a previous or maiden surname;</li>
+        <li>gender;</li>
+        <li>birth and death dates and places;</li>
+        <li>whether the person is deceased;</li>
+        <li>notes and family connections.</li>
+      </ul>
+      <p>Open any card to read the person's details. From there you can edit them, change the main person, or add relatives.</p>
+      <figure>
+        <img src="../screenshots/en/person.png" alt="Illustration of person details and quick actions">
+        <figcaption>Illustration — a person's details and quick actions.</figcaption>
+      </figure>
+      <div class="tip"><strong>On a phone:</strong> each card has two small buttons. <strong>+</strong> adds a relative and <strong>⋯</strong> opens more actions such as focusing, editing or deleting.</div>
+    </section>
+
+    <section id="family">
+      <h2>5. Family connections</h2>
+      <p>You can connect people as parents, children and partners:</p>
+      <ul>
+        <li>a person can have two parents;</li>
+        <li>a person can have more than one spouse or partner;</li>
+        <li>current relationships show a solid heart;</li>
+        <li>former relationships — divorced, widowed or separated — show a broken heart and a dashed line.</li>
+      </ul>
+      <p>When you add children to a couple, the app links them to both partners. If a relationship ends, you can keep it as a former relationship so the family history stays complete.</p>
+      <div class="example"><strong>Example</strong> Add a grandmother with her maiden name, then add her children. Their cards will hang from the heart between the grandparents.</div>
+    </section>
+
+    <section id="explore">
+      <h2>6. Exploring the tree</h2>
+      <p>The toolbar gives you several ways to look at the same family:</p>
+      <ul>
+        <li><strong>Main person:</strong> choose who sits at the centre of the view.</li>
+        <li><strong>Focus:</strong> show only one person's branch — their ancestors, descendants and close relatives.</li>
+        <li><strong>Collapse children:</strong> use the arrow on a card to hide or show that person's children.</li>
+        <li><strong>Bloodline only:</strong> hide spouse cards and follow just the direct family line.</li>
+        <li><strong>Former spouses:</strong> choose whether former partners are shown in the settings.</li>
+        <li><strong>Generations:</strong> show a fixed number of generations or let the canvas decide automatically.</li>
+        <li><strong>Zoom:</strong> zoom in or out. Your choice is remembered in this browser.</li>
+      </ul>
+      <div class="example"><strong>Example</strong> Focus on your grandfather to see his ancestors and all of their descendants, without the rest of the tree getting in the way.</div>
+    </section>
+
+    <section id="select">
+      <h2>7. Selecting a card</h2>
+      <p>Click a card to select it. The card stays selected until you click another one, so its relationships keep glowing even after you move the mouse away. This makes it much easier to follow a line in a large tree.</p>
+      <p>Pointing at another card temporarily highlights that card instead; when you move away, the selected card's highlight returns.</p>
+      <p>Press <strong>Esc</strong> to clear the selection.</p>
+      <figure>
+        <img src="../screenshots/en/selected.png" alt="Illustration of a selected card with highlighted relationships">
+        <figcaption>Illustration — a selected card keeps its relationships highlighted.</figcaption>
+      </figure>
+    </section>
+
+    <section id="trees">
+      <h2>8. Managing trees</h2>
+      <p>Open <strong>Manage trees</strong> from the top bar. This is your family archive. From there you can:</p>
+      <ul>
+        <li>create a new tree;</li>
+        <li>open another tree;</li>
+        <li>rename a tree;</li>
+        <li>duplicate a tree;</li>
+        <li>delete a tree.</li>
+      </ul>
+      <p><strong>Duplicate</strong> makes a separate copy of the selected tree. It copies all people, families, relationships and the main person. The original stays unchanged. The copy is named with “(copy)” at the end, starts private, and opens straight away.</p>
+      <p>You always need to keep at least one tree. If you only have one, rename it instead of deleting it.</p>
+      <figure>
+        <img src="../screenshots/en/trees.png" alt="Illustration of the tree management window">
+        <figcaption>Illustration — creating, opening and duplicating trees.</figcaption>
+      </figure>
+    </section>
+
+    <section id="share">
+      <h2>9. Sharing a tree</h2>
+      <p>Sharing is set up in <strong>Manage trees</strong>, separately for each tree.</p>
+      <p>Turn sharing on to get a link that others can open. Anyone with the link can look at the tree, but they cannot change it.</p>
+      <p>You can copy the link, turn sharing off, or create a new link. Creating a new link replaces the old one, so the old link stops working.</p>
+      <p>Shared pages are careful with private details:</p>
+      <ul>
+        <li>living people's birth dates, birth places and previous surnames are hidden;</li>
+        <li>notes are never included;</li>
+        <li>relationship dates and places are shown only when at least one partner is deceased;</li>
+        <li>search engines are asked not to index shared pages.</li>
+      </ul>
+      <p>A duplicated tree always starts private — sharing is never copied automatically.</p>
+      <figure>
+        <img src="../screenshots/en/sharing.png" alt="Illustration of sharing settings">
+        <figcaption>Illustration — sharing settings for one tree.</figcaption>
+      </figure>
+    </section>
+
+    <section id="display">
+      <h2>10. Display and comfort</h2>
+      <p>Open <strong>Settings</strong> from the top bar to make the app easier to read:</p>
+      <ul>
+        <li><strong>Text and card size:</strong> Standard, Large or Largest.</li>
+        <li><strong>Higher contrast:</strong> makes text, borders and lines stronger.</li>
+        <li><strong>Reduce animation:</strong> removes sliding and fading effects.</li>
+        <li><strong>Language:</strong> switch between English and Lithuanian.</li>
+      </ul>
+      <p>These preferences are saved to your account, so they follow you when you sign in on another device.</p>
+      <figure>
+        <img src="../screenshots/en/settings.png" alt="Illustration of display and accessibility settings">
+        <figcaption>Illustration — display and accessibility settings.</figcaption>
+      </figure>
+    </section>
+
+    <section id="gedcom">
+      <h2>11. GEDCOM files</h2>
+      <p>If you already have family data in a GEDCOM file, you can bring it into the tree that is currently open.</p>
+      <ul>
+        <li><strong>Import:</strong> choose a <code>.ged</code> file and the app adds the people and connections to your tree.</li>
+        <li>Import <em>merges</em> with your tree. It fills in missing details and matches people with the same name and birth year. It does not replace what you already have.</li>
+        <li><strong>Export:</strong> download the selected tree as a GEDCOM file whenever you want a copy.</li>
+      </ul>
+      <figure>
+        <img src="../screenshots/en/gedcom.png" alt="Illustration of GEDCOM import and export">
+        <figcaption>Illustration — importing and exporting family data.</figcaption>
+      </figure>
+    </section>
+
+    <section id="examples">
+      <h2>12. Step-by-step examples</h2>
+      <div class="example">
+        <strong>Add a grandparent with a maiden name</strong>
+        Open <strong>+ Add person</strong>, type the first and last name, enter the maiden name in the previous surname field, add the birth year, then save. The card will show the name like <em>Jane Smith (Doe)</em>.
+      </div>
+      <div class="example">
+        <strong>Connect two people as partners</strong>
+        Open one person's card, choose <strong>Add spouse</strong>, pick the other person from the list, and choose whether the relationship is current or former. A heart will appear between their cards.
+      </div>
+      <div class="example">
+        <strong>Focus on one branch</strong>
+        Click the <strong>◎</strong> button on a card. The view centres on that person and shows their family branch. Use the focus banner to return to the full tree.
+      </div>
+      <div class="example">
+        <strong>Share a tree with a relative</strong>
+        Open <strong>Manage trees</strong>, find the tree, turn sharing on and copy the link. Send the link to your relative. They can view the tree, but they cannot edit it.
+      </div>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>13. Common questions</h2>
+      <details><summary>Where do I find sharing?</summary><p>Open <strong>Manage trees</strong>. Sharing is controlled separately for each tree.</p></details>
+      <details><summary>Why are some details missing from a shared link?</summary><p>Living people's private details are deliberately hidden, notes are never shared, and relationship dates and places need at least one deceased partner to be shown.</p></details>
+      <details><summary>My shared link stopped working. Why?</summary><p>Sharing may have been turned off, or a new link may have been created. Open <strong>Manage trees</strong> to check and copy the current link.</p></details>
+      <details><summary>Can I remove the last tree?</summary><p>No. At least one tree must remain. Rename it instead if you want to start fresh.</p></details>
+      <details><summary>Is zoom saved to my account?</summary><p>No. Zoom is remembered in the current browser, separately for private trees and shared links. Display and accessibility settings are saved to your account.</p></details>
+      <details><summary>The app looks old. What should I do?</summary><p>Refresh the page with <strong>Ctrl+F5</strong> on Windows or <strong>Cmd+Shift+R</strong> on Mac.</p></details>
+    </section>
+  </main>
+</div>
+
+<button class="top" id="toTop" type="button">Top</button>
+
+<script>
+(function(){
+  var key='familyTreeGuideTheme';
+  var button=document.getElementById('theme');
+  var saved='light';
+  try{saved=localStorage.getItem(key)||'light';}catch(e){}
+  function apply(theme){document.documentElement.setAttribute('data-theme',theme);button.textContent=theme==='dark'?'Light mode':'Dark mode';try{localStorage.setItem(key,theme);}catch(e){}}
+  apply(saved==='dark'?'dark':'light');
+  button.addEventListener('click',function(){apply(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');});
+  var topButton=document.getElementById('toTop');
+  window.addEventListener('scroll',function(){topButton.classList.toggle('show',window.scrollY>300);},{passive:true});
+  topButton.addEventListener('click',function(){window.scrollTo({top:0,behavior:'smooth'});});
+  var links=[].slice.call(document.querySelectorAll('nav a'));
+  var observer=new IntersectionObserver(function(entries){entries.forEach(function(entry){if(!entry.isIntersecting)return;links.forEach(function(link){link.classList.toggle('active',link.getAttribute('href')==='#'+entry.target.id);});});},{rootMargin:'-20% 0px -70% 0px'});
+  document.querySelectorAll('main section').forEach(function(section){observer.observe(section);});
+})();
+</script>
+</body>
+</html>
