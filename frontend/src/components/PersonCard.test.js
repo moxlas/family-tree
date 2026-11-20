@@ -33,6 +33,12 @@ function click(element) {
   });
 }
 
+function pressKey(element, key) {
+  act(() => {
+    element.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+  });
+}
+
 function visibleText(element) {
   const clone = element.cloneNode(true);
   clone.querySelectorAll('.sr-only').forEach((node) => node.remove());
@@ -120,5 +126,43 @@ describe('PersonCard', () => {
 
     expect(onEdit).toHaveBeenCalledWith(basePerson);
     expect(document.body.querySelector('.person-more-options')).toBeNull();
+  });
+
+  it('reports selection state and selects the card on click', () => {
+    const onSelect = jest.fn();
+    const onView = jest.fn();
+    renderCard({ isSelected: true, onSelect, onView });
+
+    const card = container.querySelector('.person-card');
+    expect(card.classList.contains('is-selected')).toBe(true);
+    expect(card.getAttribute('aria-pressed')).toBe('true');
+
+    click(card);
+
+    expect(onSelect).toHaveBeenCalledWith(basePerson);
+    expect(onView).toHaveBeenCalledWith(basePerson);
+  });
+
+  it('selects the card from the keyboard', () => {
+    const onSelect = jest.fn();
+    renderCard({ onSelect });
+
+    const card = container.querySelector('.person-card');
+    expect(card.getAttribute('role')).toBe('button');
+    expect(card.getAttribute('tabindex')).toBe('0');
+
+    pressKey(card, 'Enter');
+    pressKey(card, ' ');
+
+    expect(onSelect).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not select while a drag is suppressing clicks', () => {
+    const onSelect = jest.fn();
+    renderCard({ onSelect, suppressClickRef: { current: true } });
+
+    click(container.querySelector('.person-card'));
+
+    expect(onSelect).not.toHaveBeenCalled();
   });
 });

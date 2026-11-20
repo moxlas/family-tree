@@ -1,13 +1,25 @@
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { cardWidthFor } from '../accessibility';
+import { LanguageProvider } from '../i18n';
 import { personRowMap } from '../treeView';
-import {
+import SpouseTreeComponent, {
   buildScene,
   edgeInvolvesPerson,
   orderEdgesForHighlight,
   parentHeartKeys,
   pairKeyOf,
   parentPairKeys,
+  resolveHighlightId,
 } from './SpouseTreeComponent';
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+function click(element) {
+  act(() => {
+    element.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  });
+}
 
 function person(id, extra = {}) {
   return { id, firstName: `P${id}`, lastName: 'X', gender: 'unknown', ...extra };
@@ -741,5 +753,109 @@ describe('parentPairKeys', () => {
   it('returns nothing without a hovered person', () => {
     expect(parentPairKeys(families, '').size).toBe(0);
     expect(parentPairKeys(null, '7').size).toBe(0);
+  });
+});
+
+describe('resolveHighlightId', () => {
+  it('prefers a live hover over the selected card', () => {
+    expect(resolveHighlightId('2', '1')).toBe('2');
+  });
+
+  it('falls back to the selected card when nothing is hovered', () => {
+    expect(resolveHighlightId('', '1')).toBe('1');
+  });
+
+  it('is empty when neither is set', () => {
+    expect(resolveHighlightId('', '')).toBe('');
+  });
+});
+
+describe('persistent card selection', () => {
+  const people = [
+    person('1', { firstName: 'Anne' }),
+    person('2', { firstName: 'Ben' }),
+  ];
+  const families = [
+    {
+      id: 'f1',
+      husband: '1',
+      wife: '2',
+      status: 'current',
+      relationshipStatus: 'married',
+      children: [],
+    },
+  ];
+
+  let container;
+  let root;
+
+  function renderTree() {
+    act(() => {
+      root = createRoot(container);
+      root.render(
+        <LanguageProvider>
+          <SpouseTreeComponent
+            cardWidth={248}
+            families={families}
+            homePersonId="1"
+            onView={() => {}}
+            people={people}
+            zoom={1}
+          />
+        </LanguageProvider>
+      );
+    });
+  }
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    act(() => root?.unmount());
+    container.remove();
+    root = null;
+  });
+
+  it('keeps a clicked card selected and highlights its relationships', () => {
+    renderTree();
+
+    const tree = container.querySelector('.spouse-tree');
+    const firstCard = container.querySelector('[data-person-id="1"]');
+    const secondCard = container.querySelector('[data-person-id="2"]');
+
+    click(firstCard);
+
+    expect(firstCard.classList.contains('is-selected')).toBe(true);
+    expect(firstCard.getAttribute('aria-pressed')).toBe('true');
+    expect(tree.classList.contains('is-hovering')).toBe(true);
+    expect(container.querySelector('.spouse-link.is-highlighted')).not.toBeNull();
+
+    click(secondCard);
+
+    expect(firstCard.classList.contains('is-selected')).toBe(false);
+    expect(secondCard.classList.contains('is-selected')).toBe(true);
+    expect(tree.classList.contains('is-hovering')).toBe(true);
+  });
+
+  it('clears the selection with Escape', () => {
+    renderTree();
+
+    const tree = container.querySelector('.spouse-tree');
+    const card = container.querySelector('[data-person-id="1"]');
+
+    click(card);
+    expect(card.classList.contains('is-selected')).toBe(true);
+
+    act(() => {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+      );
+    });
+
+    expect(card.classList.contains('is-selected')).toBe(false);
+    expect(tree.classList.contains('is-hovering')).toBe(false);
+    expect(container.querySelector('.spouse-link.is-highlighted')).toBeNull();
   });
 });

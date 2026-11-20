@@ -2254,6 +2254,14 @@ textarea {
   outline: none;
 }
 
+/* A clicked card stays selected until another card is chosen or Escape clears
+   it. Keep the outline visible while hovered or keyboard-focused. */
+.person-card.is-selected,
+.person-card.is-selected:hover,
+.person-card.is-selected.is-clickable:focus-visible {
+  box-shadow: 0 0 0 3px var(--brand), 0 12px 26px rgba(15, 23, 42, 0.14);
+}
+
 /* Add-relative menu */
 .person-add-menu {
   position: relative;
@@ -2943,7 +2951,7 @@ textarea {
   }
 }
 
-/* Highlight relation lines on card hover */
+/* Highlight relation lines on card hover or persistent selection */
 .spouse-edges path,
 .spouse-link::before,
 .spouse-link-behind {
@@ -2982,7 +2990,7 @@ textarea {
   box-shadow: 0 0 0 3px rgba(19, 32, 47, 0.08);
 }
 
-/* Dim everything that does not belong to the hovered person. */
+/* Dim everything that does not belong to the hovered or selected person. */
 .spouse-tree.is-hovering .spouse-edges path:not(.is-highlighted) {
   opacity: 0.45;
 }

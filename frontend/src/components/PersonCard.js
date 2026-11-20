@@ -25,7 +25,9 @@ export default function PersonCard({
   childrenHidden = false,
   hasBranch = false,
   isHome = false,
+  isSelected = false,
   muted = false,
+  onSelect,
   person,
   showSpouseName = true,
   spouseStatus,
@@ -33,6 +35,7 @@ export default function PersonCard({
 }) {
   const { language, t } = useI18n();
   const fullName = `${person.firstName} ${person.lastName}`.trim();
+  const isInteractive = Boolean(onView || onSelect);
   const effectiveSpouseStatus = spouseStatus || person.spouseStatus || 'current';
   const deceasedLabel = personDeceasedLabel(t, person);
   const hasAddActions = Boolean(
@@ -142,6 +145,7 @@ export default function PersonCard({
 
   const handleCardClick = () => {
     if (suppressClickRef?.current) return;
+    if (onSelect) onSelect(person);
     if (onView) onView(person);
   };
 
@@ -160,24 +164,28 @@ export default function PersonCard({
   };
 
   const handleKeyDown = (event) => {
-    if (!onView) return;
+    if (!isInteractive) return;
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onView(person);
+      if (onSelect) onSelect(person);
+      if (onView) onView(person);
     }
   };
 
   return (
     <article
+      aria-pressed={onSelect ? Boolean(isSelected) : undefined}
       className={`person-card gender-${person.gender}${
-        onView ? ' is-clickable' : ''
-      }${muted ? ' is-former' : ''}${isHome ? ' is-home' : ''}`}
+        isInteractive ? ' is-clickable' : ''
+      }${muted ? ' is-former' : ''}${isHome ? ' is-home' : ''}${
+        isSelected ? ' is-selected' : ''
+      }`}
       data-person-id={String(person.id)}
       onClick={handleCardClick}
       onKeyDown={handleKeyDown}
       ref={cardRef}
-      role={onView ? 'button' : undefined}
-      tabIndex={onView ? 0 : undefined}
+      role={isInteractive ? 'button' : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
     >
       <div className="person-main">
         <div className="avatar" aria-hidden="true">

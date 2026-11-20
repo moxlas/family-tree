@@ -81,6 +81,12 @@ export function parentHeartKeys(edges, personId) {
   return keys;
 }
 
+// A pointer hover is temporary and wins while it lasts; the clicked card is
+// the persistent fallback. Both feed the exact same highlight pipeline.
+export function resolveHighlightId(hoveredPersonId, selectedPersonId) {
+  return hoveredPersonId || selectedPersonId || '';
+}
+
 // When the marriages in a group form a simple chain (A - B - C - D), return
 // the people in chain order so every marriage sits between neighbours and
 // its heart is drawn beside the card. Returns null for any other shape.
@@ -1742,6 +1748,7 @@ export default function SpouseTreeComponent({
   );
   const [edges, setEdges] = useState([]);
   const [hoveredPersonId, setHoveredPersonId] = useState('');
+  const [selectedPersonId, setSelectedPersonId] = useState('');
   const [rowHeights, setRowHeights] = useState({});
   const [size, setSize] = useState({ width: 0, height: 0 });
 
@@ -1766,6 +1773,10 @@ export default function SpouseTreeComponent({
     },
     [registerCard]
   );
+
+  const handleSelectPerson = useCallback((person) => {
+    setSelectedPersonId(String(person?.id || ''));
+  }, []);
 
   const measure = useCallback(() => {
     const container = containerRef.current;
@@ -2230,19 +2241,42 @@ export default function SpouseTreeComponent({
     return () => window.removeEventListener('resize', handleResize);
   }, [measure]);
 
-  const hoveredParentPairs = useMemo(
-    () => parentPairKeys(families, hoveredPersonId),
-    [families, hoveredPersonId]
+  const activePersonId = resolveHighlightId(hoveredPersonId, selectedPersonId);
+
+  // The selected card can disappear when the tree, focus, collapse state or
+  // generation depth changes. Never keep highlighting a person who is gone.
+  useEffect(() => {
+    if (!selectedPersonId) return;
+    const stillVisible = people.some(
+      (person) => String(person.id) === String(selectedPersonId)
+    );
+    if (!stillVisible) setSelectedPersonId('');
+  }, [people, selectedPersonId]);
+
+  // Escape offers a second way to clear the selection; selecting another card
+  // remains the primary one.
+  useEffect(() => {
+    if (!selectedPersonId) return undefined;
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setSelectedPersonId('');
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [selectedPersonId]);
+
+  const activeParentPairs = useMemo(
+    () => parentPairKeys(families, activePersonId),
+    [families, activePersonId]
   );
 
-  const hoveredParentHearts = useMemo(
-    () => parentHeartKeys(edges, hoveredPersonId),
-    [edges, hoveredPersonId]
+  const activeParentHearts = useMemo(
+    () => parentHeartKeys(edges, activePersonId),
+    [edges, activePersonId]
   );
 
-  const hoveredHasRelations = useMemo(() => {
-    if (!hoveredPersonId) return false;
-    const id = String(hoveredPersonId);
+  const activeHasRelations = useMemo(() => {
+    if (!activePersonId) return false;
+    const id = String(activePersonId);
     if (edges.some((edge) => edgeInvolvesPerson(edge, id))) return true;
     return scene.units.some((unit) =>
       (unit.relationships || []).some(
@@ -2251,17 +2285,17 @@ export default function SpouseTreeComponent({
           String(relationship.secondId) === id
       )
     );
-  }, [edges, hoveredPersonId, scene]);
+  }, [edges, activePersonId, scene]);
 
-  // Hovered connectors get their own layer above the rows; see
+  // Highlighted connectors get their own layer above the rows; see
   // .spouse-edges-highlight.
-  const edgeEntries = orderEdgesForHighlight(edges, hoveredPersonId);
+  const edgeEntries = orderEdgesForHighlight(edges, activePersonId);
   const plainEdges = edgeEntries.filter((entry) => !entry.highlighted);
   const highlightedEdges = edgeEntries.filter((entry) => entry.highlighted);
 
   return (
     <div
-      className={`spouse-tree${hoveredHasRelations ? ' is-hovering' : ''}`}
+      className={`spouse-tree${activeHasRelations ? ' is-hovering' : ''}`}
       onMouseLeave={() => setHoveredPersonId('')}
       onMouseOver={(event) => {
         const card = event.target.closest('[data-person-id]');
@@ -2373,13 +2407,13 @@ export default function SpouseTreeComponent({
                   key: `behind-${relationship.firstId}-${relationship.secondId}`,
                   heartKey: `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`,
                   highlighted:
-                    Boolean(hoveredPersonId) &&
-                    (String(relationship.firstId) === String(hoveredPersonId) ||
-                      String(relationship.secondId) === String(hoveredPersonId) ||
-                      hoveredParentPairs.has(
+                    Boolean(activePersonId) &&
+                    (String(relationship.firstId) === String(activePersonId) ||
+                      String(relationship.secondId) === String(activePersonId) ||
+                      activeParentPairs.has(
                         pairKeyOf(relationship.firstId, relationship.secondId)
                       ) ||
-                      hoveredParentHearts.has(
+                      activeParentHearts.has(
                         `heart-${unit.id}-${unit.members[leftIndex].id}-${unit.members[rightIndex].id}`
                       )),
                   segments,
@@ -2436,14 +2470,14 @@ export default function SpouseTreeComponent({
                           className={`spouse-link${
                             relationship ? '' : ' is-empty'
                           }${isFormerLink ? ' is-former' : ''}${
-                            hoveredPersonId &&
-                            (String(previousMember.id) === String(hoveredPersonId) ||
-                              String(member.id) === String(hoveredPersonId) ||
+                            activePersonId &&
+                            (String(previousMember.id) === String(activePersonId) ||
+                              String(member.id) === String(activePersonId) ||
                               (relationship &&
-                                hoveredParentPairs.has(
+                                activeParentPairs.has(
                                   pairKeyOf(previousMember.id, member.id)
                                 )) ||
-                              (heartKey && hoveredParentHearts.has(heartKey)))
+                              (heartKey && activeParentHearts.has(heartKey)))
                               ? ' is-highlighted'
                               : ''
                           }`}
@@ -2472,6 +2506,7 @@ export default function SpouseTreeComponent({
                         childrenHidden={collapsedPersonSet.has(String(member.id))}
                         hasBranch={Boolean(branchFlagsById?.get(String(member.id))?.hasBranch)}
                         isHome={String(homePersonId || '') === String(member.id)}
+                        isSelected={String(selectedPersonId) === String(member.id)}
                         muted={formerMemberIds.has(String(member.id))}
                         onAddChild={onAddChild}
                         onAddParent={onAddParent}
@@ -2480,6 +2515,7 @@ export default function SpouseTreeComponent({
                         onDelete={onDelete}
                         onEdit={onEdit}
                         onFocus={onFocus}
+                        onSelect={handleSelectPerson}
                         onToggleChildren={onToggleChildren}
                         onView={onView}
                         person={member}
