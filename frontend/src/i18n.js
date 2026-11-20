@@ -15,6 +15,7 @@ const translations = {
     'common.language': 'Language',
     'common.cancel': 'Cancel',
     'common.close': 'Close',
+    'common.guide': 'User guide',
     'common.loading': 'Please wait…',
     'common.logout': 'Log out',
     'common.save': 'Save',
@@ -422,6 +423,10 @@ const translations = {
     'errors.deletePerson': 'Could not delete this person.',
     'errors.loadDemo': 'Could not load the example family.',
     'errors.saveProfile': 'Could not save your profile. Please try again.',
+    'errors.changePassword':
+      'Could not change your password. Please try again.',
+    'errors.passwordMismatch': 'The new passwords do not match.',
+    'errors.passwordShort': 'Use at least 6 characters.',
     'errors.saveSettings':
       'Could not save your preferences. Please try again.',
     'errors.loadTrees':
@@ -444,6 +449,19 @@ const translations = {
     'settings.saveProfile': 'Save profile',
     'settings.savingProfile': 'Saving…',
     'settings.profileSaved': 'Profile updated.',
+    'settings.sectionsTitle': 'On this page',
+    'settings.passwordTitle': 'Password',
+    'settings.passwordCopy':
+      'Update the password you use to sign in. Other devices will be signed out.',
+    'settings.currentPassword': 'Current password',
+    'settings.newPassword': 'New password',
+    'settings.confirmPassword': 'Confirm new password',
+    'settings.showPassword': 'Show password',
+    'settings.hidePassword': 'Hide password',
+    'settings.savePassword': 'Update password',
+    'settings.savingPassword': 'Updating…',
+    'settings.passwordSaved':
+      'Password updated. Other devices have been signed out.',
     'settings.preferencesTitle': 'Tree preferences',
     'settings.bloodlineOnly': 'Bloodline-only tree',
     'settings.bloodlineOnlyHint':
@@ -533,6 +551,11 @@ const translations = {
     'api.fieldsRequired': 'Name, email and password are required.',
     'api.invalidEmail': 'Please enter a valid email address.',
     'api.passwordLength': 'Password must be at least 6 characters.',
+    'api.passwordRequired':
+      'Enter your current password and a new password.',
+    'api.currentPasswordWrong': 'Your current password is incorrect.',
+    'api.passwordSame':
+      'Choose a new password that is different from the current one.',
     'api.emailExists': 'An account with this email already exists.',
     'api.emailPasswordRequired': 'Email and password are required.',
     'api.badCredentials': 'Incorrect email or password.',
@@ -565,6 +588,7 @@ const translations = {
     'common.language': 'Kalba',
     'common.cancel': 'Atšaukti',
     'common.close': 'Uždaryti',
+    'common.guide': 'Naudotojo vadovas',
     'common.loading': 'Palaukite…',
     'common.logout': 'Atsijungti',
     'common.save': 'Išsaugoti',
@@ -1050,6 +1074,10 @@ const translations = {
     'errors.loadDemo': 'Nepavyko įkelti pavyzdinės šeimos.',
     'errors.saveProfile':
       'Nepavyko išsaugoti profilio. Bandykite dar kartą.',
+    'errors.changePassword':
+      'Nepavyko pakeisti slaptažodžio. Bandykite dar kartą.',
+    'errors.passwordMismatch': 'Nauji slaptažodžiai nesutampa.',
+    'errors.passwordShort': 'Slaptažodis turi būti bent 6 simbolių.',
     'errors.saveSettings':
       'Nepavyko išsaugoti nuostatų. Bandykite dar kartą.',
     'errors.loadTrees':
@@ -1078,6 +1106,19 @@ const translations = {
     'settings.saveProfile': 'Išsaugoti profilį',
     'settings.savingProfile': 'Išsaugoma…',
     'settings.profileSaved': 'Profilis atnaujintas.',
+    'settings.sectionsTitle': 'Šiame puslapyje',
+    'settings.passwordTitle': 'Slaptažodis',
+    'settings.passwordCopy':
+      'Pakeiskite prisijungimo slaptažodį. Kiti įrenginiai bus atjungti.',
+    'settings.currentPassword': 'Dabartinis slaptažodis',
+    'settings.newPassword': 'Naujas slaptažodis',
+    'settings.confirmPassword': 'Pakartokite naują slaptažodį',
+    'settings.showPassword': 'Rodyti slaptažodį',
+    'settings.hidePassword': 'Slėpti slaptažodį',
+    'settings.savePassword': 'Pakeisti slaptažodį',
+    'settings.savingPassword': 'Keičiama…',
+    'settings.passwordSaved':
+      'Slaptažodis pakeistas. Kiti įrenginiai atjungti.',
     'settings.preferencesTitle': 'Medžio nuostatos',
     'settings.bloodlineOnly': 'Tik kraujo linijos medis',
     'settings.bloodlineOnlyHint':
@@ -1168,6 +1209,11 @@ const translations = {
       'Būtina įvesti vardą, el. paštą ir slaptažodį.',
     'api.invalidEmail': 'Įveskite galiojantį el. pašto adresą.',
     'api.passwordLength': 'Slaptažodis turi būti bent 6 simbolių.',
+    'api.passwordRequired':
+      'Įveskite dabartinį ir naują slaptažodį.',
+    'api.currentPasswordWrong': 'Dabartinis slaptažodis neteisingas.',
+    'api.passwordSame':
+      'Naujas slaptažodis turi skirtis nuo dabartinio.',
     'api.emailExists': 'Paskyra su šiuo el. paštu jau egzistuoja.',
     'api.emailPasswordRequired':
       'Būtina įvesti el. paštą ir slaptažodį.',
@@ -1203,6 +1249,9 @@ const API_ERROR_KEYS = {
   'Name, email and password are required': 'api.fieldsRequired',
   'Please enter a valid email address': 'api.invalidEmail',
   'Password must be at least 6 characters': 'api.passwordLength',
+  'Current password and new password are required': 'api.passwordRequired',
+  'Current password is incorrect': 'api.currentPasswordWrong',
+  'New password must be different from the current one': 'api.passwordSame',
   'An account with this email already exists': 'api.emailExists',
   'Email and password are required': 'api.emailPasswordRequired',
   'Incorrect email or password': 'api.badCredentials',

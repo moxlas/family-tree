@@ -11,8 +11,8 @@ public link.
 
 ## User guides
 
-- [Illustrated user guide (English)](https://moxlas.github.io/family-tree/readme/en/index.html)
-- [Ilustruotas naudotojo vadovas (Lietuvių)](https://moxlas.github.io/family-tree/readme/lt/index.html)
+- [User guide (English)](https://moxlas.github.io/family-tree/readme/en/index.html)
+- [Naudotojo vadovas (Lietuvių)](https://moxlas.github.io/family-tree/readme/lt/index.html)
 
 ## What you can do
 
@@ -27,6 +27,8 @@ public link.
 - Choose how many generations to show and zoom in or out.
 - Highlight connections by pointing at a person's card.
 - Adjust text size, contrast, and animation for easier reading.
+- Update your account password and sign out other devices.
+- Open the user guide from the account menu in your chosen language.
 - Import and export GEDCOM 5.5.1 files.
 - Share a read-only link to one tree at a time.
 - Use the app in English or Lithuanian.

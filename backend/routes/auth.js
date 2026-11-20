@@ -12,7 +12,7 @@ function signToken(user) {
   }
 
   return jwt.sign(
-    { sub: user.id, email: user.email },
+    { sub: user.id, email: user.email, ver: user.tokenVersion || 0 },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
@@ -116,6 +116,48 @@ router.put('/profile', authenticate, async (req, res) => {
   await req.user.save();
 
   return res.json({ user: publicUser(req.user) });
+});
+
+router.put('/password', authenticate, async (req, res) => {
+  const currentPassword = String(req.body.currentPassword || '');
+  const newPassword = String(req.body.newPassword || '');
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({
+      error: 'Current password and new password are required',
+    });
+  }
+
+  if (newPassword.length < 6) {
+    return res
+      .status(400)
+      .json({ error: 'Password must be at least 6 characters' });
+  }
+
+  const user = await User.findById(req.user.id).select('+passwordHash');
+  if (!user) {
+    return res.status(401).json({ error: 'Account no longer exists' });
+  }
+
+  const passwordMatches = await bcrypt.compare(
+    currentPassword,
+    user.passwordHash
+  );
+  if (!passwordMatches) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  if (await bcrypt.compare(newPassword, user.passwordHash)) {
+    return res
+      .status(400)
+      .json({ error: 'New password must be different from the current one' });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.tokenVersion = (user.tokenVersion || 0) + 1;
+  await user.save();
+
+  return res.json({ token: signToken(user), user: publicUser(user) });
 });
 
 router.put('/settings', authenticate, async (req, res) => {

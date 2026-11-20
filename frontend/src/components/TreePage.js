@@ -54,8 +54,16 @@ function initials(name) {
   );
 }
 
-export default function TreePage({ user, onLogout, onUserUpdate }) {
-  const { t, tn, translateApiError } = useI18n();
+export default function TreePage({
+  user,
+  onLogout,
+  onTokenUpdate,
+  onUserUpdate,
+}) {
+  const { t, tn, translateApiError, language } = useI18n();
+  const guideUrl = `${process.env.PUBLIC_URL || ''}/readme/${
+    language === 'lt' ? 'lt' : 'en'
+  }/index.html`;
   const [trees, setTrees] = useState([]);
   const [treesLoading, setTreesLoading] = useState(true);
   const [activeTreeId, setActiveTreeId] = useState(() => {
@@ -923,14 +931,34 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
                   role="menuitem"
                   type="button"
                 >
+                  <span aria-hidden="true" className="menu-icon">
+                    ⚙
+                  </span>
                   {t('settings.title')}
                 </button>
+                <a
+                  className="account-guide-link"
+                  href={guideUrl}
+                  onClick={() => setAccountMenuOpen(false)}
+                  rel="noopener noreferrer"
+                  role="menuitem"
+                  target="_blank"
+                >
+                  <span aria-hidden="true" className="menu-icon">
+                    ◧
+                  </span>
+                  {t('common.guide')}
+                </a>
+                <div className="account-dropdown-divider" role="separator" />
                 <button
                   className="danger"
                   onClick={onLogout}
                   role="menuitem"
                   type="button"
                 >
+                  <span aria-hidden="true" className="menu-icon">
+                    ↪
+                  </span>
                   {t('common.logout')}
                 </button>
               </div>
@@ -1323,6 +1351,7 @@ export default function TreePage({ user, onLogout, onUserUpdate }) {
       {settingsOpen && (
         <SettingsModal
           onClose={() => setSettingsOpen(false)}
+          onTokenUpdate={onTokenUpdate}
           onUserUpdate={onUserUpdate}
           user={user}
         />

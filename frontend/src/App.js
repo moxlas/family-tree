@@ -53,6 +53,13 @@ function App() {
     setUser(data.user);
   };
 
+  // The API client reads the token from localStorage on every request. Updating
+  // only the stored value keeps the current screen mounted after a password
+  // change; changing React state here would restart the session check.
+  const handleTokenUpdate = (nextToken) => {
+    localStorage.setItem(TOKEN_KEY, nextToken);
+  };
+
   const handleLogout = () => {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -88,6 +95,7 @@ function App() {
     <ErrorBoundary>
       <TreePage
         onLogout={handleLogout}
+        onTokenUpdate={handleTokenUpdate}
         onUserUpdate={setUser}
         user={user}
       />
