@@ -11,8 +11,8 @@ public link.
 
 ## User guides
 
-- [Illustrated user guide (English)](readme/en/index.html)
-- [Ilustruotas naudotojo vadovas (Lietuvių)](readme/lt/index.html)
+- [Illustrated user guide (English)](https://moxlas.github.io/family-tree/readme/en/index.html)
+- [Ilustruotas naudotojo vadovas (Lietuvių)](https://moxlas.github.io/family-tree/readme/lt/index.html)
 
 ## What you can do
 
