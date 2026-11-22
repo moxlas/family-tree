@@ -99,6 +99,8 @@ export default function TreePage({
     }
   });
   const [centreSignal, setCentreSignal] = useState(0);
+  const [centreOverride, setCentreOverride] = useState('');
+  const centreOverrideDoneRef = useRef('');
   const [treesOpen, setTreesOpen] = useState(false);
   const [gedcomOpen, setGedcomOpen] = useState(false);
   const [focusId, setFocusId] = useState('');
@@ -134,6 +136,19 @@ export default function TreePage({
     scrollTop: 0,
   });
   const suppressClickRef = useRef(false);
+
+  const resetCentreOverride = useCallback(() => {
+    centreOverrideDoneRef.current = '';
+    setCentreOverride('');
+  }, []);
+
+  const focusPerson = useCallback(
+    (personId) => {
+      resetCentreOverride();
+      setFocusId(personId);
+    },
+    [resetCentreOverride]
+  );
 
   useEffect(() => {
     translateErrorRef.current = translateApiError;
@@ -394,21 +409,32 @@ export default function TreePage({
 
   // The bloodline-only view has no branch button, so it cannot show a branch.
   useEffect(() => {
-    if (bloodlineOnly) setFocusId('');
-  }, [bloodlineOnly]);
+    if (bloodlineOnly) focusPerson('');
+  }, [bloodlineOnly, focusPerson]);
 
-  // Put the focused card, or the home card in the full tree, in the middle
+  // Put a newly added card, the focused card, or the home card in the middle
   // of the tree viewport once the scene has rendered. The branch lays out in
   // a few passes, so keep re-centring until the card stays put for a frame.
-  const centreTargetId = focusId || homePersonId;
+  // A consumed override stays as the target so later renders cannot make the
+  // effect fall back to the home person and snap the view away from the new card.
+  const overrideId = centreOverride ? String(centreOverride) : '';
+  const centreTargetId = overrideId || focusId || homePersonId;
+  const skipConsumedOverride =
+    Boolean(overrideId) && centreOverrideDoneRef.current === overrideId;
 
   useEffect(() => {
+    if (skipConsumedOverride) return undefined;
     if (!centreTargetId || !people.length) return undefined;
 
     let frame = 0;
     let attempts = 0;
     let stable = 0;
     let cancelled = false;
+    const targetId = String(centreTargetId);
+
+    const finishOverride = () => {
+      if (overrideId) centreOverrideDoneRef.current = overrideId;
+    };
 
     const centre = () => {
       if (cancelled) return;
@@ -416,11 +442,12 @@ export default function TreePage({
 
       const scroll = scrollRef.current;
       const card = scroll?.querySelector(
-        `[data-person-id="${String(centreTargetId).replace(/"/g, '\\"')}"]`
+        `[data-person-id="${targetId.replace(/"/g, '\\"')}"]`
       );
 
       if (!scroll || !card) {
         if (attempts < 40) frame = window.requestAnimationFrame(centre);
+        else finishOverride();
         return;
       }
 
@@ -442,8 +469,14 @@ export default function TreePage({
         });
       }
 
-      if (stable < 2 && attempts < 40) {
+      if (stable >= 2) {
+        finishOverride();
+        return;
+      }
+      if (attempts < 40) {
         frame = window.requestAnimationFrame(centre);
+      } else {
+        finishOverride();
       }
     };
 
@@ -453,7 +486,14 @@ export default function TreePage({
       cancelled = true;
       window.cancelAnimationFrame(frame);
     };
-  }, [centreTargetId, people.length, bloodlineOnly, centreSignal]);
+  }, [
+    centreTargetId,
+    overrideId,
+    skipConsumedOverride,
+    people.length,
+    bloodlineOnly,
+    centreSignal,
+  ]);
 
   const toggleChildren = (person) => {
     const id = person ? String(person.id) : '';
@@ -507,7 +547,7 @@ export default function TreePage({
     setPeople([]);
     setLoading(true);
     setError('');
-    setFocusId('');
+    focusPerson('');
   };
 
   const handleTreeUpdated = (tree) => {
@@ -525,7 +565,7 @@ export default function TreePage({
         homePersonId: personId,
       });
       handleTreeUpdated(response.data);
-      setFocusId('');
+      focusPerson('');
       setNotice('notice.homePersonSet');
     } catch (requestError) {
       setError(translateApiError(requestError, 'errors.homePerson'));
@@ -540,7 +580,7 @@ export default function TreePage({
       setActiveTreeId(remaining[0]?.id || '');
       setPeople([]);
       setLoading(true);
-      setFocusId('');
+      focusPerson('');
     }
   };
 
@@ -552,7 +592,7 @@ export default function TreePage({
     setModal(null);
     setNotice('');
     setError('');
-    setFocusId('');
+    focusPerson('');
   };
 
   const openCreate = (parentId = '') => {
@@ -687,6 +727,12 @@ export default function TreePage({
       loadFamilies(),
       refreshCounts(),
     ]);
+
+    if (created?.id) {
+      centreOverrideDoneRef.current = '';
+      setCentreOverride(String(created.id));
+      setCentreSignal((value) => value + 1);
+    }
   };
 
   const requestDeletePerson = (person) => {
@@ -1208,7 +1254,7 @@ export default function TreePage({
                 </span>
                 <button
                   className="button ghost small"
-                  onClick={() => setFocusId('')}
+                  onClick={() => focusPerson('')}
                   type="button"
                 >
                   {t('branch.backToFull')}
@@ -1268,7 +1314,7 @@ export default function TreePage({
                   onAddSpouse={openAddSpouse}
                   onDelete={requestDeletePerson}
                   onEdit={openEdit}
-                  onFocus={(person) => setFocusId(String(person.id))}
+                  onFocus={(person) => focusPerson(String(person.id))}
                   onToggleChildren={toggleChildren}
                   onView={(person) => setDetailsPerson(person)}
                   people={view.people}
@@ -1329,7 +1375,10 @@ export default function TreePage({
               </div>
               <button
                 className="button ghost small tree-centre-button"
-                onClick={() => setCentreSignal((value) => value + 1)}
+                onClick={() => {
+                  resetCentreOverride();
+                  setCentreSignal((value) => value + 1);
+                }}
                 type="button"
               >
                 {t('tree.centreView')}
