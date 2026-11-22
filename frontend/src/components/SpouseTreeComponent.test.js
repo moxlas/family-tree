@@ -613,9 +613,8 @@ describe('home-centred pedigree layout', () => {
     );
     expect(leftmost).toBeCloseTo(34, 0);
 
-    // Large trees use compact rows, so the strict pedigree alignment from the
-    // small-tree test above no longer applies here. What matters is that the
-    // descendants did not push the home branch into a mirrored empty canvas.
+    // Large trees still use compact rows. The descendants did not push the
+    // home branch into a mirrored empty canvas.
     expect(scene.treeWidth).toBeLessThan(8000);
   });
 });
@@ -623,6 +622,10 @@ describe('home-centred pedigree layout', () => {
 describe('large tree compact layout', () => {
   const leftOf = (unit) => unit.x - unit.width / 2;
   const rightOf = (unit) => unit.x + unit.width / 2;
+  const cardCentre = (unit, personId) => {
+    const index = unit.members.findIndex((member) => member.id === personId);
+    return unit.x - unit.width / 2 + unit.memberCenters[index];
+  };
 
   function makeWideFamilyTree() {
     const people = [];
@@ -695,6 +698,55 @@ describe('large tree compact layout', () => {
     expect(leftOf(childlessUncle) - rightOf(uncleWithChildren)).toBeLessThan(150);
     expect(scene.treeWidth).toBeLessThan(6000);
     expect(home.x).toBeGreaterThan(unitFor('U7').x);
+  });
+
+  it('centres the focused person parents and grandparents above them', () => {
+    const { people, families } = makeWideFamilyTree();
+    const scene = buildScene(people, families, true, 'H', 'H');
+    const unitFor = (personId) =>
+      scene.units.find((unit) =>
+        unit.members.some((member) => member.id === personId)
+      );
+
+    const home = unitFor('H');
+    const parents = unitFor('F');
+    const paternal = unitFor('GP1');
+    const maternal = unitFor('MF');
+
+    const homeCentre = cardCentre(home, 'H');
+    const fatherCentre = cardCentre(parents, 'F');
+    const motherCentre = cardCentre(parents, 'M');
+
+    expect((fatherCentre + motherCentre) / 2).toBeCloseTo(homeCentre, 1);
+    expect(
+      (cardCentre(paternal, 'GP1') + cardCentre(paternal, 'GP2')) / 2
+    ).toBeCloseTo(fatherCentre, 1);
+    expect(
+      (cardCentre(maternal, 'MF') + cardCentre(maternal, 'MM')) / 2
+    ).toBeCloseTo(motherCentre, 1);
+
+    // Anchoring walks up ancestor rows only; it must not reopen the space
+    // saved by packing the cousin and uncle rows by real visible width.
+    expect(scene.treeWidth).toBeLessThan(6000);
+    expect(
+      leftOf(unitFor('U1')) - rightOf(unitFor('U0'))
+    ).toBeLessThan(150);
+  });
+
+  it('uses the focused branch person as the ancestry anchor', () => {
+    const { people, families } = makeWideFamilyTree();
+    const scene = buildScene(people, families, true, 'U0', 'U0');
+    const unitFor = (personId) =>
+      scene.units.find((unit) =>
+        unit.members.some((member) => member.id === personId)
+      );
+
+    const focused = unitFor('U0');
+    const focusedParents = unitFor('GP1');
+
+    expect(
+      (cardCentre(focusedParents, 'GP1') + cardCentre(focusedParents, 'GP2')) / 2
+    ).toBeCloseTo(cardCentre(focused, 'U0'), 1);
   });
 });
 

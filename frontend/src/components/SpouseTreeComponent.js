@@ -378,6 +378,7 @@ function applyHomePedigree({
   byId,
   depths,
   families,
+  gap = 44,
   homePersonId,
   rows,
   units,
@@ -620,7 +621,7 @@ function applyHomePedigree({
       pinned.add(unitIndex);
     });
 
-    packRow(units, rows[depth], pinned, 44);
+    packRow(units, rows[depth], pinned, gap);
 
     const nextLevel = [];
     nextIds.forEach((personId) => {
@@ -1807,6 +1808,26 @@ export function buildScene(
       units[unitIndex].x = center;
       units[unitIndex].layoutCenter = center;
     });
+
+    // Keep the width benefits of row packing, but seat the focused person's
+    // direct ancestry above them. Only the ancestor rows are re-packed, so
+    // collateral branches keep their compact positions apart from the local
+    // shifts needed to avoid overlaps.
+    if (pedigreePersonId) {
+      pedigreeWidth =
+        applyHomePedigree({
+          byId,
+          depths,
+          families,
+          gap: UNIT_GAP,
+          homePersonId: pedigreePersonId,
+          rows,
+          units,
+        }) || 0;
+      units.forEach((unit) => {
+        unit.layoutCenter = unit.x;
+      });
+    }
   } else if (pedigreePersonId) {
     pedigreeWidth =
       applyHomePedigree({
