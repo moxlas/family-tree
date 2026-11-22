@@ -690,10 +690,10 @@ const translations = {
       '{{count}} palikuonių šiame medyje',
     'confirm.deletePerson.keepTitle': 'Palikti vaikus',
     'confirm.deletePerson.keepBody':
-      'Pašalinti tik {{name}}. Šio asmens vaikai lieka medyje, bet nebus susieti su šiuo asmeniu.',
+      'Tik {{name}} bus pašalintas. Šio asmens vaikai liks medyje, bet nebebus susieti su šiuo asmeniu',
     'confirm.deletePerson.allTitle': 'Pašalinti ir vaikus',
     'confirm.deletePerson.allBody':
-      'Pašalinti {{name}} ir visus žmones žemiau jo. To negalima atšaukti.',
+      '{{name}} ir šio asmens palikuonys bus pašalinti. To negalima atšaukti.',
     'confirm.demo':
       'Įkėlus pavyzdinę šeimą, dabartiniai šio medžio žmonės bus pakeisti. Tęsti?',
     'confirm.deleteTree':

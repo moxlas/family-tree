@@ -77,6 +77,19 @@ describe('DeletePersonModal', () => {
     expect(findButton('Remove children too')).toBeTruthy();
   });
 
+  it('uses the requested Lithuanian descriptions', () => {
+    localStorage.setItem('familyTreeLanguage', 'lt');
+    renderModal(1);
+
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog.textContent).toContain(
+      'Tik Anna Doe bus pašalintas. Šio asmens vaikai liks medyje, bet nebebus susieti su šiuo asmeniu'
+    );
+    expect(dialog.textContent).toContain(
+      'Anna Doe ir šio asmens palikuonys bus pašalinti. To negalima atšaukti.'
+    );
+  });
+
   it('confirms keeping children as a separate mode', () => {
     renderModal(1);
 
