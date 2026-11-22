@@ -270,7 +270,7 @@ const translations = {
     'modal.birthPlace': 'Birth place',
     'modal.birthPlacePlaceholder': 'e.g. Kaunas, Lithuania',
     'modal.death': 'Death date or year',
-    'modal.deathPlaceholder': 'Leave empty if living',
+    'modal.deathPlaceholder': 'Leave empty if unknown',
     'modal.dateHint':
       'Type a year (1945), a month and year (JUN 1945) or a full date (16 JAN 1991), or pick one from the calendar.',
     'modal.deceased': 'Deceased',
@@ -933,7 +933,7 @@ const translations = {
     'modal.birthPlace': 'Gimimo vieta',
     'modal.birthPlacePlaceholder': 'pvz., Kaunas, Lietuva',
     'modal.death': 'Mirties data arba metai',
-    'modal.deathPlaceholder': 'Palikite tuščią, jei asmuo gyvas',
+    'modal.deathPlaceholder': 'Palikite tuščią, jei nežinoma',
     'modal.dateHint':
       'Įrašykite metus (1945), mėnesį ir metus (1945 m. birželis) arba pilną datą (1991 m. sausio 16 d.), arba pasirinkite kalendoriuje.',
     'modal.deceased': 'Miręs (-usi)',
