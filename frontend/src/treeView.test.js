@@ -4,6 +4,7 @@ import {
   branchFlags,
   computeTreeStats,
   defaultHomePersonId,
+  descendantIds,
   personRowMap,
   relativeDepthsFrom,
   viewPeople,
@@ -30,6 +31,19 @@ const families = [
 ];
 
 const ids = (view) => view.people.map((entry) => entry.id).sort();
+
+describe('descendantIds', () => {
+  it('collects children and deeper descendants from family records and parent fields', () => {
+    expect([...descendantIds(people, families, '1')].sort()).toEqual(['3', '5']);
+  });
+
+  it('does not include the person or their spouse’s separate children', () => {
+    const result = descendantIds(people, families, '1');
+    expect(result.has('1')).toBe(false);
+    expect(result.has('6')).toBe(false);
+    expect(result.has('7')).toBe(false);
+  });
+});
 
 describe('branch views', () => {
   it('full tree shows the bloodline, spouse cards and mutual children only', () => {

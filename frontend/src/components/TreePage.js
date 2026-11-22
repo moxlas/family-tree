@@ -10,6 +10,7 @@ import api from '../api';
 import { buildGedcom } from '../gedcom';
 import { useI18n } from '../i18n';
 import { personOptionLabels } from '../personLabel';
+import DeletePersonModal from './DeletePersonModal';
 import GedcomModal from './GedcomModal';
 import LanguageSwitcher from './LanguageSwitcher';
 import PersonDetailsModal from './PersonDetailsModal';
@@ -22,6 +23,7 @@ import {
   branchMemberIds,
   computeTreeStats,
   defaultHomePersonId,
+  descendantIds,
   personRowMap,
   viewPeople,
 } from '../treeView';
@@ -80,6 +82,7 @@ export default function TreePage({
   const [notice, setNotice] = useState('');
   const [modal, setModal] = useState(null);
   const [detailsPerson, setDetailsPerson] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [zoom, setZoom] = useState(() =>
     readZoom(
@@ -259,6 +262,14 @@ export default function TreePage({
   const fallbackHomePersonId = useMemo(
     () => defaultHomePersonId(people, families),
     [people, families]
+  );
+
+  const deleteDescendantCount = useMemo(
+    () =>
+      deleteTarget
+        ? descendantIds(people, families, deleteTarget.id).size
+        : 0,
+    [deleteTarget, people, families]
   );
 
   const homePersonId = useMemo(() => {
@@ -678,17 +689,31 @@ export default function TreePage({
     ]);
   };
 
-  const deletePerson = async (person) => {
-    const name = `${person.firstName} ${person.lastName}`.trim();
-    const confirmed = window.confirm(t('confirm.delete', { name }));
-    if (!confirmed) return;
+  const requestDeletePerson = (person) => {
+    setError('');
+    setDeleteTarget(person);
+  };
 
+  const closeDeleteModal = useCallback(() => setDeleteTarget(null), []);
+
+  const confirmDeletePerson = async (mode) => {
+    const person = deleteTarget;
+    if (!person) return;
+
+    setDeleteTarget(null);
     setError('');
     try {
       await api.delete(`/people/${person.id}`, {
-        params: { treeId: activeTreeId },
+        params: {
+          treeId: activeTreeId,
+          ...(mode === 'keep' ? { keepChildren: true } : {}),
+        },
       });
-      setNotice('notice.personDeleted');
+      setNotice(
+        mode === 'keep'
+          ? 'notice.personDeletedChildrenKept'
+          : 'notice.personDeleted'
+      );
       await Promise.all([
         loadPeople({ quiet: true }),
         loadFamilies(),
@@ -1219,7 +1244,7 @@ export default function TreePage({
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}
                   onAddSpouse={(person) => openAddSpouse(person)}
-                  onDelete={deletePerson}
+                  onDelete={requestDeletePerson}
                   onEdit={openEdit}
                   onView={(person) => setDetailsPerson(person)}
                   people={bloodlinePeople}
@@ -1241,7 +1266,7 @@ export default function TreePage({
                   onAddParent={(person) => openAddParent(person)}
                   onAddSibling={(person) => openAddSibling(person)}
                   onAddSpouse={openAddSpouse}
-                  onDelete={deletePerson}
+                  onDelete={requestDeletePerson}
                   onEdit={openEdit}
                   onFocus={(person) => setFocusId(String(person.id))}
                   onToggleChildren={toggleChildren}
@@ -1324,6 +1349,15 @@ export default function TreePage({
           referenceKind={focusId ? 'branch' : 'home'}
           referencePersonId={focusId || homePersonId}
           rowByPersonId={rowByPersonId}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeletePersonModal
+          descendantCount={deleteDescendantCount}
+          onCancel={closeDeleteModal}
+          onConfirm={confirmDeletePerson}
+          person={deleteTarget}
         />
       )}
 

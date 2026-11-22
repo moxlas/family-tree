@@ -1754,6 +1754,88 @@ textarea {
   padding-top: 20px;
 }
 
+.confirm-card {
+  max-width: 620px;
+}
+
+.delete-descendant-count {
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+  padding: 10px 14px;
+}
+
+.delete-options {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.delete-option {
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: inherit;
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+  text-align: left;
+  width: 100%;
+}
+
+.delete-option:hover,
+.delete-option:focus-visible {
+  border-color: var(--brand);
+  box-shadow: var(--shadow-sm);
+}
+
+.delete-option-icon {
+  align-items: center;
+  background: var(--brand-soft);
+  border-radius: 10px;
+  color: var(--brand-deep);
+  display: flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 800;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.delete-option-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.delete-option-copy strong {
+  font-size: 15px;
+}
+
+.delete-option-copy > span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.delete-option.danger {
+  border-color: rgba(220, 38, 38, 0.35);
+}
+
+.delete-option.danger:hover,
+.delete-option.danger:focus-visible {
+  border-color: var(--danger);
+}
+
+.delete-option.danger .delete-option-icon {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 /* Settings */
 .settings-card {
   max-width: 980px;

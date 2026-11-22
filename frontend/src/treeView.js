@@ -57,6 +57,18 @@ function closure(seeds, edges) {
   return result;
 }
 
+// All people below a person, using both family records and parent fields so
+// legacy trees are counted the same way the tree view draws them.
+export function descendantIds(people, families, personId) {
+  const rootId = idOf(personId);
+  if (!rootId) return new Set();
+
+  const { children } = buildGraph(people, families);
+  const ids = closure([rootId], children);
+  ids.delete(rootId);
+  return ids;
+}
+
 function reverseEdges(edges) {
   const reversed = new Map();
   edges.forEach((targets, source) => {

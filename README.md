@@ -20,6 +20,7 @@ public link.
 - Add people and record names, previous or maiden surnames, gender, birth and
   death dates and places, and notes.
 - Connect parents, children, spouses, and former spouses.
+- Remove a person while choosing whether to keep their children in the tree.
 - Keep a main person in focus so the tree is centred where you want it.
 - Explore ancestors, descendants, and relatives by focusing on a branch.
 - Show or hide spouse cards and former spouses.

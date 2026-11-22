@@ -17,6 +17,10 @@ function fullName(person) {
   return `${person.firstName || ''} ${person.lastName || ''}`.trim();
 }
 
+function sameId(value, id) {
+  return value == null || value === '' ? false : String(value) === String(id);
+}
+
 function readFields(body) {
   const fields = {};
 
@@ -898,54 +902,184 @@ router.delete('/:id', async (req, res) => {
     person.tree || req.query.treeId
   );
 
-  const people = await Person.find({
-    owner: req.user.id,
-    tree: tree._id,
-  })
-    .select('_id parentId')
-    .lean();
+  // Default to the historical cascade behaviour. The UI only sends
+  // keepChildren when the user explicitly chooses to preserve descendants.
+  const keepChildren =
+    req.query.keepChildren === 'true' ||
+    (req.body && req.body.keepChildren === true);
 
-  const childrenByParent = new Map();
-  for (const entry of people) {
-    const parentKey = entry.parentId ? entry.parentId.toString() : null;
-    if (!parentKey) continue;
-    if (!childrenByParent.has(parentKey)) childrenByParent.set(parentKey, []);
-    childrenByParent.get(parentKey).push(entry._id.toString());
+  if (!keepChildren) {
+    const people = await Person.find({
+      owner: req.user.id,
+      tree: tree._id,
+    })
+      .select('_id parentId')
+      .lean();
+
+    const childrenByParent = new Map();
+    for (const entry of people) {
+      const parentKey = entry.parentId ? entry.parentId.toString() : null;
+      if (!parentKey) continue;
+      if (!childrenByParent.has(parentKey)) childrenByParent.set(parentKey, []);
+      childrenByParent.get(parentKey).push(entry._id.toString());
+    }
+
+    const toDelete = new Set([person.id]);
+    const queue = [person.id];
+    while (queue.length) {
+      const current = queue.shift();
+      for (const childId of childrenByParent.get(current) || []) {
+        if (!toDelete.has(childId)) {
+          toDelete.add(childId);
+          queue.push(childId);
+        }
+      }
+    }
+
+    const deletedIds = [...toDelete];
+
+    await Person.deleteMany({
+      _id: { $in: deletedIds },
+      owner: req.user.id,
+      tree: tree._id,
+    });
+
+    // Surviving spouses of the deleted people become unlinked.
+    await Person.updateMany(
+      {
+        owner: req.user.id,
+        tree: tree._id,
+        spouseId: { $in: deletedIds },
+      },
+      {
+        $set: { spouseId: null, spouseName: '' },
+      }
+    );
+
+    return res.json({ deleted: deletedIds.length });
   }
 
-  const toDelete = new Set([person.id]);
-  const queue = [person.id];
-  while (queue.length) {
-    const current = queue.shift();
-    for (const childId of childrenByParent.get(current) || []) {
-      if (!toDelete.has(childId)) {
-        toDelete.add(childId);
-        queue.push(childId);
+  const deletedId = person.id;
+  const families = await Family.find({
+    owner: req.user.id,
+    tree: tree._id,
+    $or: [
+      { husband: person._id },
+      { wife: person._id },
+      { children: person._id },
+    ],
+  });
+
+  const affectedChildIds = new Set();
+  for (const family of families) {
+    const isParentInFamily =
+      sameId(family.husband, deletedId) || sameId(family.wife, deletedId);
+    if (!isParentInFamily) continue;
+    (family.children || []).forEach((childId) =>
+      affectedChildIds.add(String(childId))
+    );
+  }
+
+  const linkedChildren = await Person.find({
+    owner: req.user.id,
+    tree: tree._id,
+    $or: [{ parentId: person._id }, { secondParentId: person._id }],
+  });
+  linkedChildren.forEach((child) => affectedChildIds.add(child.id));
+  affectedChildIds.delete(deletedId);
+
+  const children = affectedChildIds.size
+    ? await Person.find({
+        _id: { $in: [...affectedChildIds] },
+        owner: req.user.id,
+        tree: tree._id,
+      })
+    : [];
+
+  for (const child of children) {
+    const survivingParentIds = [];
+    for (const family of families) {
+      const isParentInFamily =
+        sameId(family.husband, deletedId) || sameId(family.wife, deletedId);
+      if (!isParentInFamily) continue;
+      if (!(family.children || []).some((childId) => sameId(childId, child.id))) {
+        continue;
       }
+      for (const parentId of [family.husband, family.wife]) {
+        const key = parentId ? String(parentId) : '';
+        if (key && key !== deletedId && !survivingParentIds.includes(key)) {
+          survivingParentIds.push(key);
+        }
+      }
+    }
+
+    let parentId = child.parentId ? String(child.parentId) : '';
+    let secondParentId = child.secondParentId
+      ? String(child.secondParentId)
+      : '';
+    if (parentId === deletedId) parentId = '';
+    if (secondParentId === deletedId) secondParentId = '';
+
+    for (const survivingId of survivingParentIds) {
+      if (!parentId) {
+        parentId = survivingId;
+      } else if (!secondParentId && secondParentId !== survivingId) {
+        secondParentId = survivingId;
+      }
+    }
+    if (parentId && parentId === secondParentId) secondParentId = '';
+
+    const nextParentId = parentId || null;
+    const nextSecondParentId = secondParentId || null;
+    const changed =
+      String(child.parentId || '') !== String(nextParentId || '') ||
+      String(child.secondParentId || '') !== String(nextSecondParentId || '');
+
+    if (changed) {
+      child.parentId = nextParentId;
+      child.secondParentId = nextSecondParentId;
+      await child.save();
+      await syncFamilyChildren(
+        child,
+        [nextParentId, nextSecondParentId],
+        tree._id
+      );
     }
   }
 
-  const deletedIds = [...toDelete];
+  for (const family of families) {
+    const isParentInFamily =
+      sameId(family.husband, deletedId) || sameId(family.wife, deletedId);
+    if (isParentInFamily) {
+      await Family.deleteOne({ _id: family._id });
+      continue;
+    }
 
-  await Person.deleteMany({
-    _id: { $in: deletedIds },
-    owner: req.user.id,
-    tree: tree._id,
-  });
+    const existingChildren = family.children || [];
+    const remainingChildren = existingChildren.filter(
+      (childId) => !sameId(childId, deletedId)
+    );
+    if (remainingChildren.length !== existingChildren.length) {
+      family.children = remainingChildren;
+      await family.save();
+    }
+  }
 
-  // Surviving spouses of the deleted people become unlinked.
+  // Surviving spouses become unlinked; all other relatives stay in the tree.
   await Person.updateMany(
     {
       owner: req.user.id,
       tree: tree._id,
-      spouseId: { $in: deletedIds },
+      spouseId: person._id,
     },
     {
       $set: { spouseId: null, spouseName: '' },
     }
   );
 
-  return res.json({ deleted: deletedIds.length });
+  await Person.deleteOne({ _id: person._id });
+
+  return res.json({ deleted: 1, childrenKept: children.length });
 });
 
 module.exports = router;

@@ -81,6 +81,8 @@ const translations = {
     'notice.personAdded': 'Person added.',
     'notice.personUpdated': 'Person updated.',
     'notice.personDeleted': 'Person removed from the tree.',
+    'notice.personDeletedChildrenKept':
+      'Person removed. Their children stayed in the tree.',
     'notice.demoLoaded': 'Example family loaded.',
     'notice.treeCreated': 'Tree created.',
     'notice.treeDuplicated': 'Tree duplicated as “{{name}}”.',
@@ -89,8 +91,18 @@ const translations = {
     'notice.treeDeleted': 'Tree deleted.',
     'notice.gedcomExported': 'GEDCOM file exported.',
 
-    'confirm.delete':
-      'Delete {{name}}? Any children below this person will also be removed.',
+    'confirm.deletePerson.title': 'Delete {{name}}',
+    'confirm.deletePerson.copy':
+      'Choose what should happen to the people below {{name}}.',
+    'confirm.deletePerson.descendants.one': '{{count}} descendant in this tree',
+    'confirm.deletePerson.descendants.other':
+      '{{count}} descendants in this tree',
+    'confirm.deletePerson.keepTitle': 'Keep children',
+    'confirm.deletePerson.keepBody':
+      'Remove only {{name}}. Their children stay in the tree and are no longer linked to this person.',
+    'confirm.deletePerson.allTitle': 'Remove children too',
+    'confirm.deletePerson.allBody':
+      'Remove {{name}} and everyone below them. This cannot be undone.',
     'confirm.demo':
       'Loading the example family will replace the people currently in this tree. Continue?',
     'confirm.deleteTree':
@@ -657,6 +669,8 @@ const translations = {
     'notice.personAdded': 'Asmuo pridėtas.',
     'notice.personUpdated': 'Asmens duomenys atnaujinti.',
     'notice.personDeleted': 'Asmuo pašalintas iš medžio.',
+    'notice.personDeletedChildrenKept':
+      'Asmuo pašalintas. Jo vaikai liko medyje.',
     'notice.demoLoaded': 'Pavyzdinė šeima įkelta.',
     'notice.treeCreated': 'Medis sukurtas.',
     'notice.treeDuplicated': 'Medis nukopijuotas kaip „{{name}}“.',
@@ -665,8 +679,21 @@ const translations = {
     'notice.treeDeleted': 'Medis ištrintas.',
     'notice.gedcomExported': 'GEDCOM failas eksportuotas.',
 
-    'confirm.delete':
-      'Pašalinti {{name}}? Visi šio asmens vaikai taip pat bus pašalinti.',
+    'confirm.deletePerson.title': 'Ištrinti {{name}}',
+    'confirm.deletePerson.copy':
+      'Pasirinkite, kas turi įvykti su žmonėmis žemiau {{name}}.',
+    'confirm.deletePerson.descendants.one':
+      '{{count}} palikuonis šiame medyje',
+    'confirm.deletePerson.descendants.few':
+      '{{count}} palikuonys šiame medyje',
+    'confirm.deletePerson.descendants.many':
+      '{{count}} palikuonių šiame medyje',
+    'confirm.deletePerson.keepTitle': 'Palikti vaikus',
+    'confirm.deletePerson.keepBody':
+      'Pašalinti tik {{name}}. Šio asmens vaikai lieka medyje, bet nebus susieti su šiuo asmeniu.',
+    'confirm.deletePerson.allTitle': 'Pašalinti ir vaikus',
+    'confirm.deletePerson.allBody':
+      'Pašalinti {{name}} ir visus žmones žemiau jo. To negalima atšaukti.',
     'confirm.demo':
       'Įkėlus pavyzdinę šeimą, dabartiniai šio medžio žmonės bus pakeisti. Tęsti?',
     'confirm.deleteTree':
