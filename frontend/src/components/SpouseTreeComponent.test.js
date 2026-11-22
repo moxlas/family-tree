@@ -580,7 +580,7 @@ describe('home-centred pedigree layout', () => {
     ).toBeCloseTo(motherCentre, 1);
   });
 
-  it('does not add a blank canvas opposite a wide branch', () => {
+  it('does not add a blank canvas opposite a wide branch in a large tree', () => {
     const homeSiblings = Array.from({ length: 8 }, (_, index) =>
       person(`S${index}`, {
         firstName: `Sibling${index}`,
@@ -613,15 +613,88 @@ describe('home-centred pedigree layout', () => {
     );
     expect(leftmost).toBeCloseTo(34, 0);
 
+    // Large trees use compact rows, so the strict pedigree alignment from the
+    // small-tree test above no longer applies here. What matters is that the
+    // descendants did not push the home branch into a mirrored empty canvas.
+    expect(scene.treeWidth).toBeLessThan(8000);
+  });
+});
+
+describe('large tree compact layout', () => {
+  const leftOf = (unit) => unit.x - unit.width / 2;
+  const rightOf = (unit) => unit.x + unit.width / 2;
+
+  function makeWideFamilyTree() {
+    const people = [];
+    const families = [];
+    const add = (id, extra = {}) =>
+      people.push(
+        person(id, {
+          gender: Number.isNaN(Number(id)) ? 'male' : Number(id) % 2 ? 'male' : 'female',
+          ...extra,
+        })
+      );
+    const family = (id, husband, wife, children = []) =>
+      families.push({
+        id,
+        husband,
+        wife,
+        status: 'current',
+        marriageDate: '',
+        divorceDate: '',
+        children,
+      });
+
+    add('GP1');
+    add('GP2', { spouseId: 'GP1' });
+    family('gp', 'GP1', 'GP2', ['F', ...Array.from({ length: 8 }, (_, i) => `U${i}`)]);
+
+    add('MF');
+    add('MM', { spouseId: 'MF' });
+    family('mf', 'MF', 'MM', ['M']);
+
+    add('F', { parentId: 'GP1' });
+    add('M', { parentId: 'MF', spouseId: 'F' });
+    family('parents', 'F', 'M', ['H']);
+    add('H', { parentId: 'F', secondParentId: 'M' });
+
+    Array.from({ length: 8 }, (_, i) =>
+      add(`U${i}`, { parentId: 'GP1', gender: i % 2 ? 'female' : 'male' })
+    );
+
+    add('U0S', { spouseId: 'U0', gender: 'female' });
+    family('u0', 'U0', 'U0S', Array.from({ length: 8 }, (_, i) => `C${i}`));
+
+    Array.from({ length: 8 }, (_, i) => {
+      add(`C${i}`, { parentId: 'U0' });
+      add(`C${i}S`, { spouseId: `C${i}`, gender: i % 2 ? 'male' : 'female' });
+      family(`c${i}`, `C${i}`, `C${i}S`, [`G${i}`]);
+      add(`G${i}`, { parentId: `C${i}` });
+    });
+
+    return { people, families };
+  }
+
+  it('does not reserve descendant width for childless uncles', () => {
+    const { people, families } = makeWideFamilyTree();
+    const scene = buildScene(people, families, true, 'H', 'H');
     const unitFor = (personId) =>
       scene.units.find((unit) =>
         unit.members.some((member) => member.id === personId)
       );
-    const homeCentre = cardCentre(unitFor('H'), 'H');
-    const parents = unitFor('F');
-    const fatherCentre = cardCentre(parents, 'F');
-    const motherCentre = cardCentre(parents, 'M');
-    expect((fatherCentre + motherCentre) / 2).toBeCloseTo(homeCentre, 1);
+
+    expect(scene.units.length).toBeGreaterThanOrEqual(28);
+
+    const uncleWithChildren = unitFor('U0');
+    const childlessUncle = unitFor('U1');
+    const home = unitFor('H');
+
+    // The uncle's eight children and eight grandchildren widen only his own
+    // row. The next childless uncle sits immediately beside him instead of
+    // being pushed out by the size of that descendant block.
+    expect(leftOf(childlessUncle) - rightOf(uncleWithChildren)).toBeLessThan(150);
+    expect(scene.treeWidth).toBeLessThan(6000);
+    expect(home.x).toBeGreaterThan(unitFor('U7').x);
   });
 });
 

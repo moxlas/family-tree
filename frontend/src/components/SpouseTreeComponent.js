@@ -19,6 +19,10 @@ const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
 const MAX_ROUTING_LANES = 6;
 const TREE_PADDING = 34;
+// Small trees keep the pedigree-style ancestor layout. Larger trees switch to
+// row packing so a childless sibling never reserves a descendant-sized block.
+const COMPACT_LAYOUT_MIN_UNITS = 20;
+const COMPACT_LAYOUT_PASSES = 6;
 const DEFAULT_CARD_WIDTH = cardWidthFor();
 
 export function pairKeyOf(firstId, secondId) {  const first = String(firstId);
@@ -227,6 +231,144 @@ function packRow(units, row, pinned, gap) {
       current.x -= overlap;
     }
   }
+}
+
+// Pack a generation using the width of the cards that are actually visible.
+// The minimum separation is folded into the offsets, leaving a simple
+// nondecreasing fit which is solved with pool-adjacent-violators. Unlike the
+// descendant blocks used by the pedigree layout, this never reserves space for
+// children that were never added or are currently hidden.
+function fitOrderedRowCenters(row, desired, widths, gapBetween) {
+  if (!row.length) return [];
+
+  const offsets = new Array(row.length);
+  let cursor = TREE_PADDING;
+  row.forEach((unitIndex, index) => {
+    if (index > 0) {
+      cursor +=
+        widths[row[index - 1]] / 2 +
+        gapBetween(index) +
+        widths[unitIndex] / 2;
+    }
+    offsets[index] = cursor;
+  });
+
+  const blocks = [];
+  desired.forEach((value, index) => {
+    blocks.push({ count: 1, end: index, start: index, sum: value - offsets[index] });
+    while (
+      blocks.length > 1 &&
+      blocks[blocks.length - 2].sum / blocks[blocks.length - 2].count >
+        blocks[blocks.length - 1].sum / blocks[blocks.length - 1].count
+    ) {
+      const right = blocks.pop();
+      const left = blocks.pop();
+      blocks.push({
+        count: left.count + right.count,
+        end: right.end,
+        start: left.start,
+        sum: left.sum + right.sum,
+      });
+    }
+  });
+
+  const fitted = new Array(row.length);
+  blocks.forEach((block) => {
+    const value = block.sum / block.count;
+    for (let index = block.start; index <= block.end; index += 1) {
+      fitted[index] = offsets[index] + value;
+    }
+  });
+  return fitted;
+}
+
+// Compact layout for large trees: every generation is packed against its real
+// card widths, then children follow parents and parents follow children. Only
+// existing visible units take part, so adding a child expands one local gap and
+// removing that child closes it again.
+function applyCompactRowLayout({
+  componentOf,
+  gap,
+  componentGap,
+  primaryChildrenByParent,
+  rows,
+  unitParents,
+  unitWidths,
+}) {
+  const centers = new Map();
+
+  rows.forEach((row) => {
+    let cursor = TREE_PADDING;
+    row.forEach((unitIndex, index) => {
+      if (index > 0) {
+        cursor += gap + unitWidths[unitIndex] / 2;
+      }
+      centers.set(unitIndex, cursor + unitWidths[unitIndex] / 2);
+      cursor += unitWidths[unitIndex] / 2;
+    });
+  });
+
+  const gapBetween = (row, index) =>
+    index > 0 && componentOf[row[index - 1]] !== componentOf[row[index]]
+      ? componentGap
+      : gap;
+
+  const meanCenter = (indexes) => {
+    const values = indexes
+      .map((unitIndex) => centers.get(unitIndex))
+      .filter((value) => Number.isFinite(value));
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  };
+
+  for (let pass = 0; pass < COMPACT_LAYOUT_PASSES; pass += 1) {
+    // Children move towards the parents they are linked to.
+    for (let depth = 1; depth < rows.length; depth += 1) {
+      const row = rows[depth];
+      const desired = row.map((unitIndex) => {
+        const parentCenter = meanCenter(unitParents[unitIndex] || []);
+        const current = centers.get(unitIndex);
+        if (parentCenter == null || !Number.isFinite(current)) return current;
+        return parentCenter * 0.85 + current * 0.15;
+      });
+      fitOrderedRowCenters(
+        row,
+        desired,
+        unitWidths,
+        (index) => gapBetween(row, index)
+      ).forEach((center, index) => centers.set(row[index], center));
+    }
+
+    // Parents move towards the children that are actually visible.
+    for (let depth = rows.length - 2; depth >= 0; depth -= 1) {
+      const row = rows[depth];
+      const desired = row.map((unitIndex) => {
+        const childCenter = meanCenter(
+          primaryChildrenByParent.get(unitIndex) || []
+        );
+        const current = centers.get(unitIndex);
+        if (childCenter == null || !Number.isFinite(current)) return current;
+        return childCenter * 0.85 + current * 0.15;
+      });
+      fitOrderedRowCenters(
+        row,
+        desired,
+        unitWidths,
+        (index) => gapBetween(row, index)
+      ).forEach((center, index) => centers.set(row[index], center));
+    }
+  }
+
+  const minLeft = Math.min(
+    ...rows.flatMap((row) =>
+      row.map((unitIndex) => centers.get(unitIndex) - unitWidths[unitIndex] / 2)
+    )
+  );
+  const shift = Number.isFinite(minLeft) ? TREE_PADDING - minLeft : 0;
+  centers.forEach((center, unitIndex) => {
+    centers.set(unitIndex, center + shift);
+  });
+  return centers;
 }
 
 // Re-seat the home person's direct ancestry as a pedigree: the father side
@@ -1262,9 +1404,10 @@ export function buildScene(
     if (!improved) break;
   }
 
-  // Layout: every connected family is laid out as one block and children
-  // are reserved bottom-up, so each parent is centred over its descendants
-  // without any later shifting.
+  // Layout: small trees reserve descendant blocks bottom-up so each parent is
+  // centred over its family. Large trees switch to row packing; otherwise a
+  // childless sibling is pushed outward by a distant cousin's descendants.
+  const compactLayout = units.length >= COMPACT_LAYOUT_MIN_UNITS;
   const CARD_WIDTH = cardWidth;
   const BASE_UNIT_GAP = 44;
   const ROUTING_UNIT_GAP = 76;
@@ -1650,7 +1793,21 @@ export function buildScene(
   });
 
   let pedigreeWidth = 0;
-  if (pedigreePersonId) {
+  if (compactLayout) {
+    const compactCenters = applyCompactRowLayout({
+      componentOf,
+      gap: UNIT_GAP,
+      componentGap: COMPONENT_GAP,
+      primaryChildrenByParent,
+      rows,
+      unitParents,
+      unitWidths,
+    });
+    compactCenters.forEach((center, unitIndex) => {
+      units[unitIndex].x = center;
+      units[unitIndex].layoutCenter = center;
+    });
+  } else if (pedigreePersonId) {
     pedigreeWidth =
       applyHomePedigree({
         byId,
