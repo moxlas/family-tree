@@ -579,6 +579,50 @@ describe('home-centred pedigree layout', () => {
       (cardCentre(maternal, 'MF') + cardCentre(maternal, 'MM')) / 2
     ).toBeCloseTo(motherCentre, 1);
   });
+
+  it('does not add a blank canvas opposite a wide branch', () => {
+    const homeSiblings = Array.from({ length: 8 }, (_, index) =>
+      person(`S${index}`, {
+        firstName: `Sibling${index}`,
+        parentId: 'F',
+        secondParentId: 'M',
+      })
+    );
+    const siblingChildren = homeSiblings.map((sibling, index) =>
+      person(`SC${index}`, {
+        firstName: `SiblingChild${index}`,
+        parentId: sibling.id,
+      })
+    );
+    const scene = buildScene(
+      [...pedigreePeople, ...homeSiblings, ...siblingChildren],
+      [
+        {
+          ...pedigreeFamilies[0],
+          children: ['H', 'S', ...homeSiblings.map((sibling) => sibling.id)],
+        },
+        ...pedigreeFamilies.slice(1),
+      ],
+      true,
+      'H',
+      'H'
+    );
+
+    const leftmost = Math.min(
+      ...scene.units.map((unit) => unit.x - unit.width / 2)
+    );
+    expect(leftmost).toBeCloseTo(34, 0);
+
+    const unitFor = (personId) =>
+      scene.units.find((unit) =>
+        unit.members.some((member) => member.id === personId)
+      );
+    const homeCentre = cardCentre(unitFor('H'), 'H');
+    const parents = unitFor('F');
+    const fatherCentre = cardCentre(parents, 'F');
+    const motherCentre = cardCentre(parents, 'M');
+    expect((fatherCentre + motherCentre) / 2).toBeCloseTo(homeCentre, 1);
+  });
 });
 
 describe('buildScene accessibility card widths', () => {

@@ -18,6 +18,7 @@ const FORMER_LINK_WIDTH = 76;
 const FORMER_LINK_CHILDREN_WIDTH = 152;
 const CURRENT_LINK_CHILDREN_MAX = 112;
 const MAX_ROUTING_LANES = 6;
+const TREE_PADDING = 34;
 const DEFAULT_CARD_WIDTH = cardWidthFor();
 
 export function pairKeyOf(firstId, secondId) {  const first = String(firstId);
@@ -269,34 +270,31 @@ function applyHomePedigree({
 
   const homeDepth = depths[homeUnitIndex] || 0;
 
-  const centerHomeInScene = () => {
+  // Normalise the finished pedigree to its real bounds. The old layout padded
+  // the shorter side so the home card sat in the middle of the canvas; the
+  // viewport now centres on a card directly, so that mirrored empty space only
+  // made distant relatives harder to reach.
+  const normalizePedigreeScene = () => {
     const minLeft = units.reduce(
       (value, unit) => Math.min(value, unit.x - unit.width / 2),
       Number.POSITIVE_INFINITY
     );
     if (!Number.isFinite(minLeft)) return 0;
 
-    units.forEach((unit) => {
-      unit.x -= minLeft;
-    });
-
-    const homeCentre = cardCenterX(units[homeUnitIndex], homeMemberIndex);
-    const maxRight = units.reduce(
-      (value, unit) => Math.max(value, unit.x + unit.width / 2),
-      Number.NEGATIVE_INFINITY
-    );
-    const half = Math.max(homeCentre, maxRight - homeCentre, 0) + 68;
-    const shift = half - homeCentre;
-
+    const shift = TREE_PADDING - minLeft;
     units.forEach((unit) => {
       unit.x += shift;
     });
 
-    return half * 2;
+    const maxRight = units.reduce(
+      (value, unit) => Math.max(value, unit.x + unit.width / 2),
+      Number.NEGATIVE_INFINITY
+    );
+    return Number.isFinite(maxRight) ? maxRight + TREE_PADDING : 0;
   };
 
   if (homeDepth <= 0) {
-    return centerHomeInScene();
+    return normalizePedigreeScene();
   }
 
   const parentsCache = new Map();
@@ -504,7 +502,7 @@ function applyHomePedigree({
     level = nextLevel;
   }
 
-  return centerHomeInScene();
+  return normalizePedigreeScene();
 }
 
 export function buildScene(
@@ -1625,7 +1623,6 @@ export function buildScene(
 
   // Normalize the finished layout so the leftmost card starts just inside
   // the tree padding instead of leaving a large empty strip on the left.
-  const TREE_PADDING = 34;
   const minLeft = units.reduce(
     (value, _unit, unitIndex) =>
       Math.min(value, (layoutX.get(unitIndex) || 0) - unitWidths[unitIndex] / 2),
