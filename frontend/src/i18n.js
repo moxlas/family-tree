@@ -681,7 +681,7 @@ const translations = {
 
     'confirm.deletePerson.title': 'Ištrinti {{name}}',
     'confirm.deletePerson.copy':
-      'Pasirinkite, kas turi įvykti su žmonėmis žemiau {{name}}.',
+      'Pasirinkite, kas nutiks šio žmogaus palikuoniams.',
     'confirm.deletePerson.descendants.one':
       '{{count}} palikuonis šiame medyje',
     'confirm.deletePerson.descendants.few':

@@ -83,6 +83,9 @@ describe('DeletePersonModal', () => {
 
     const dialog = container.querySelector('[role="dialog"]');
     expect(dialog.textContent).toContain(
+      'Pasirinkite, kas nutiks šio žmogaus palikuoniams.'
+    );
+    expect(dialog.textContent).toContain(
       'Tik Anna Doe bus pašalintas. Šio asmens vaikai liks medyje, bet nebebus susieti su šiuo asmeniu'
     );
     expect(dialog.textContent).toContain(
